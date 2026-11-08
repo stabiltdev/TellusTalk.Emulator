@@ -16,7 +16,8 @@ builder
 ```
 
 `WithReference` gives the app the emulator's address as `TellusTalk__BaseUrl`, the setting `TellusTalk:BaseUrl`; pass
-another name as its second argument if the app reads another setting. The dashboard links to the emulator's page.
+another name as its second argument if the app reads another setting. The app's own configuration still gives its
+TellusTalk client a user name and password; the emulator takes any. The dashboard links to the emulator's page.
 
 | Method | Sets |
 |---|---|

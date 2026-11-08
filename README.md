@@ -64,7 +64,8 @@ builder
 ```
 
 `WithReference` sets `TellusTalk__BaseUrl`, the setting `TellusTalk:BaseUrl`; its second argument names another. The
-package runs the image of its own version. Without the package, the same container is:
+credentials still come from the app's own configuration, and any will do. The package runs the image of its own
+version. Without the package, the same container is:
 
 ```csharp
 var tellusTalk = builder
