@@ -1,0 +1,38 @@
+@* The bar above the list: the tabs with their counts, the search, clearing, and the theme switch. *@
+<header class="tt-head">
+    <span class="tt-brand">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 2h9A2.5 2.5 0 0 1 17 4.5v6a2.5 2.5 0 0 1-2.5 2.5H9l-4 3.5V13a2 2 0 0 1-2-2V4.5A2.5 2.5 0 0 1 5.5 2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        TellusTalk Emulator
+    </span>
+    <nav id="tabs" class="tt-tabs" aria-label="Lists">
+        <a class="tt-tab @(Scheduled ? null : "on")" data-tab="sent" href="@TabLink("sent")" aria-current="@(Scheduled ? null : "page")">Sent<span class="count">@SentCount</span></a>
+        <a class="tt-tab @(Scheduled ? "on" : null)" data-tab="scheduled" href="@TabLink("scheduled")" aria-current="@(Scheduled ? "page" : null)">Scheduled<span class="count sched">@ScheduledCount</span></a>
+    </nav>
+    <form id="search" class="tt-search" method="get" action="/" role="search">
+        <input type="hidden" name="tab" value="@(Scheduled ? "scheduled" : "sent")" />
+        <input type="search" name="q" value="@Search" placeholder="Search number or text" aria-label="Search number or text" />
+    </form>
+    <button type="button" class="tt-clear" data-clear>Clear all</button>
+    <div class="tt-theme" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+    </div>
+</header>
+
+@code {
+    [Parameter]
+    public bool Scheduled { get; set; }
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    [Parameter]
+    public int SentCount { get; set; }
+
+    [Parameter]
+    public int ScheduledCount { get; set; }
+
+    private string TabLink(string tab) =>
+        string.IsNullOrEmpty(Search) ? $"/?tab={tab}" : $"/?tab={tab}&q={Uri.EscapeDataString(Search)}";
+}

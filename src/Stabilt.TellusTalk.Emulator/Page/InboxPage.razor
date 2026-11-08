@@ -1,0 +1,277 @@
+@* The page: the tabs over a list of messages, and the selected message beside it. The list and the detail live here
+   rather than in components of their own, since a component's parameters are public and the message is not. *@
+@inject MessageStore Store
+@inject TimeProvider Time
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TellusTalk Emulator</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/app.css" />
+    <script src="/js/app.js" defer></script>
+</head>
+<body>
+<div class="tt">
+    <TopBar Scheduled="@IsScheduled" Search="@SearchText" SentCount="@Store.Count(MessageState.Sent)" ScheduledCount="@Store.Count(MessageState.Scheduled)" />
+    <main class="tt-body">
+        <nav id="list" class="tt-list" aria-label="Messages">
+            @foreach (var message in _messages)
+            {
+                @Row(message)
+            }
+        </nav>
+        <section id="detail" class="tt-detail" aria-label="The selected message">
+            @if (_selected is null)
+            {
+                <p class="tt-empty">@EmptyText</p>
+            }
+            else
+            {
+                @Detail(_selected)
+            }
+        </section>
+    </main>
+</div>
+</body>
+</html>
+
+@code {
+    /// <summary>Fields the detail shows in a place of their own, so they are left out of the other fields.</summary>
+    private static readonly HashSet<string> ShownFields = new(StringComparer.Ordinal)
+    {
+        "to", "text", "sms_header", "sms_originator_source", "sms_originator_text", "sms_originator_number",
+        "sms_flash", "sms_validity_time", "billing_id", "echo", "report_to", "reply_to",
+    };
+
+    private IReadOnlyList<Message> _messages = [];
+    private Message? _selected;
+
+    /// <summary><c>sent</c>, the default, or <c>scheduled</c>.</summary>
+    [Parameter]
+    public string? Tab { get; set; }
+
+    [Parameter]
+    public string? SelectedId { get; set; }
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    private bool IsScheduled => string.Equals(Tab, "scheduled", StringComparison.Ordinal);
+
+    private string? SearchText => string.IsNullOrWhiteSpace(Search) ? null : Search;
+
+    private string EmptyText =>
+        SearchText is not null ? "No message matches the search."
+        : IsScheduled ? "Nothing is scheduled."
+        : "No messages yet. Send one to POST /send/v1 and it shows up here.";
+
+    protected override void OnParametersSet()
+    {
+        _messages = Store.List(IsScheduled ? MessageState.Scheduled : MessageState.Sent, search: SearchText);
+        _selected = _messages.FirstOrDefault(message => string.Equals(message.Id, SelectedId, StringComparison.Ordinal))
+                    ?? _messages.FirstOrDefault();
+    }
+
+    private RenderFragment Row(Message message) =>
+        @<a class="tt-row @(message == _selected ? "sel" : null) @(message.Warnings.Count > 0 ? "warned" : null)"
+            href="@Link(message)" data-id="@message.Id" data-at="@PageTime.Iso(message.ShownAt)">
+            <span class="l1">
+                <span class="num">@message.To.Number</span>
+                <span class="time">@if (IsScheduled)
+                    {
+                        <text>Due </text>
+                    }<time datetime="@PageTime.Iso(message.ShownAt)">@PageTime.Fallback(message.ShownAt)</time></span>
+            </span>
+            <span class="from @(message.Sender.Kind == SenderKind.Number ? "digits" : null)">@message.Sender.Display</span>
+            <span class="prev">@message.Text</span>
+            @if (message.Warnings.Count > 0)
+            {
+                <span class="warn-mark" role="img" aria-label="@WarningCount(message)" title="@WarningCount(message)"></span>
+            }
+        </a>;
+
+    private RenderFragment Detail(Message message) =>
+        @<div class="tt-message">
+            <PhonePreview Sender="@message.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)" />
+            <div class="tt-info">
+                <h2 class="tt-title">To @message.To.Number</h2>
+                <p class="tt-sub">From @message.Sender.Display, shown as @(message.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
+                @if (SenderNote(message) is { } note)
+                {
+                    <p class="tt-sub">@note</p>
+                }
+                <p class="tt-sub">Received <time datetime="@PageTime.Iso(message.ReceivedAt)">@PageTime.Fallback(message.ReceivedAt)</time>.@if (message.DueAt is { } due)
+                    {
+                        <text> Due </text><time datetime="@PageTime.Iso(due)">@PageTime.Fallback(due)</time><text>.</text>
+                    }</p>
+                @if (message.Warnings.Count > 0)
+                {
+                    <ul class="tt-warnings" aria-label="Warnings">
+                        @foreach (var warning in message.Warnings)
+                        {
+                            <li><code>@warning.Code</code> @warning.Text</li>
+                        }
+                    </ul>
+                }
+                <PartsBar Sizes="@Sizes(message.Parts)" Left="@message.Parts.LeftInLastPart" Length="@message.Parts.Length"
+                          MaxParts="@message.MaxParts" CharacterSet="@CharacterSetName(message.Parts.CharacterSet)" />
+                <dl>
+                    <dt>Job id</dt>
+                    <dd>@message.JobId</dd>
+                    <dt>Flash</dt>
+                    <dd>@(Shown(message.Request.Body.SmsFlash) ?? "No")</dd>
+                    <dt>Valid for</dt>
+                    <dd>@(Shown(message.Request.Body.SmsValidityTime) is { } validity ? $"{validity} seconds" : "Operator default")</dd>
+                    @if (Shown(message.Request.Body.BillingId) is { } billingId)
+                    {
+                        <dt>Billing id</dt>
+                        <dd>@billingId</dd>
+                    }
+                    @if (Shown(message.Request.Body.Echo) is { } echo)
+                    {
+                        <dt>Echo</dt>
+                        <dd><code>@echo</code></dd>
+                    }
+                    @if (message.Request.ReportTo.Count > 0)
+                    {
+                        <dt>Report to</dt>
+                        <dd>@Addresses(message.Request.ReportTo)</dd>
+                    }
+                    @if (message.Request.ReplyTo.Count > 0)
+                    {
+                        <dt>Reply to</dt>
+                        <dd>@Addresses(message.Request.ReplyTo)</dd>
+                    }
+                    @foreach (var field in OtherFields(message))
+                    {
+                        <dt>@field.Key</dt>
+                        <dd><code>@field.Value</code></dd>
+                    }
+                </dl>
+                @if (message.Request.ReportTo.Count > 0)
+                {
+                    @Reports(message)
+                }
+                <details class="tt-request">
+                    <summary>Show request</summary>
+                    <pre>@message.RawRequest</pre>
+                </details>
+                <div class="tt-actions">
+                    <button type="button" class="tt-btn" data-delete="@message.Id">Delete</button>
+                </div>
+            </div>
+        </div>;
+
+    /// <summary>The live refresh swaps this section by its id, so a report sent shows up without leaving the message.</summary>
+    private RenderFragment Reports(Message message) =>
+        @<section id="reports" class="tt-reports" aria-labelledby="reports-title">
+            <h3 id="reports-title">Delivery reports</h3>
+            @if (Store.Reports(message.Id) is { Count: > 0 } attempts)
+            {
+                <ol>
+                    @foreach (var attempt in attempts)
+                    {
+                        <li class="@(attempt.Sent ? null : "unsent")">
+                            <span class="tt-status @(attempt.Status == ReportStatus.Failed ? "failed" : "delivered")">@(attempt.Status == ReportStatus.Failed ? "Failed" : "Delivered")</span>
+                            <code>@attempt.Target</code>
+                            <span class="outcome">@attempt.Outcome</span>
+                            <time datetime="@PageTime.Iso(attempt.At)">@PageTime.Fallback(attempt.At)</time>
+                        </li>
+                    }
+                </ol>
+            }
+            else
+            {
+                <p class="tt-sub">None yet.</p>
+            }
+            <div class="tt-actions">
+                <button type="button" class="tt-btn" data-report="delivered" data-id="@message.Id">Send delivered report</button>
+                <button type="button" class="tt-btn" data-report="failed" data-id="@message.Id">Send failed report</button>
+            </div>
+        </section>;
+
+    /// <summary>Header values are masked: a report address may carry credentials for the app that receives reports.</summary>
+    private static RenderFragment Addresses(IReadOnlyList<ReportAddress> addresses) =>
+        @<ul class="tt-addresses">
+            @foreach (var address in addresses)
+            {
+                <li>
+                    <code>@address.Target</code>
+                    @if (address.ContentType is { } contentType)
+                    {
+                        <span class="tt-setting">as @contentType</span>
+                    }
+                    @foreach (var header in address.Headers)
+                    {
+                        <span class="tt-setting">@header.Key: ••••••</span>
+                    }
+                </li>
+            }
+        </ul>;
+
+    private string Link(Message message) =>
+        SearchText is null
+            ? $"/?tab={(IsScheduled ? "scheduled" : "sent")}&id={message.Id}"
+            : $"/?tab={(IsScheduled ? "scheduled" : "sent")}&id={message.Id}&q={Uri.EscapeDataString(SearchText)}";
+
+    private static string WarningCount(Message message) =>
+        message.Warnings.Count == 1 ? "1 warning" : $"{message.Warnings.Count} warnings";
+
+    private static string? SenderNote(Message message) => message.Sender switch
+    {
+        { FromAccount: false } => null,
+        { Source: "account" } => "The request set no sender, so the account's sender is shown.",
+        { Source: "replysms" } => "The request asked for replysms; the account's sender is shown, as TellusTalk was seen to do without a source.",
+        { Source: var source } => $"The request asked for {source} but left its value out, so the account's sender is shown.",
+    };
+
+    /// <summary>The text split where each part begins; binary content is no text a phone shows.</summary>
+    private static IReadOnlyList<string> Segments(Message message)
+    {
+        if (message.Parts.CharacterSet == SmsCharacterSet.Binary)
+        {
+            return [$"Binary message, {message.Parts.Length} bytes"];
+        }
+
+        var starts = message.Parts.Starts;
+
+        return starts
+            .Select((start, index) => message.Text[start..(index + 1 < starts.Count ? starts[index + 1] : message.Text.Length)])
+            .ToList();
+    }
+
+    /// <summary>Every part but the last is drawn full; the last holds what the text uses of it.</summary>
+    private static IReadOnlyList<int> Sizes(SmsParts parts)
+    {
+        var capacity = parts.Count == 1
+            ? parts.Length + parts.LeftInLastPart
+            : SmsPartsCalculator.SplitPartCapacity(parts.CharacterSet);
+
+        return Enumerable
+            .Repeat(capacity, parts.Count - 1)
+            .Append(capacity - parts.LeftInLastPart)
+            .ToList();
+    }
+
+    private static string CharacterSetName(SmsCharacterSet characterSet) => characterSet switch
+    {
+        SmsCharacterSet.Gsm => "gsm",
+        SmsCharacterSet.Ucs2 => "ucs2",
+        _ => "binary",
+    };
+
+    private static IEnumerable<KeyValuePair<string, string?>> OtherFields(Message message) => message.Request.Fields
+        .Where(field => !ShownFields.Contains(field.Key))
+        .Select(field => KeyValuePair.Create(field.Key, Shown(field.Value)));
+
+    private static string? Shown(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Null or JsonValueKind.Undefined => null,
+        JsonValueKind.String => value.GetString(),
+        _ => value.GetRawText(),
+    };
+}

@@ -1,0 +1,45 @@
+@* How the text splits into parts: one segment per part, the room left in the last, and the legend. *@
+<div class="tt-parts">
+    <div class="bar" aria-hidden="true">
+        @foreach (var size in Sizes)
+        {
+            <span class="seg" style="flex: @size"></span>
+        }
+        @if (Left > 0)
+        {
+            <span class="seg rest" style="flex: @Left"></span>
+        }
+    </div>
+    <p class="legend">
+        <span><b>@Sizes.Count @(Sizes.Count == 1 ? "part" : "parts")</b> of at most @MaxParts, @CharacterSetName</span>
+        <span>@Length @Unit, @Left left in part @Sizes.Count</span>
+    </p>
+</div>
+
+@code {
+    /// <summary>The units each part holds, in order.</summary>
+    [Parameter]
+    public IReadOnlyList<int> Sizes { get; set; } = [];
+
+    [Parameter]
+    public int Left { get; set; }
+
+    [Parameter]
+    public int Length { get; set; }
+
+    [Parameter]
+    public int MaxParts { get; set; }
+
+    /// <summary><c>gsm</c>, <c>ucs2</c> or <c>binary</c>.</summary>
+    [Parameter]
+    public string CharacterSet { get; set; } = "gsm";
+
+    private string CharacterSetName => CharacterSet switch
+    {
+        "gsm" => "GSM characters",
+        "ucs2" => "Unicode characters",
+        _ => "binary",
+    };
+
+    private string Unit => string.Equals(CharacterSet, "binary", StringComparison.Ordinal) ? "bytes" : "characters";
+}

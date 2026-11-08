@@ -1,0 +1,19 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+
+# Build output (UseArtifactsOutput)
+.artifacts/
+
+# User-specific files
+*.user
+*.DotSettings.user
+
+# IDEs
+.vs/
+.idea/
+
+# Superpowers scratch
+.superpowers/

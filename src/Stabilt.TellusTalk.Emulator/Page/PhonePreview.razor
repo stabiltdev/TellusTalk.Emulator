@@ -1,0 +1,35 @@
+@* The SMS as the recipient's phone shows it, every other part marked where it begins. *@
+<div class="tt-phone" role="group" aria-label="The SMS as the phone shows it">
+    <div class="notch"></div>
+    <div class="who">
+        <div class="avatar" aria-hidden="true">@Initial</div>
+        <div class="name">@Sender</div>
+        <div class="kind">Text message</div>
+    </div>
+    <div class="stamp"><time datetime="@PageTime.Iso(Time)">@PageTime.Fallback(Time)</time></div>
+    <p class="tt-bubble">@for (var part = 0; part < Parts.Count; part++)
+        {
+            if (part % 2 == 0)
+            {
+                @Parts[part]
+            }
+            else
+            {
+                <mark title="Part @(part + 1) begins here">@Parts[part]</mark>
+            }
+        }</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Sender { get; set; } = string.Empty;
+
+    [Parameter]
+    public DateTimeOffset Time { get; set; }
+
+    /// <summary>The text split where each part begins.</summary>
+    [Parameter]
+    public IReadOnlyList<string> Parts { get; set; } = [];
+
+    private string Initial => Sender.Length == 0 ? "?" : Sender[..1].ToUpperInvariant();
+}
