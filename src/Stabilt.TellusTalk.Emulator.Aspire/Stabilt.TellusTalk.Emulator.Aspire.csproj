@@ -21,8 +21,8 @@
     <RootNamespace>Aspire.Hosting</RootNamespace>
   </PropertyGroup>
 
-  <!-- The package names the image of its own version, so a release passes one version to both. A local build names the
-       latest released image. -->
+  <!-- The package names the image of its own version. A release sets that version from its tag for both; this one only
+       names a released image for a local build, so a release leaves it as it is. -->
   <PropertyGroup>
     <Version>0.1.0</Version>
   </PropertyGroup>
