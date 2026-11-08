@@ -66,3 +66,26 @@ jobs:
           dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -t:PublishContainer \
             -p:ContainerRegistry=ghcr.io \
             "-p:ContainerImageTags=\"$tags\""
+
+  # The same tag publishes the Aspire package under the same version, which runs the image of that version, so it waits
+  # for the image to be published.
+  nuget:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Pack the Aspire package
+        run: dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release -o packages "-p:Version=${GITHUB_REF_NAME#v}"
+
+      - name: Push it to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "packages/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
