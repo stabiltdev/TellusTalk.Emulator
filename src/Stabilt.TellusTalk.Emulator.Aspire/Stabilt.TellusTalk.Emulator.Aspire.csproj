@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- net8.0 and Aspire.Hosting 9.5.2, so an AppHost on Aspire 9.5 or later can take it without being made to upgrade;
+       9.0 has every method the package calls, but brings a KubernetesClient with a known vulnerability. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <Description>Runs TellusTalk Emulator, a local stand-in for TellusTalk's K8 send API, from an Aspire AppHost.</Description>
+    <Authors>Stabilt AB</Authors>
+    <Company>Stabilt AB</Company>
+    <PackageTags>aspire;hosting;tellustalk;sms;emulator;testing</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/stabiltdev/TellusTalk.Emulator</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Aspire's integrations put their methods in Aspire.Hosting and their resources in Aspire.Hosting.ApplicationModel,
+       so an AppHost finds them without a using. -->
+  <PropertyGroup>
+    <RootNamespace>Aspire.Hosting</RootNamespace>
+  </PropertyGroup>
+
+  <!-- The package names the image of its own version, so a release passes one version to both. A local build names the
+       latest released image. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

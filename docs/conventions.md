@@ -3,6 +3,19 @@
 How code and tests are written here. A convention is a summary that cites its source; if this page and the code
 disagree, the code is right and the page is a bug.
 
+## Names
+
+**Source:** code: `Stabilt.TellusTalk.Emulator.slnx`, `src/`, `tests/`
+
+- The repository is named after the product, `TellusTalk.Emulator`; the organisation it lives in already says whose it
+  is.
+- Everything .NET inside it carries the company prefix, as .NET's namespace guidelines and NuGet's prefix reservation
+  ask: the solution `Stabilt.TellusTalk.Emulator.slnx`, and each project, assembly, root namespace and package,
+  `Stabilt.TellusTalk.Emulator[.<part>]`. A project's tests are `<project>.Tests`.
+- The Aspire package is the exception for namespaces: its root namespace is `Aspire.Hosting`, and its resource lives in
+  `Aspire.Hosting.ApplicationModel`, as in Aspire's own integrations, so an AppHost finds it without a `using`.
+- The container image is the repository's name in lower case with hyphens: `ghcr.io/stabiltdev/tellustalk-emulator`.
+
 ## Endpoints
 
 **Source:** code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulator.Tests/Http/EndpointConventionTests.cs`
@@ -59,7 +72,7 @@ code: `BannedSymbols.txt`, `src/Stabilt.TellusTalk.Emulator/Ids/GuidExtensions.c
 **Source:** code: `tests/Stabilt.TellusTalk.Emulator.Tests/Support/`
 
 - xUnit v3 on Microsoft Testing Platform, and FluentAssertions 8, used under its licence for non-commercial and
-  open-source work. Run them with `dotnet test --solution TellusTalk.Emulator.slnx`, narrowed with `--filter-class`.
+  open-source work. Run them with `dotnet test --solution Stabilt.TellusTalk.Emulator.slnx`, narrowed with `--filter-class`.
 - A test of behaviour over HTTP starts the whole host with `EmulatorFactory`, whose `FakeTimeProvider` starts at
   2026-11-07 22:00 UTC and whose `Reports` catches every delivery report instead of the network. `Settings` takes host
   settings before the first request.

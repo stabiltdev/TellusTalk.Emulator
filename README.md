@@ -49,17 +49,30 @@ TellusTalk answers `401` without a `WWW-Authenticate` challenge, and so does the
 
 ### From an Aspire AppHost
 
+The package [`Stabilt.TellusTalk.Emulator.Aspire`](src/Stabilt.TellusTalk.Emulator.Aspire/README.md) adds the emulator,
+healthy once it answers, and gives an app its address:
+
 ```csharp
 var tellusTalk = builder
-    .AddContainer("tellustalk", "ghcr.io/stabiltdev/tellustalk-emulator", "<version>")
-    .WithHttpEndpoint(targetPort: 8080, name: "http");
+    .AddTellusTalkEmulator("tellustalk")
+    .WithAccountSender("Clinic");
 
 builder
     .AddProject<Projects.Api>("api")
-    .WithEnvironment("TellusTalk__BaseUrl", tellusTalk.GetEndpoint("http"));
+    .WithReference(tellusTalk)
+    .WaitFor(tellusTalk);
 ```
 
-The setting's name is the client's own; `TellusTalk__BaseUrl` is an example.
+`WithReference` sets `TellusTalk__BaseUrl`, the setting `TellusTalk:BaseUrl`; its second argument names another. The
+credentials still come from the app's own configuration, and any will do. The package runs the image of its own
+version. Without the package, the same container is:
+
+```csharp
+var tellusTalk = builder
+    .AddContainer("tellustalk", "ghcr.io/stabiltdev/tellustalk-emulator", "<version>")
+    .WithHttpEndpoint(targetPort: 8080, name: "http")
+    .WithHttpHealthCheck("/api/v1/health", endpointName: "http");
+```
 
 ### From Testcontainers
 
@@ -264,8 +277,8 @@ when someone observes the real thing.
 ## Building
 
 ```shell
-dotnet build TellusTalk.Emulator.slnx -c Release
-dotnet test --solution TellusTalk.Emulator.slnx
+dotnet build Stabilt.TellusTalk.Emulator.slnx -c Release
+dotnet test --solution Stabilt.TellusTalk.Emulator.slnx
 dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer
 ```
 
