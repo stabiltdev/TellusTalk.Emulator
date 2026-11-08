@@ -264,8 +264,8 @@ when someone observes the real thing.
 ## Building
 
 ```shell
-dotnet build TellusTalk.Emulator.slnx -c Release
-dotnet test --solution TellusTalk.Emulator.slnx
+dotnet build Stabilt.TellusTalk.Emulator.slnx -c Release
+dotnet test --solution Stabilt.TellusTalk.Emulator.slnx
 dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer
 ```
 

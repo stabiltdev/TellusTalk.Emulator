@@ -23,9 +23,9 @@ after goes a long way.
 ## Building and testing
 
 ```shell
-dotnet build TellusTalk.Emulator.slnx -c Release
-dotnet format TellusTalk.Emulator.slnx --verify-no-changes
-dotnet test --solution TellusTalk.Emulator.slnx
+dotnet build Stabilt.TellusTalk.Emulator.slnx -c Release
+dotnet format Stabilt.TellusTalk.Emulator.slnx --verify-no-changes
+dotnet test --solution Stabilt.TellusTalk.Emulator.slnx
 ```
 
 Build in Release before pushing: analyzer warnings fail it, and a Debug build hides them. The tests need neither Docker

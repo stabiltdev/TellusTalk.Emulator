@@ -22,16 +22,16 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TellusTalk.Emulator.slnx
+        run: dotnet restore Stabilt.TellusTalk.Emulator.slnx
 
       - name: Build
-        run: dotnet build TellusTalk.Emulator.slnx -c Release --no-restore
+        run: dotnet build Stabilt.TellusTalk.Emulator.slnx -c Release --no-restore
 
       - name: Format
-        run: dotnet format TellusTalk.Emulator.slnx --verify-no-changes --no-restore
+        run: dotnet format Stabilt.TellusTalk.Emulator.slnx --verify-no-changes --no-restore
 
       - name: Test
-        run: dotnet test --solution TellusTalk.Emulator.slnx -c Release --no-build
+        run: dotnet test --solution Stabilt.TellusTalk.Emulator.slnx -c Release --no-build
 
   # A version tag publishes the image for linux-x64 and linux-arm64 under the version without its v. A release is also
   # tagged with its major and minor version and with latest; a pre-release is not, so latest never points at one.
