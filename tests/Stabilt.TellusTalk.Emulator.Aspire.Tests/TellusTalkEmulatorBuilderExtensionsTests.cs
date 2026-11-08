@@ -107,6 +107,16 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
     }
 
     [Fact]
+    public void A_report_delay_beyond_what_fits_in_whole_seconds_is_refused()
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk");
+
+        FluentActions.Invoking(() => emulator.WithReportDelay(TimeSpan.MaxValue)).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
     public void A_retention_limit_below_one_is_refused()
     {
         var emulator = DistributedApplication

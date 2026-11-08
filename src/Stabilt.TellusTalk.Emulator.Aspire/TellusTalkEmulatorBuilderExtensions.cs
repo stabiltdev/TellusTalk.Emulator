@@ -67,6 +67,7 @@ public static class TellusTalkEmulatorBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentOutOfRangeException.ThrowIfLessThan(delay, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(delay, TimeSpan.FromSeconds(int.MaxValue));
 
         return builder.WithEnvironment(
             "Emulator__ReportDelaySeconds",
