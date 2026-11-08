@@ -37,8 +37,10 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Page` | The page's Razor components and endpoint; `wwwroot` holds its CSS, script and fonts |
 | `src/Stabilt.TellusTalk.Emulator/Http` | `IEndpoint`, `MapEndpoints` and the read API's error body |
 | `src/Stabilt.TellusTalk.Emulator/Ids` | `Guid.CreateVersion1` |
+| `src/Stabilt.TellusTalk.Emulator.Aspire` | The Aspire package: `AddTellusTalkEmulator`, its settings and `WithReference`, in Aspire's own namespaces |
 | `tests/Stabilt.TellusTalk.Emulator.Tests` | One folder per area; `Support` holds `EmulatorFactory` and `ReportReceiver` |
-| `.github/workflows/ci.yml` | Build, format check and tests; a `v*` tag publishes the image |
+| `tests/Stabilt.TellusTalk.Emulator.Aspire.Tests` | The Aspire package's app model, read without running it |
+| `.github/workflows/ci.yml` | Build, format check and tests; a `v*` tag publishes the image, then the Aspire package |
 
 ## Commands
 
@@ -49,6 +51,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | Test | `dotnet test --solution Stabilt.TellusTalk.Emulator.slnx` (Microsoft Testing Platform, through `global.json`) |
 | Run | `dotnet run --project src/Stabilt.TellusTalk.Emulator` |
 | Build the image | `dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer` |
+| Pack the Aspire package | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release` |
 
 ## Traps
 

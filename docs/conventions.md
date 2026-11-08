@@ -12,6 +12,8 @@ disagree, the code is right and the page is a bug.
 - Everything .NET inside it carries the company prefix, as .NET's namespace guidelines and NuGet's prefix reservation
   ask: the solution `Stabilt.TellusTalk.Emulator.slnx`, and each project, assembly, root namespace and package,
   `Stabilt.TellusTalk.Emulator[.<part>]`. A project's tests are `<project>.Tests`.
+- The Aspire package is the exception for namespaces: its root namespace is `Aspire.Hosting`, and its resource lives in
+  `Aspire.Hosting.ApplicationModel`, as in Aspire's own integrations, so an AppHost finds it without a `using`.
 - The container image is the repository's name in lower case with hyphens: `ghcr.io/stabiltdev/tellustalk-emulator`.
 
 ## Endpoints

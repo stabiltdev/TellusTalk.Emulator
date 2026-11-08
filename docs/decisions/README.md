@@ -45,3 +45,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261108-post-delivery-reports-only-to-http-urls](20261108-post-delivery-reports-only-to-http-urls.md) | Post delivery reports only to the http(s) URLs a request names, with certificates checked | accepted |
 | [20261108-render-the-page-on-the-server-and-swap-it-in-place](20261108-render-the-page-on-the-server-and-swap-it-in-place.md) | Render the page on the server and swap its parts in place | accepted |
 | [20261108-serve-tellustalks-paths-at-the-root](20261108-serve-tellustalks-paths-at-the-root.md) | Serve TellusTalk's paths at the root, as TellusTalk serves them | accepted |
+| [20261108-ship-an-aspire-package-of-the-images-version](20261108-ship-an-aspire-package-of-the-images-version.md) | Ship an Aspire package that runs the image of its own version | accepted |
