@@ -283,17 +283,17 @@ public sealed class ReadApiTests
         using var order = new StringContent("""{"status":503,"count":2}""", Encoding.UTF8, "application/json");
 
         using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
-        (await armed.Content.ReadAsStringAsync(cancellation)).Should().Be("""{"status":503,"remaining":2}""");
+        (await armed.Content.ReadAsStringAsync(cancellation)).Should().Be("""{"status":503,"remaining":2,"delaySeconds":0}""");
 
         using (await emulator.Send("""{"to":"sms:+46701740605","text":"Hej"}"""))
         {
-            (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1}""");
+            (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1,"delaySeconds":0}""");
         }
 
         using var cleared = await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation);
 
         cleared.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":null,"remaining":0}""");
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":null,"remaining":0,"delaySeconds":null}""");
     }
 
     [Fact]
@@ -302,12 +302,12 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
-        using var order = new StringContent("""{"status":503}""", Encoding.UTF8, "application/json");
+        using var order = new StringContent("""{"status":503,"delaySeconds":30}""", Encoding.UTF8, "application/json");
         using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
 
         using var delete = await client.DeleteAsync(new Uri("/api/v1/messages", UriKind.Relative), cancellation);
 
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1}""");
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1,"delaySeconds":30}""");
     }
 
     [Fact]

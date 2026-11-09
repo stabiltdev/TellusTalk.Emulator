@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,11 +70,84 @@ public sealed class SendFailuresTests
         authenticated.StatusCode.Should().Be(HttpStatusCode.BadGateway);
     }
 
+    [Fact]
+    public async Task A_4xx_failure_answers_with_its_reason_phrase_as_plain_text()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 429 });
+
+        using var failed = await emulator.Send(Probe);
+
+        failed.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        failed.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
+        (await failed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Too Many Requests");
+    }
+
+    [Fact]
+    public async Task An_armed_401_answers_as_TellusTalk_refuses_a_send_without_credentials()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 401 });
+
+        using var failed = await emulator.Send(Probe);
+        using var refused = await emulator.Send(Probe, user: null);
+
+        failed.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        failed.Content.Headers.ContentType!.ToString().Should().Be(refused.Content.Headers.ContentType!.ToString());
+        (await failed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be(await refused.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        failed.Headers.WwwAuthenticate.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_late_failure_is_answered_once_its_delay_has_passed()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 503, delaySeconds = 30 });
+
+        var sending = emulator.Send(Probe);
+        for (var second = 0; second < 29; second++)
+        {
+            await Step(emulator);
+        }
+
+        sending.IsCompleted.Should().BeFalse();
+
+        for (var step = 0; step < 20 && !sending.IsCompleted; step++)
+        {
+            await Step(emulator);
+        }
+
+        using var failed = await sending.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task A_client_that_gives_up_on_a_late_failure_spends_it_and_the_next_send_goes_through()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { delaySeconds = 30 });
+        using var client = emulator.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes("tester:secret")));
+        using var givingUp = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        givingUp.CancelAfter(TimeSpan.FromMilliseconds(200));
+        using var content = new StringContent(Probe, Encoding.UTF8, "application/json");
+
+        await FluentActions
+            .Awaiting(() => client.PostAsync(new Uri("/send/v1", UriKind.Relative), content, givingUp.Token))
+            .Should().ThrowAsync<OperationCanceledException>();
+        using var next = await emulator.Send(Probe);
+
+        next.StatusCode.Should().Be(HttpStatusCode.OK);
+        emulator.Services.GetRequiredService<MessageStore>().List().Should().ContainSingle();
+    }
+
     [Theory]
-    [InlineData("""{"status":404}""", "status must be from 500 to 599.")]
-    [InlineData("""{"status":600}""", "status must be from 500 to 599.")]
+    [InlineData("""{"status":200}""", "status must be from 400 to 599.")]
+    [InlineData("""{"status":600}""", "status must be from 400 to 599.")]
     [InlineData("""{"count":0}""", "count must be 1 or more.")]
-    public async Task A_status_outside_5xx_or_a_count_below_one_is_refused(string json, string message)
+    [InlineData("""{"delaySeconds":-1}""", "delaySeconds must be 0 or more.")]
+    public async Task A_status_outside_4xx_and_5xx_a_count_below_one_or_a_negative_delay_is_refused(string json, string message)
     {
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
@@ -92,6 +166,17 @@ public sealed class SendFailuresTests
         using var client = emulator.CreateClient();
         using var response = await client.PutAsJsonAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    /// <summary>
+    /// One second of the emulator's time, then a moment for the send to notice: the delay's timer may start after the
+    /// test has moved the clock, so a single jump could pass before it.
+    /// </summary>
+    private static Task Step(EmulatorFactory emulator)
+    {
+        emulator.Time.Advance(TimeSpan.FromSeconds(1));
+
+        return Task.Delay(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
     }
 
     private sealed record ErrorBody(string Message);

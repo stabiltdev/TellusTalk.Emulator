@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261109-fail-a-counted-number-of-sends-late-if-asked](20261109-fail-a-counted-number-of-sends-late-if-asked.md)
 date: 2026-11-09
 deciders: [Peter Hedberg]
 ---

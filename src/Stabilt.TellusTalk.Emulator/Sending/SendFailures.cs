@@ -5,6 +5,7 @@ internal sealed class SendFailures
 {
     private readonly Lock _lock = new();
     private int _status;
+    private int _delaySeconds;
     private int _remaining;
 
     /// <summary><c>null</c> when every armed failure is spent or cleared.</summary>
@@ -14,20 +15,21 @@ internal sealed class SendFailures
         {
             lock (_lock)
             {
-                return _remaining > 0 ? new ArmedFailures(_status, _remaining) : null;
+                return _remaining > 0 ? new ArmedFailures(_status, _remaining, _delaySeconds) : null;
             }
         }
     }
 
     /// <summary>Replaces whatever was armed, so a test sets what it needs without first reading what is left.</summary>
-    public ArmedFailures Arm(int status, int count)
+    public ArmedFailures Arm(int status, int count, int delaySeconds)
     {
         lock (_lock)
         {
             _status = status;
             _remaining = count;
+            _delaySeconds = delaySeconds;
 
-            return new ArmedFailures(status, count);
+            return new ArmedFailures(status, count, delaySeconds);
         }
     }
 
@@ -39,8 +41,8 @@ internal sealed class SendFailures
         }
     }
 
-    /// <summary>The status of the failure spent, or <c>null</c> when none is armed.</summary>
-    public int? TrySpend()
+    /// <summary>The failure spent, or <c>null</c> when none is armed.</summary>
+    public SendFailure? TrySpend()
     {
         lock (_lock)
         {
@@ -51,9 +53,11 @@ internal sealed class SendFailures
 
             _remaining--;
 
-            return _status;
+            return new SendFailure(_status, TimeSpan.FromSeconds(_delaySeconds));
         }
     }
 }
 
-internal sealed record ArmedFailures(int Status, int Remaining);
+internal sealed record ArmedFailures(int Status, int Remaining, int DelaySeconds);
+
+internal sealed record SendFailure(int Status, TimeSpan Delay);

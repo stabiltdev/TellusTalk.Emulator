@@ -40,7 +40,17 @@ internal sealed class SendEndpoint : IEndpoint
         // Before the body is read: a failing TellusTalk takes nothing, whatever the request holds.
         if (failures.TrySpend() is { } failure)
         {
-            await Refusals.Failure(response, failure);
+            try
+            {
+                await Task.Delay(failure.Delay, time, context.RequestAborted);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                // The client gave up waiting, which is what a delay is armed to make it do.
+                return;
+            }
+
+            await Refusals.Failure(response, failure.Status);
 
             return;
         }
