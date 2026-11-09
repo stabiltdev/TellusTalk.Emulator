@@ -502,7 +502,8 @@ pre {
   background: var(--paper);
 }
 
-.tt-addresses {
+.tt-addresses,
+.tt-links {
   margin: 0;
   padding: 0;
   list-style: none;

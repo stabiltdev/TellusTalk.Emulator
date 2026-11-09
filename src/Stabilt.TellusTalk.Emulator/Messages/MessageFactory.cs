@@ -15,7 +15,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     {
         var now = time.GetUtcNow();
         var jobId = Guid.CreateVersion1(now).ToString("N");
-        var text = (request.Header ?? string.Empty) + (request.Text ?? string.Empty);
+        var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
 
         var messageWarnings = new List<Warning>();
         var sender = SenderResolver.Resolve(request, options.Value.AccountSender, messageWarnings);
@@ -57,6 +57,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                 dueAt,
                 sender,
                 text,
+                links,
                 parts,
                 maxParts,
                 request,
