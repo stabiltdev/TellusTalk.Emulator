@@ -16,9 +16,19 @@ internal static class SendRequestReader
         "TellusTalk Emulator: the emulator handles plain sms: recipients only, not recipient objects. " +
         "TellusTalk itself accepts them.";
 
+    private const string LogRecipient =
+        "TellusTalk Emulator: the emulator does not handle log: recipients, which TellusTalk answers with a log_href " +
+        "the emulator cannot give. TellusTalk itself accepts them.";
+
     private const string SmsPrefix = "sms:";
 
-    private static readonly string[] OtherChannels = ["email:", "fax:", "mms:", "voice:", "group:", "log:"];
+    private const string LogPrefix = "log:";
+
+    /// <summary>
+    /// Channels whose recipients are counted and named but not caught. <c>log:</c> is not one: TellusTalk answers it with
+    /// a <c>log_href</c> that a client waits for.
+    /// </summary>
+    private static readonly string[] OtherChannels = ["email:", "fax:", "mms:", "voice:", "group:"];
 
     public static ReadResult Read(JsonElement root)
     {
@@ -39,18 +49,27 @@ internal static class SendRequestReader
             return new Refused(refusal);
         }
 
-        var otherChannel = addresses
-            .Select(address => Array.Find(OtherChannels, channel => address.StartsWith(channel, StringComparison.Ordinal)))
-            .FirstOrDefault(channel => channel is not null);
+        if (addresses.Any(address => address.StartsWith(LogPrefix, StringComparison.Ordinal)))
+        {
+            return new Refused(LogRecipient);
+        }
 
-        if (otherChannel is not null)
+        var notCaught = addresses
+            .Where(address => OtherChannel(address) is not null)
+            .ToList();
+
+        var smsAddresses = addresses
+            .Where(address => OtherChannel(address) is null)
+            .ToList();
+
+        if (smsAddresses.Count == 0 && notCaught.Count > 0)
         {
             return new Refused(
-                $"TellusTalk Emulator: the emulator handles sms: recipients only, not '{otherChannel}'. TellusTalk itself accepts them.");
+                $"TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only '{OtherChannel(notCaught[0])}'. TellusTalk itself accepts it.");
         }
 
         var warnings = new List<Warning>();
-        var recipients = addresses
+        var recipients = smsAddresses
             .Select(address => ReadRecipient(address, warnings))
             .ToList();
 
@@ -62,19 +81,24 @@ internal static class SendRequestReader
 
         warnings.AddRange(FieldWarnings(fields));
 
-        var request = ReadRequest(recipients, body, fields, warnings);
+        var request = ReadRequest(recipients, notCaught, body, fields, warnings);
 
         return new Accepted(request with { Warnings = [.. warnings, .. SpecificationRules.Check(request)] });
     }
 
+    private static string? OtherChannel(string address) =>
+        Array.Find(OtherChannels, channel => address.StartsWith(channel, StringComparison.Ordinal));
+
     private static SendRequest ReadRequest(
         List<Recipient> recipients,
+        List<string> notCaught,
         SendRequestBody body,
         Dictionary<string, JsonElement> fields,
         List<Warning> warnings) =>
         new()
         {
             Recipients = recipients,
+            NotCaught = notCaught,
             Text = ReadString(body.Text),
             Subject = ReadString(body.Subject),
             Header = ReadString(body.SmsHeader),

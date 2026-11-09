@@ -45,6 +45,7 @@ public sealed class ReadApiTests
         newest.GetProperty("state").GetString().Should().Be("sent");
         newest.GetProperty("to").GetString().Should().Be("+46701740605");
         newest.GetProperty("toAsSent").GetString().Should().Be("sms:+46 70 174 06 05");
+        newest.GetProperty("notCaught").GetArrayLength().Should().Be(0);
         newest.GetProperty("user").GetString().Should().Be("tester");
         newest.GetProperty("receivedAt").GetDateTimeOffset().Should().Be(new DateTimeOffset(2026, 11, 7, 22, 1, 0, TimeSpan.Zero));
         newest.GetProperty("dueAt").ValueKind.Should().Be(JsonValueKind.Null);
@@ -128,6 +129,20 @@ public sealed class ReadApiTests
         codes.Should().BeEquivalentTo(["to-spaces-removed", "unknown-field"]);
 
         newest.GetProperty("request").GetString().Should().Be(Detailed);
+    }
+
+    [Fact]
+    public async Task A_message_names_its_requests_recipients_on_other_channels_as_sent()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+
+        using var list = await Get(emulator, "/api/v1/messages");
+
+        list.RootElement.GetProperty("messages")[0].GetProperty("notCaught")
+            .EnumerateArray()
+            .Select(address => address.GetString())
+            .Should().Equal("email:test.user@example.se", "fax:+46701740606");
     }
 
     [Fact]

@@ -41,12 +41,42 @@ public sealed class SendRequestReaderTests
     [InlineData("mms:+46701740605", "mms:")]
     [InlineData("voice:+46701740605", "voice:")]
     [InlineData("group:42", "group:")]
-    [InlineData("log:anything", "log:")]
-    public void A_recipient_on_another_channel_is_refused_as_the_emulators_limit(string address, string channel)
+    public void A_request_without_an_sms_recipient_is_refused_as_the_emulators_limit(string address, string channel)
     {
-        var json = JsonSerializer.Serialize(new { to = address, text = "Hej" });
+        var json = JsonSerializer.Serialize(new { to = new[] { address, address }, text = "Hej" });
 
-        Read(json).Should().Be(new Refused($"TellusTalk Emulator: the emulator handles sms: recipients only, not '{channel}'. TellusTalk itself accepts them."));
+        Read(json).Should().Be(new Refused($"TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only '{channel}'. TellusTalk itself accepts it."));
+    }
+
+    [Theory]
+    [InlineData("email:a@b.se")]
+    [InlineData("fax:+46701740606")]
+    [InlineData("mms:+46701740606")]
+    [InlineData("voice:+46701740606")]
+    [InlineData("group:42")]
+    public void A_recipient_on_another_channel_beside_an_sms_recipient_is_named_as_not_caught(string address)
+    {
+        var json = JsonSerializer.Serialize(new { to = new[] { "sms:+46701740605", address }, text = "Hej" });
+
+        var request = Accepted(json);
+
+        request.Recipients.Should().Equal(new Recipient("+46701740605", "sms:+46701740605"));
+        request.NotCaught.Should().Equal(address);
+        request.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_request_with_only_sms_recipients_names_none_as_not_caught()
+    {
+        Accepted("""{"to":"sms:+46701740605","text":"Hej"}""").NotCaught.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("""{"to":"log:job1.sign","text":"Hej"}""")]
+    [InlineData("""{"to":["sms:+46701740605","log:job1.sign"],"text":"Hej"}""")]
+    public void A_log_recipient_is_refused_as_the_emulators_limit(string json)
+    {
+        Read(json).Should().Be(new Refused("TellusTalk Emulator: the emulator does not handle log: recipients, which TellusTalk answers with a log_href the emulator cannot give. TellusTalk itself accepts them."));
     }
 
     [Fact]

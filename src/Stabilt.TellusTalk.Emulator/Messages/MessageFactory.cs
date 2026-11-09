@@ -45,7 +45,8 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             : (DateTimeOffset?)null;
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. messageWarnings];
-        var single = request.Recipients.Count == 1;
+        var size = request.Recipients.Count + request.NotCaught.Count;
+        var single = size == 1;
         var messages = request.Recipients
             .Select(recipient => new Message(
                 single ? jobId : Guid.CreateVersion1(now).ToString("N"),
@@ -63,6 +64,6 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                 rawRequest))
             .ToList();
 
-        return new SendJob(jobId, messages);
+        return new SendJob(jobId, size, messages);
     }
 }
