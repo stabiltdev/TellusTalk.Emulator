@@ -211,6 +211,34 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task The_detail_lists_each_tracking_link_with_where_it_leads_and_the_phone_links_nowhere()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail .tt-bubble")!.TextContent.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0 eller läs https://ebox.nu/z_xxxxxx");
+        page.QuerySelectorAll("#detail .tt-bubble a").Should().BeEmpty();
+        page.QuerySelectorAll("#detail .tt-links li")
+            .Select(item => Collapsed(item.TextContent))
+            .Should().Equal(
+                "https://ebox.nu/r_xxxxxx/0 leads to https://example.se/quiz",
+                "https://ebox.nu/z_xxxxxx leads to the message's own page");
+    }
+
+    [Fact]
+    public async Task A_message_without_tracking_links_lists_none()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        Details(page).Should().NotContainKey("Links");
+    }
+
+    [Fact]
     public async Task Markup_in_a_text_is_shown_as_text_and_never_interpreted()
     {
         await using var emulator = new EmulatorFactory();
@@ -320,6 +348,9 @@ public sealed class PageTests
     }
 
     private static string Json(object value) => JsonSerializer.Serialize(value);
+
+    /// <summary>Text with its runs of whitespace made single spaces, as a browser shows the markup's indentation.</summary>
+    private static string Collapsed(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>The detail's list of terms, each with the text of the description that follows it.</summary>
     private static Dictionary<string, string> Details(IHtmlDocument page) => page

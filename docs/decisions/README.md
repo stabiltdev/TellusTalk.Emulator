@@ -47,3 +47,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261108-serve-tellustalks-paths-at-the-root](20261108-serve-tellustalks-paths-at-the-root.md) | Serve TellusTalk's paths at the root, as TellusTalk serves them | accepted |
 | [20261108-ship-an-aspire-package-of-the-images-version](20261108-ship-an-aspire-package-of-the-images-version.md) | Ship an Aspire package that runs the image of its own version | accepted |
 | [20261109-catch-the-sms-recipients-and-name-the-others](20261109-catch-the-sms-recipients-and-name-the-others.md) | Catch a request's SMS recipients and name its others | accepted |
+| [20261109-shorten-tracking-links-as-the-specification-shows-them](20261109-shorten-tracking-links-as-the-specification-shows-them.md) | Shorten tracking links in an SMS text as the specification's examples show them | accepted |

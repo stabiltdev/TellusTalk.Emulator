@@ -8,7 +8,7 @@ namespace Stabilt.TellusTalk.Emulator.Messages;
 /// <param name="Id">A single recipient's message takes the job's id; each of several gets its own.</param>
 /// <param name="JobId">The id the send answered with, shared by every recipient of one request.</param>
 /// <param name="DueAt"><c>null</c> for a message sent at once.</param>
-/// <param name="Text">What the phone shows: the header included.</param>
+/// <param name="Text">What the phone shows: the header included and the tracking links shortened.</param>
 /// <param name="Warnings">The request's warnings and the message's own.</param>
 internal sealed record Message(
     string Id,
@@ -19,6 +19,7 @@ internal sealed record Message(
     DateTimeOffset? DueAt,
     ShownSender Sender,
     string Text,
+    IReadOnlyList<TrackingLink> Links,
     SmsParts Parts,
     int MaxParts,
     SendRequest Request,

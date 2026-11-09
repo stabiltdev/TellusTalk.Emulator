@@ -44,6 +44,18 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
+    public void The_parts_are_counted_on_the_text_with_its_tracking_links_shortened()
+    {
+        var target = "https://example.se/" + new string('a', 160);
+
+        var message = Create(Json(new { to = "sms:+46701740605", text = "Svara här: redirect=" + target })).Messages.Single();
+
+        message.Text.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0");
+        message.Parts.Count.Should().Be(1);
+        message.Links.Should().ContainSingle().Which.Target.Should().Be(target);
+    }
+
+    [Fact]
     public void A_character_outside_the_GSM_alphabet_under_forced_GSM_is_warned_about()
     {
         var message = Create("""{"to":"sms:+46701740605","text":"Tack 😊","sms_character_set":"gsm"}""").Messages.Single();

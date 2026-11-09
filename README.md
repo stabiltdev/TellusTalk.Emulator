@@ -233,6 +233,7 @@ A message:
   "dueAt": null,
   "sender": { "shown": "Probe", "kind": "name", "source": "text", "fromAccount": false },
   "text": "Your appointment is confirmed.",
+  "links": [],
   "parts": { "characterSet": "gsm", "count": 1, "length": 30, "starts": [0], "leftInLastPart": 130, "maxParts": 8 },
   "reportTo": [ { "kind": "url", "target": "https://example.se/reports", "contentType": null, "headers": {} } ],
   "replyTo": [],
@@ -248,6 +249,10 @@ A message:
   sends to them and `job_size` counts them, but the emulator catches SMS only.
 - `sender.source` is the source the request asked for, or `account` when it asked for none; `fromAccount` says the
   shown sender is the account's.
+- `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and each
+  `--LINK_VIEW--` replaced by a short link in the form of the specification's examples, `https://ebox.nu/r_xxxxxx/0`
+  and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each with its `kind`, `redirect`
+  or `view`, the link as `shown`, and the `target` a redirect leads to; a view link's `target` is `null`.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
 - A number in `to` may be written with its `+` unescaped; it arrives as a space and is read as `+`.
@@ -264,6 +269,9 @@ when someone observes the real thing.
 - What `sms_character_set: gsm` does with a character outside the GSM alphabet.
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.
+- What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
+  address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
+  specification's examples and ends an address at whitespace.
 - What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
   `sms_originator_text`.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
