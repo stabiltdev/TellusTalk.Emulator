@@ -31,10 +31,19 @@ internal sealed class SendEndpoint : IEndpoint
         ClaimsPrincipal user,
         TimeProvider time,
         MessageFactory factory,
-        MessageStore store)
+        MessageStore store,
+        SendFailures failures)
     {
         var response = context.Response;
         TellusTalkHeaders.Apply(response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
+
+        // Before the body is read: a failing TellusTalk takes nothing, whatever the request holds.
+        if (failures.TrySpend() is { } failure)
+        {
+            await Refusals.Failure(response, failure);
+
+            return;
+        }
 
         if (!IsJson(context.Request.ContentType))
         {

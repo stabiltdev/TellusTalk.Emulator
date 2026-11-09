@@ -18,6 +18,7 @@ Not affiliated with TellusTalk.
   failed for a number set to fail, and on request from the page or the read API.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
+- Answers the next sends with a `5xx` when a test asks for it, so a client's retries can be tried.
 
 It sends no SMS onward. Its only outgoing calls are the delivery reports to the URLs a request names.
 
@@ -32,7 +33,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
 | Storage | In memory | Persistence: a restart empties the lists |
-| Failures | TellusTalk's own `401`, and refusals of what the emulator cannot record | Simulated failures, such as a `5xx` or a timeout |
+| Failures | TellusTalk's own `401`, refusals of what the emulator cannot record, and a `5xx` for the next sends on request | Timeouts and dropped connections |
 
 ## Running it
 
@@ -217,6 +218,13 @@ given an `http://host.docker.internal:<port>/…` address.
 | `DELETE /api/v1/messages` | `204`; both lists are emptied |
 | `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
+| `PUT /api/v1/send-failures` with `{"status":503,"count":2}` | `{"status":503,"remaining":2}`: the next `count` sends are answered with `status`; `status` defaults to 500 and `count` to 1, and a status outside 500 to 599 or a count below 1 is answered `400` |
+| `GET /api/v1/send-failures` | `{"status":503,"remaining":1}`, or `{"status":null,"remaining":0}` when none is armed |
+| `DELETE /api/v1/send-failures` | `204`; no send fails |
+
+A send that fails is answered with the status, its reason phrase as `text/plain`, such as `Service Unavailable`, and
+TellusTalk's headers, and nothing is recorded. Credentials are checked first, so a send without them is answered `401`
+and spends no failure. A `PUT` replaces whatever was armed, and `DELETE /api/v1/messages` leaves it as it is.
 
 A message:
 
@@ -281,6 +289,8 @@ when someone observes the real thing.
   without a source.
 - What `html` and `attachments` do on an SMS.
 - Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
+- What K8 answers when it fails: the emulator's `5xx` is plain text with the reason phrase, as the specification
+  shows it.
 - What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
 - How TellusTalk treats the other rules the warnings cover.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status

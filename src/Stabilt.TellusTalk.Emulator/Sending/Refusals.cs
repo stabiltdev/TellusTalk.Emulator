@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
 
@@ -14,6 +15,13 @@ internal static class Refusals
 
     public static Task Unauthorized(HttpResponse response) =>
         Write(response, StatusCodes.Status401Unauthorized, "text/html; charset=utf-8", UnauthorizedText);
+
+    /// <summary>
+    /// A failure a test armed, in the specification's form for a 5xx: plain text with the status's reason phrase. K8 has
+    /// not been seen failing.
+    /// </summary>
+    public static Task Failure(HttpResponse response, int statusCode) =>
+        Write(response, statusCode, "text/plain; charset=utf-8", ReasonPhrases.GetReasonPhrase(statusCode));
 
     /// <summary>A request the emulator cannot record; <paramref name="text"/> says it is the emulator's limit.</summary>
     public static Task EmulatorLimit(HttpResponse response, int statusCode, string text) =>

@@ -28,7 +28,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 
 | Path | What |
 |---|---|
-| `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint, Basic authentication, refusals and TellusTalk's headers |
+| `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint, Basic authentication, refusals, TellusTalk's headers, and the failures a test arms |
 | `src/Stabilt.TellusTalk.Emulator/Requests` | Reading a send request: the typed body, the reader, the specification's rules and the warnings |
 | `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it |
 | `src/Stabilt.TellusTalk.Emulator/Parts` | GSM 03.38 and UCS-2 part counting |
