@@ -82,7 +82,7 @@ internal sealed class SendEndpoint : IEndpoint
     /// <summary>TellusTalk answers with <c>application/json</c> and no charset, the job's id three times and the recipient count.</summary>
     private static Task Answer(HttpResponse response, SendJob job)
     {
-        var answer = JsonSerializer.Serialize(new SendAnswer(job.JobId, job.JobId, job.JobId, job.Messages.Count));
+        var answer = JsonSerializer.Serialize(new SendAnswer(job.JobId, job.JobId, job.JobId, job.Size));
         response.ContentType = "application/json";
         response.ContentLength = Encoding.UTF8.GetByteCount(answer);
 

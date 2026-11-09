@@ -196,6 +196,21 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task The_detail_names_the_recipients_on_other_channels_the_emulator_did_not_catch()
+    {
+        await using var emulator = new EmulatorFactory();
+        var smsOnly = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        emulator.Time.Advance(TimeSpan.FromMinutes(1));
+        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+
+        using var smsOnlyPage = await Page(emulator, $"?id={smsOnly}");
+        using var mixedPage = await Page(emulator);
+
+        Details(smsOnlyPage).Should().NotContainKey("Not caught");
+        Details(mixedPage).Should().Contain(KeyValuePair.Create("Not caught", "email:test.user@example.se, fax:+46701740606"));
+    }
+
+    [Fact]
     public async Task Markup_in_a_text_is_shown_as_text_and_never_interpreted()
     {
         await using var emulator = new EmulatorFactory();

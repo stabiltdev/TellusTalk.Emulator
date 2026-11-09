@@ -27,7 +27,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 |---|---|---|
 | Platform | K8, `k8api.tellustalk.com` | The legacy platform, `api.tellustalk.com`; the HTTP-GET API; e-mail-to-SMS |
 | API | `POST /send/v1` | K8's other APIs |
-| Channel | SMS, with every field the specification defines for it | MMS, e-mail, fax, voice, groups, secure messages, signatures and payments, which are refused |
+| Channel | SMS, with every field the specification defines for it | MMS, e-mail, fax, voice and groups, which beside an SMS recipient are counted but not caught, and alone are refused; `log:` addresses, secure messages, signatures and payments, which are refused |
 | Body | JSON | XML and form bodies |
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
@@ -126,7 +126,8 @@ The emulator refuses:
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
   emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object, a
   request without `to`, a `to` that is neither an address nor a list of addresses, recipient objects (the form secure
-  messages and signatures take), and a recipient on another channel than `sms:`.
+  messages and signatures take), a request with recipients but none on `sms:`, and a `log:` recipient, which TellusTalk
+  answers with a `log_href` the emulator cannot give.
 
 Everything else is accepted and answered as TellusTalk answers it. What TellusTalk's specification forbids, or what
 TellusTalk was seen to correct quietly, becomes a warning on the message, shown on the page and served by the read API:
@@ -226,6 +227,7 @@ A message:
   "state": "sent",
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
+  "notCaught": [],
   "user": "tester",
   "receivedAt": "2026-11-07T22:00:00+00:00",
   "dueAt": null,
@@ -242,6 +244,8 @@ A message:
 ```
 
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
+- `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
+  sends to them and `job_size` counts them, but the emulator catches SMS only.
 - `sender.source` is the source the request asked for, or `account` when it asked for none; `fromAccount` says the
   shown sender is the account's.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
@@ -263,7 +267,8 @@ when someone observes the real thing.
 - What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
   `sms_originator_text`.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
-- What `log_uuid` holds when a request has several recipients.
+- What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
+  one or as each of its members; the emulator counts it as one.
 - What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
   without a source.
 - What `html` and `attachments` do on an SMS.

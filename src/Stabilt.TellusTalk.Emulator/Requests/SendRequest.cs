@@ -6,6 +6,9 @@ internal sealed record SendRequest
 {
     public required IReadOnlyList<Recipient> Recipients { get; init; }
 
+    /// <summary>The recipients on other channels than SMS, as sent: TellusTalk sends to them, the emulator does not catch them.</summary>
+    public IReadOnlyList<string> NotCaught { get; init; } = [];
+
     public string? Text { get; init; }
 
     public string? Subject { get; init; }

@@ -88,14 +88,29 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
-    public async Task A_recipient_on_another_channel_is_refused_with_the_readers_text()
+    public async Task A_send_without_an_sms_recipient_is_refused_with_the_readers_text()
     {
         await using var emulator = new EmulatorFactory();
 
         using var response = await emulator.Send("""{"to":"email:a@b.se","text":"x"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Body(response)).Should().Be("TellusTalk Emulator: the emulator handles sms: recipients only, not 'email:'. TellusTalk itself accepts them.");
+        (await Body(response)).Should().Be("TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only 'email:'. TellusTalk itself accepts it.");
+    }
+
+    [Fact]
+    public async Task A_send_beside_another_channel_counts_every_recipient_and_stores_the_SMS_under_an_id_of_its_own()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":["sms:+46701740605","email:test.user@example.se"],"text":"Hej"}""");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var answer = JsonDocument.Parse(await Body(response));
+        answer.RootElement.GetProperty("job_size").GetInt32().Should().Be(2);
+        var message = Store(emulator).List().Should().ContainSingle().Subject;
+        message.To.Number.Should().Be("+46701740605");
+        message.Id.Should().NotBe(message.JobId);
     }
 
     [Fact]

@@ -122,6 +122,11 @@
                 <dl>
                     <dt>Job id</dt>
                     <dd>@message.JobId</dd>
+                    @if (message.Request.NotCaught.Count > 0)
+                    {
+                        <dt>Not caught</dt>
+                        <dd>@string.Join(", ", message.Request.NotCaught)</dd>
+                    }
                     <dt>Flash</dt>
                     <dd>@(Shown(message.Request.Body.SmsFlash) ?? "No")</dd>
                     <dt>Valid for</dt>
