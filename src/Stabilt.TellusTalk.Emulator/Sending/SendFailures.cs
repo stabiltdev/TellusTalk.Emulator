@@ -1,63 +1,120 @@
 namespace Stabilt.TellusTalk.Emulator.Sending;
 
-/// <summary>Failures a test armed through the read API; each answers one send in TellusTalk's place.</summary>
+/// <summary>
+/// Failures a test armed through the read API, for any send or for sends to one number; each answers one send in
+/// TellusTalk's place, in the order they were armed.
+/// </summary>
 internal sealed class SendFailures
 {
     private readonly Lock _lock = new();
-    private int _status;
-    private int _delaySeconds;
-    private int _remaining;
+    private readonly Dictionary<string, List<ArmedFailure>> _byNumber = new(StringComparer.Ordinal);
+    private List<ArmedFailure> _any = [];
 
-    /// <summary><c>null</c> when every armed failure is spent or cleared.</summary>
-    public ArmedFailures? Armed
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _remaining > 0 ? new ArmedFailures(_status, _remaining, _delaySeconds) : null;
-            }
-        }
-    }
-
-    /// <summary>Replaces whatever was armed, so a test sets what it needs without first reading what is left.</summary>
-    public ArmedFailures Arm(int status, int count, int delaySeconds)
+    /// <summary>What is left for any send, in the order it will be spent.</summary>
+    public IReadOnlyList<ArmedFailure> Armed()
     {
         lock (_lock)
         {
-            _status = status;
-            _remaining = count;
-            _delaySeconds = delaySeconds;
-
-            return new ArmedFailures(status, count, delaySeconds);
+            return [.. _any];
         }
     }
 
+    /// <summary>What is left for sends to <paramref name="number"/>, in the order it will be spent.</summary>
+    public IReadOnlyList<ArmedFailure> Armed(string number)
+    {
+        lock (_lock)
+        {
+            return _byNumber.TryGetValue(number, out var failures) ? [.. failures] : [];
+        }
+    }
+
+    /// <summary>Replaces what was armed for any send, so a test sets what it needs without first reading what is left.</summary>
+    public void Arm(IReadOnlyList<ArmedFailure> failures)
+    {
+        lock (_lock)
+        {
+            _any = [.. failures];
+        }
+    }
+
+    /// <summary>Replaces what was armed for sends to <paramref name="number"/>.</summary>
+    public void Arm(string number, IReadOnlyList<ArmedFailure> failures)
+    {
+        lock (_lock)
+        {
+            _byNumber[number] = [.. failures];
+        }
+    }
+
+    /// <summary>Clears every failure, for any send and for every number.</summary>
     public void Clear()
     {
         lock (_lock)
         {
-            _remaining = 0;
+            _any = [];
+            _byNumber.Clear();
         }
     }
 
-    /// <summary>The failure spent, or <c>null</c> when none is armed.</summary>
+    public void Clear(string number)
+    {
+        lock (_lock)
+        {
+            _byNumber.Remove(number);
+        }
+    }
+
+    /// <summary>Spends the next failure armed for any send, or gives <c>null</c> when none is.</summary>
     public SendFailure? TrySpend()
     {
         lock (_lock)
         {
-            if (_remaining == 0)
+            return Spend(_any);
+        }
+    }
+
+    /// <summary>
+    /// Spends the next failure of the first of <paramref name="numbers"/> that has one. TellusTalk answers a send once,
+    /// whatever its recipients, so a send spends one failure at most.
+    /// </summary>
+    public SendFailure? TrySpend(IEnumerable<string> numbers)
+    {
+        lock (_lock)
+        {
+            foreach (var number in numbers)
             {
-                return null;
+                if (_byNumber.TryGetValue(number, out var failures) && Spend(failures) is { } failure)
+                {
+                    return failure;
+                }
             }
 
-            _remaining--;
-
-            return new SendFailure(_status, TimeSpan.FromSeconds(_delaySeconds));
+            return null;
         }
+    }
+
+    private static SendFailure? Spend(List<ArmedFailure> failures)
+    {
+        if (failures.Count == 0)
+        {
+            return null;
+        }
+
+        var next = failures[0];
+        if (next.Remaining == 1)
+        {
+            failures.RemoveAt(0);
+        }
+        else
+        {
+            failures[0] = next with { Remaining = next.Remaining - 1 };
+        }
+
+        return new SendFailure(next.Status, TimeSpan.FromSeconds(next.DelaySeconds));
     }
 }
 
-internal sealed record ArmedFailures(int Status, int Remaining, int DelaySeconds);
+/// <summary>One entry of an order: a status for the next <see cref="Remaining"/> sends, each answered after a delay.</summary>
+internal sealed record ArmedFailure(int Status, int Remaining, int DelaySeconds);
 
 internal sealed record SendFailure(int Status, TimeSpan Delay);

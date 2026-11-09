@@ -1,5 +1,5 @@
 ---
-status: superseded by [ADR 20261109-fail-a-counted-number-of-sends-late-if-asked](20261109-fail-a-counted-number-of-sends-late-if-asked.md)
+status: superseded by [ADR 20261109-arm-send-failures-as-a-list-for-any-send-or-one-number](20261109-arm-send-failures-as-a-list-for-any-send-or-one-number.md)
 date: 2026-11-09
 deciders: [Peter Hedberg]
 ---

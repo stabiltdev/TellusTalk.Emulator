@@ -275,25 +275,49 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task Armed_send_failures_are_read_as_they_are_spent_and_cleared()
+    public async Task Armed_send_failures_are_read_in_order_as_they_are_spent_and_cleared()
     {
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
-        using var order = new StringContent("""{"status":503,"count":2}""", Encoding.UTF8, "application/json");
 
-        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
-        (await armed.Content.ReadAsStringAsync(cancellation)).Should().Be("""{"status":503,"remaining":2,"delaySeconds":0}""");
+        (await PutText(client, "/api/v1/send-failures", """[{"status":503,"count":2},{"status":429,"delaySeconds":5}]"""))
+            .Should().Be("""[{"status":503,"remaining":2,"delaySeconds":0},{"status":429,"remaining":1,"delaySeconds":5}]""");
 
         using (await emulator.Send("""{"to":"sms:+46701740605","text":"Hej"}"""))
         {
-            (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1,"delaySeconds":0}""");
+            (await GetText(client, "/api/v1/send-failures"))
+                .Should().Be("""[{"status":503,"remaining":1,"delaySeconds":0},{"status":429,"remaining":1,"delaySeconds":5}]""");
         }
 
         using var cleared = await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation);
 
         cleared.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":null,"remaining":0,"delaySeconds":null}""");
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("[]");
+    }
+
+    [Fact]
+    public async Task Send_failures_armed_for_a_number_are_read_and_cleared_on_their_own_and_with_everything()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+        var cancellation = TestContext.Current.CancellationToken;
+        await PutText(client, "/api/v1/send-failures/+46701740605", """[{"status":503}]""");
+        await PutText(client, "/api/v1/send-failures/+46701740606", """[{"status":401}]""");
+
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("[]");
+        (await GetText(client, "/api/v1/send-failures/+46701740605")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":0}]""");
+
+        using (await client.DeleteAsync(new Uri("/api/v1/send-failures/+46701740605", UriKind.Relative), cancellation))
+        {
+            (await GetText(client, "/api/v1/send-failures/+46701740605")).Should().Be("[]");
+            (await GetText(client, "/api/v1/send-failures/+46701740606")).Should().Be("""[{"status":401,"remaining":1,"delaySeconds":0}]""");
+        }
+
+        using (await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation))
+        {
+            (await GetText(client, "/api/v1/send-failures/+46701740606")).Should().Be("[]");
+        }
     }
 
     [Fact]
@@ -302,12 +326,11 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
-        using var order = new StringContent("""{"status":503,"delaySeconds":30}""", Encoding.UTF8, "application/json");
-        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
+        await PutText(client, "/api/v1/send-failures", """[{"status":503,"delaySeconds":30}]""");
 
         using var delete = await client.DeleteAsync(new Uri("/api/v1/messages", UriKind.Relative), cancellation);
 
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1,"delaySeconds":30}""");
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":30}]""");
     }
 
     [Fact]
@@ -387,6 +410,15 @@ public sealed class ReadApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    private static async Task<string> PutText(HttpClient client, string path, string json)
+    {
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await client.PutAsync(new Uri(path, UriKind.Relative), content, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
 
     private static async Task<string> GetText(HttpClient client, string path)

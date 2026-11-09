@@ -13,19 +13,21 @@ public sealed class SendFailuresTests
     private const string Probe = """{"to":"sms:+46701740605","text":"Probe 1"}""";
 
     [Fact]
-    public async Task Armed_failures_answer_the_next_sends_with_their_status_and_then_let_sends_through()
+    public async Task Armed_failures_answer_the_next_sends_in_order_and_then_let_sends_through()
     {
         await using var emulator = new EmulatorFactory();
-        await Arm(emulator, new { status = 503, count = 2 });
+        await Arm(emulator, new { status = 503, count = 2 }, new { status = 429 });
 
         using var first = await emulator.Send(Probe);
         using var second = await emulator.Send(Probe);
         using var third = await emulator.Send(Probe);
+        using var fourth = await emulator.Send(Probe);
 
         first.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         second.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
-        third.StatusCode.Should().Be(HttpStatusCode.OK);
-        emulator.Services.GetRequiredService<MessageStore>().List().Should().ContainSingle();
+        third.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        fourth.StatusCode.Should().Be(HttpStatusCode.OK);
+        Store(emulator).List().Should().ContainSingle();
     }
 
     [Fact]
@@ -139,21 +141,80 @@ public sealed class SendFailuresTests
         using var next = await emulator.Send(Probe);
 
         next.StatusCode.Should().Be(HttpStatusCode.OK);
-        emulator.Services.GetRequiredService<MessageStore>().List().Should().ContainSingle();
+        Store(emulator).List().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Failures_armed_for_a_number_answer_only_sends_to_that_number()
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740605", new { status = 503 });
+
+        using var other = await emulator.Send(To("+46701740606"));
+        using var failed = await emulator.Send(To("+46701740605"));
+        using var next = await emulator.Send(To("+46701740605"));
+
+        other.StatusCode.Should().Be(HttpStatusCode.OK);
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        next.StatusCode.Should().Be(HttpStatusCode.OK);
+        Store(emulator).List()
+            .Select(message => message.To.Number)
+            .Should().BeEquivalentTo(["+46701740606", "+46701740605"]);
+    }
+
+    [Fact]
+    public async Task A_number_is_matched_however_the_request_writes_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740605", new { status = 503 });
+
+        using var failed = await emulator.Send("""{"to":"sms:+46 70 174 06 05","text":"Probe"}""");
+
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task A_send_to_several_numbers_spends_one_failure_of_the_first_recipient_that_has_any()
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740606", new { status = 503 });
+        await ArmFor(emulator, "+46701740607", new { status = 429 });
+
+        using var failed = await emulator.Send("""{"to":["sms:+46701740605","sms:+46701740606","sms:+46701740607"],"text":"Probe"}""");
+        using var next = await emulator.Send(To("+46701740607"));
+
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        next.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        Store(emulator).List().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Failures_for_any_send_are_spent_before_failures_for_a_number()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 502 });
+        await ArmFor(emulator, "+46701740605", new { status = 503 });
+
+        using var first = await emulator.Send(Probe);
+        using var second = await emulator.Send(Probe);
+
+        first.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+        second.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
     }
 
     [Theory]
-    [InlineData("""{"status":200}""", "status must be from 400 to 599.")]
-    [InlineData("""{"status":600}""", "status must be from 400 to 599.")]
-    [InlineData("""{"count":0}""", "count must be 1 or more.")]
-    [InlineData("""{"delaySeconds":-1}""", "delaySeconds must be 0 or more.")]
-    public async Task A_status_outside_4xx_and_5xx_a_count_below_one_or_a_negative_delay_is_refused(string json, string message)
+    [InlineData("/api/v1/send-failures", """[{"status":200}]""", "[0].status must be from 400 to 599.")]
+    [InlineData("/api/v1/send-failures", """[{"status":503},{"status":600}]""", "[1].status must be from 400 to 599.")]
+    [InlineData("/api/v1/send-failures", """[{"count":0}]""", "[0].count must be 1 or more.")]
+    [InlineData("/api/v1/send-failures", """[{"delaySeconds":-1}]""", "[0].delaySeconds must be 0 or more.")]
+    [InlineData("/api/v1/send-failures/46701740605", """[{"status":503}]""", "The number must be + followed by digits.")]
+    public async Task An_order_outside_the_rules_is_refused_and_arms_nothing(string path, string json, string message)
     {
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        using var response = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), content, TestContext.Current.CancellationToken);
+        using var response = await client.PutAsync(new Uri(path, UriKind.Relative), content, TestContext.Current.CancellationToken);
         using var send = await emulator.Send(Probe);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -161,12 +222,21 @@ public sealed class SendFailuresTests
         send.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    private static async Task Arm(EmulatorFactory emulator, object order)
+    private static Task Arm(EmulatorFactory emulator, params object[] failures) => Put(emulator, "/api/v1/send-failures", failures);
+
+    private static Task ArmFor(EmulatorFactory emulator, string number, params object[] failures) =>
+        Put(emulator, $"/api/v1/send-failures/{number}", failures);
+
+    private static async Task Put(EmulatorFactory emulator, string path, object[] failures)
     {
         using var client = emulator.CreateClient();
-        using var response = await client.PutAsJsonAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, TestContext.Current.CancellationToken);
+        using var response = await client.PutAsJsonAsync(new Uri(path, UriKind.Relative), failures, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    private static string To(string number) => $$"""{"to":"sms:{{number}}","text":"Probe"}""";
+
+    private static MessageStore Store(EmulatorFactory emulator) => emulator.Services.GetRequiredService<MessageStore>();
 
     /// <summary>
     /// One second of the emulator's time, then a moment for the send to notice: the delay's timer may start after the
