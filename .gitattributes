@@ -1,2 +1,6 @@
 * text=auto
 *.woff2 binary
+
+# Branches each append a row to the decision index; union keeps both rows. Local merges and rebases only: GitHub's
+# merge button ignores it.
+docs/decisions/README.md merge=union
