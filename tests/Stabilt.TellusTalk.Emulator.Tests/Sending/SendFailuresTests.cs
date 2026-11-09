@@ -44,6 +44,19 @@ public sealed class SendFailuresTests
     }
 
     [Fact]
+    public async Task An_order_without_a_body_arms_one_failure_with_500()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+
+        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
+        using var failed = await emulator.Send(Probe);
+
+        armed.StatusCode.Should().Be(HttpStatusCode.OK);
+        failed.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
     public async Task A_send_without_credentials_is_refused_before_a_failure_is_spent()
     {
         await using var emulator = new EmulatorFactory();

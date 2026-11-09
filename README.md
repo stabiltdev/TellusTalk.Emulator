@@ -218,7 +218,7 @@ given an `http://host.docker.internal:<port>/…` address.
 | `DELETE /api/v1/messages` | `204`; both lists are emptied |
 | `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
-| `PUT /api/v1/send-failures` with `{"status":503,"count":2}` | `{"status":503,"remaining":2}`: the next `count` sends are answered with `status`; `status` defaults to 500 and `count` to 1, and a status outside 500 to 599 or a count below 1 is answered `400` |
+| `PUT /api/v1/send-failures` with `{"status":503,"count":2}` | `{"status":503,"remaining":2}`: the next `count` sends are answered with `status`; `status` defaults to 500 and `count` to 1, so the body may be left out, and a status outside 500 to 599 or a count below 1 is answered `400` |
 | `GET /api/v1/send-failures` | `{"status":503,"remaining":1}`, or `{"status":null,"remaining":0}` when none is armed |
 | `DELETE /api/v1/send-failures` | `204`; no send fails |
 
