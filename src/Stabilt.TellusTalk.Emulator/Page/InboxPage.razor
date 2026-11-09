@@ -209,15 +209,16 @@
         @<ul class="tt-addresses">
             @foreach (var address in addresses)
             {
+                @* Blazor drops literal whitespace next to a code block, so each setting writes its space as an expression. *@
                 <li>
                     <code>@address.Target</code>
                     @if (address.ContentType is { } contentType)
                     {
-                        <span class="tt-setting">as @contentType</span>
+                        <text>@(" ")<span class="tt-setting">as @contentType</span></text>
                     }
                     @foreach (var header in address.Headers)
                     {
-                        <span class="tt-setting">@header.Key: ••••••</span>
+                        <text>@(" ")<span class="tt-setting">@header.Key: ••••••</span></text>
                     }
                 </li>
             }
