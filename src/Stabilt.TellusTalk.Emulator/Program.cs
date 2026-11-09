@@ -30,6 +30,8 @@ builder.Services
 
 builder.Services.AddReports();
 
+builder.Services.AddSingleton<SendFailures>();
+
 builder.Services
     .AddAuthentication(BasicAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(BasicAuthenticationHandler.SchemeName, configureOptions: null);

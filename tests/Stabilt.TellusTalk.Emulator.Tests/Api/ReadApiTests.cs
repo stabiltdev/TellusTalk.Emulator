@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Stabilt.TellusTalk.Emulator.Tests.Support;
 
@@ -274,6 +275,42 @@ public sealed class ReadApiTests
     }
 
     [Fact]
+    public async Task Armed_send_failures_are_read_as_they_are_spent_and_cleared()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+        var cancellation = TestContext.Current.CancellationToken;
+        using var order = new StringContent("""{"status":503,"count":2}""", Encoding.UTF8, "application/json");
+
+        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
+        (await armed.Content.ReadAsStringAsync(cancellation)).Should().Be("""{"status":503,"remaining":2}""");
+
+        using (await emulator.Send("""{"to":"sms:+46701740605","text":"Hej"}"""))
+        {
+            (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1}""");
+        }
+
+        using var cleared = await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation);
+
+        cleared.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":null,"remaining":0}""");
+    }
+
+    [Fact]
+    public async Task Deleting_every_message_leaves_armed_send_failures_as_they_are()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+        var cancellation = TestContext.Current.CancellationToken;
+        using var order = new StringContent("""{"status":503}""", Encoding.UTF8, "application/json");
+        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), order, cancellation);
+
+        using var delete = await client.DeleteAsync(new Uri("/api/v1/messages", UriKind.Relative), cancellation);
+
+        (await GetText(client, "/api/v1/send-failures")).Should().Be("""{"status":503,"remaining":1}""");
+    }
+
+    [Fact]
     public async Task The_event_stream_announces_a_send()
     {
         await using var emulator = new EmulatorFactory();
@@ -350,6 +387,14 @@ public sealed class ReadApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    private static async Task<string> GetText(HttpClient client, string path)
+    {
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative), TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
 
     private static async Task<int> Total(EmulatorFactory emulator, string path)
