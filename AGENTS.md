@@ -50,7 +50,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | Format check | `dotnet format Stabilt.TellusTalk.Emulator.slnx --verify-no-changes` |
 | Test | `dotnet test --solution Stabilt.TellusTalk.Emulator.slnx` (Microsoft Testing Platform, through `global.json`) |
 | Run | `dotnet run --project src/Stabilt.TellusTalk.Emulator` |
-| Build the image | `dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer` |
+| Build the image | `dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer -p:LocalRegistry=Docker` |
 | Pack the Aspire package | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release` |
 
 ## Traps

@@ -332,10 +332,11 @@ when someone observes the real thing.
 ```shell
 dotnet build Stabilt.TellusTalk.Emulator.slnx -c Release
 dotnet test --solution Stabilt.TellusTalk.Emulator.slnx
-dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer
+dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer -p:LocalRegistry=Docker
 ```
 
-The last builds the image into the local Docker as `stabiltdev/tellustalk-emulator:latest`. Without `-r`, it builds
+The last builds the image into the local Docker as `stabiltdev/tellustalk-emulator:latest`; without `LocalRegistry`,
+the SDK would prefer a platform's own container tool, such as `wslc` on Windows, where one runs. Without `-r`, it builds
 for both `linux-x64` and `linux-arm64` as one image index, which needs a registry (`-p:ContainerRegistry=…`) or an
 archive (`-p:ContainerArchiveOutputPath=…`) rather than the local Docker; a version tag in CI publishes it that way to
 `ghcr.io`.
