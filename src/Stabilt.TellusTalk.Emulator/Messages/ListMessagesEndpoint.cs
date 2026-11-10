@@ -54,7 +54,7 @@ internal sealed class ListMessagesEndpoint : IEndpoint
 
         var digits = to.Replace(" ", string.Empty, StringComparison.Ordinal);
 
-        return digits.StartsWith('+') ? digits : "+" + digits;
+        return digits.StartsWith('+', StringComparison.Ordinal) ? digits : "+" + digits;
     }
 
     private sealed record MessageList(int Total, IReadOnlyList<MessageResponse> Messages);
