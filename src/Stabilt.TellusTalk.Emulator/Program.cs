@@ -19,6 +19,10 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(
     new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
 
+// In every environment: a request the read API cannot bind then ends in an empty 400 that ReadApiBadRequests fills,
+// rather than, in Development, an exception that passes it by.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
+
 builder.Services
     .AddOptions<EmulatorOptions>()
     .BindConfiguration(EmulatorOptions.Section);
@@ -50,6 +54,8 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
 });
+
+app.Use(ReadApiBadRequests.Answer);
 
 app.UseAuthentication();
 app.UseAuthorization();

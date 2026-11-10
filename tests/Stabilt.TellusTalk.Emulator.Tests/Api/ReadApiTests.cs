@@ -333,6 +333,33 @@ public sealed class ReadApiTests
         (await GetText(client, "/api/v1/send-failures")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":30}]""");
     }
 
+    [Theory]
+    [InlineData("PUT", "/api/v1/send-failures", """{"status":503}""", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("POST", "/api/v1/messages/nothing/reports", "{", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("POST", "/api/v1/messages/nothing/reports", "", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("PUT", "/api/v1/send-failures", "[]", "text/plain", 415, """{"message":"The request body must be JSON."}""")]
+    public async Task A_request_whose_body_the_read_API_cannot_read_is_answered_with_its_error_body(
+        string method,
+        string path,
+        string body,
+        string contentType,
+        int status,
+        string answer)
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+        using var request = new HttpRequestMessage(new HttpMethod(method), new Uri(path, UriKind.Relative))
+        {
+            Content = new StringContent(body, Encoding.UTF8, contentType),
+        };
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be((HttpStatusCode)status);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be(answer);
+    }
+
     [Fact]
     public async Task The_event_stream_announces_a_send()
     {
