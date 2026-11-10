@@ -118,6 +118,23 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task A_report_address_and_each_of_its_settings_read_as_words_of_their_own()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, Json(new
+        {
+            to = "sms:+46701740605",
+            text = "Hej",
+            report_to = """https:{"content_type":"application/xml","headers":{"Authorization":"Basic dGVzdDp0ZXN0"}}://example.se/reports""",
+        }));
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        Collapsed(page.QuerySelector("#detail .tt-addresses li")!.TextContent)
+            .Should().Be("https://example.se/reports as application/xml Authorization: ••••••");
+    }
+
+    [Fact]
     public async Task A_message_with_a_report_address_offers_a_delivered_and_a_failed_report()
     {
         await using var emulator = new EmulatorFactory();
