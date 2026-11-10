@@ -225,6 +225,9 @@ given an `http://host.docker.internal:<port>/…` address.
 | `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
 | `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
 
+A `400` or `415` from the read API carries `{"message": "…"}`, saying what is wrong; that includes a body that is
+missing, is not JSON, or is not the JSON the endpoint takes.
+
 A message:
 
 ```json

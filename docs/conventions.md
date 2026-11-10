@@ -41,7 +41,8 @@ code: `src/Stabilt.TellusTalk.Emulator/Messages/MessageResponse.cs`, `tests/Stab
   `Program.cs`: `MessageState.Scheduled` is `"scheduled"`.
 - The read API's JSON is a contract that tests in other repositories depend on, and `ReadApiTests` pins every value. A
   change to it is deliberate, and the README's description changes with it.
-- A `400` from the read API carries `ApiError`: `{"message": "..."}`.
+- A `400` or `415` from the read API carries `ApiError`: `{"message": "..."}`. An endpoint writes its own; one the
+  framework leaves empty, when it cannot bind a request, is filled by `ReadApiBadRequests`.
 
 ## Reading a send request
 
