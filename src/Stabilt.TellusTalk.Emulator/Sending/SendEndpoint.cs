@@ -37,10 +37,10 @@ internal sealed class SendEndpoint : IEndpoint
         var response = context.Response;
         TellusTalkHeaders.Apply(response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
 
-        // Before the body is read: a failing TellusTalk takes nothing, whatever the request holds.
+        // Before the body is read: a TellusTalk that is down takes nothing, whatever the request holds.
         if (failures.TrySpend() is { } failure)
         {
-            await Refusals.Failure(response, failure);
+            await Fail(context, time, failure);
 
             return;
         }
@@ -76,12 +76,34 @@ internal sealed class SendEndpoint : IEndpoint
                     break;
 
                 case Accepted accepted:
+                    // A number's failures need the recipients, so they are spent once the request is read.
+                    if (failures.TrySpend(accepted.Request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)
+                    {
+                        await Fail(context, time, numberFailure);
+                        break;
+                    }
+
                     var job = factory.Create(accepted.Request, user.Identity!.Name!, body);
                     store.Add(job.Messages);
                     await Answer(response, job);
                     break;
             }
         }
+    }
+
+    private static async Task Fail(HttpContext context, TimeProvider time, SendFailure failure)
+    {
+        try
+        {
+            await Task.Delay(failure.Delay, time, context.RequestAborted);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // The client gave up waiting, which is what a delay is armed to make it do.
+            return;
+        }
+
+        await Refusals.Failure(context.Response, failure.Status);
     }
 
     private static bool IsJson(string? contentType) =>

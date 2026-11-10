@@ -18,7 +18,8 @@ Not affiliated with TellusTalk.
   failed for a number set to fail, and on request from the page or the read API.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
-- Answers the next sends with a `5xx` when a test asks for it, so a client's retries can be tried.
+- Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
+  retries and timeouts can be tried.
 
 It sends no SMS onward. Its only outgoing calls are the delivery reports to the URLs a request names.
 
@@ -33,7 +34,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
 | Storage | In memory | Persistence: a restart empties the lists |
-| Failures | TellusTalk's own `401`, refusals of what the emulator cannot record, and a `5xx` for the next sends on request | Timeouts and dropped connections |
+| Failures | TellusTalk's own `401`, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
 
 ## Running it
 
@@ -218,13 +219,11 @@ given an `http://host.docker.internal:<port>/…` address.
 | `DELETE /api/v1/messages` | `204`; both lists are emptied |
 | `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
-| `PUT /api/v1/send-failures` with `{"status":503,"count":2}` | `{"status":503,"remaining":2}`: the next `count` sends are answered with `status`; `status` defaults to 500 and `count` to 1, so the body may be left out, and a status outside 500 to 599 or a count below 1 is answered `400` |
-| `GET /api/v1/send-failures` | `{"status":503,"remaining":1}`, or `{"status":null,"remaining":0}` when none is armed |
-| `DELETE /api/v1/send-failures` | `204`; no send fails |
-
-A send that fails is answered with the status, its reason phrase as `text/plain`, such as `Service Unavailable`, and
-TellusTalk's headers, and nothing is recorded. Credentials are checked first, so a send without them is answered `401`
-and spends no failure. A `PUT` replaces whatever was armed, and `DELETE /api/v1/messages` leaves it as it is.
+| `PUT /api/v1/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
+| `PUT /api/v1/send-failures/{number}` with `[<failure>, …]` | The same, for sends to that number only |
+| `GET /api/v1/send-failures` or `GET /api/v1/send-failures/{number}` | `[{"status":503,"remaining":1,"delaySeconds":0}, …]`, what is left in the order it will be spent; `[]` when nothing is armed |
+| `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
+| `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
 
 A message:
 
@@ -267,6 +266,37 @@ A message:
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it
   answered; `outcome` is the receiver's status, or why the report was not sent or not delivered.
 
+## Failing sends
+
+A test can make sends fail, to try its client's retries, timeouts and the point where it gives up. It arms a list of
+failures before the code under test sends; the sends spend them in order, and once they are spent, sends go through
+again.
+
+```http
+PUT /api/v1/send-failures/+46701740605
+Content-Type: application/json
+
+[{"status":503,"count":2},{"status":429,"delaySeconds":5}]
+```
+
+The next two sends to `+46701740605` are answered `503`, the third `429` five seconds later, and the fourth goes
+through. Sends to other numbers are left alone, so tests that each send to a number of their own can share one
+emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any send, as when TellusTalk is down.
+
+- A failure has a `status` from 400 to 599, by default 500; a `count`, by default 1; and `delaySeconds`, how long the
+  send waits before it is answered, by default 0. A `PUT` without a body arms one failure with 500. Another status, a
+  count below 1, a negative delay, or a number that is not `+` followed by digits is answered `400`.
+- A `PUT` replaces what was armed for its number, or for any send.
+- A failing send is answered with the status, its reason phrase as `text/plain`, such as `Service Unavailable`, and
+  TellusTalk's headers, and nothing is recorded. A `401` is answered as TellusTalk answers a send without credentials.
+- Failures for any send are spent before the request is read. A number's are spent once it is read, by the first
+  recipient in `to` that has any; a send spends one failure at most, whatever its recipients.
+- A delay longer than the client's own timeout tries that timeout, and a client that gives up spends the failure all
+  the same.
+- Credentials are checked first, so a send without them is answered `401` and spends no failure.
+- `DELETE /api/v1/send-failures/{number}` clears a number, and `DELETE /api/v1/send-failures` clears everything, every
+  number included. `DELETE /api/v1/messages` leaves failures as they are.
+
 ## Behaviour that follows the specification, not observation
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its
@@ -289,8 +319,8 @@ when someone observes the real thing.
   without a source.
 - What `html` and `attachments` do on an SMS.
 - Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
-- What K8 answers when it fails: the emulator's `5xx` is plain text with the reason phrase, as the specification
-  shows it.
+- What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
+  phrase, as the specification shows them.
 - What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
 - How TellusTalk treats the other rules the warnings cover.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status

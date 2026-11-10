@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261109-arm-send-failures-as-a-list-for-any-send-or-one-number](20261109-arm-send-failures-as-a-list-for-any-send-or-one-number.md)
 date: 2026-11-09
 deciders: [Peter Hedberg]
 ---
