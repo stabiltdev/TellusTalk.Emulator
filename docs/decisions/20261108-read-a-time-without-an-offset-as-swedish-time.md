@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261110-read-a-time-without-an-offset-as-swedish-time-on-an-extra-image](20261110-read-a-time-without-an-offset-as-swedish-time-on-an-extra-image.md)
 date: 2026-11-08
 deciders: [Peter Hedberg]
 ---
