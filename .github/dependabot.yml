@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # A week's minor and patch updates come as one pull request; a major update comes on its own, where APIs break.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      nuget:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    # The Aspire package asks for the oldest Aspire.Hosting without a known vulnerability (ADR
+    # 20261111-ship-an-aspire-package-on-the-oldest-aspire-without-known-vulnerabilities). A rule that names only the
+    # package keeps version updates, which take the newest, off it, but not security updates, which take the first
+    # version with the fix.
+    ignore:
+      - dependency-name: Aspire.Hosting
+
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns:
+          - '*'
