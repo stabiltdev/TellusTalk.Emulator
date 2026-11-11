@@ -16,9 +16,11 @@
   <Folder Name="/src/">
     <Project Path="src/Stabilt.TellusTalk.Emulator/Stabilt.TellusTalk.Emulator.csproj" />
     <Project Path="src/Stabilt.TellusTalk.Emulator.Aspire/Stabilt.TellusTalk.Emulator.Aspire.csproj" />
+    <Project Path="src/Stabilt.TellusTalk.Emulator.Testcontainers/Stabilt.TellusTalk.Emulator.Testcontainers.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Stabilt.TellusTalk.Emulator.Tests/Stabilt.TellusTalk.Emulator.Tests.csproj" />
     <Project Path="tests/Stabilt.TellusTalk.Emulator.Aspire.Tests/Stabilt.TellusTalk.Emulator.Aspire.Tests.csproj" />
+    <Project Path="tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests.csproj" />
   </Folder>
 </Solution>

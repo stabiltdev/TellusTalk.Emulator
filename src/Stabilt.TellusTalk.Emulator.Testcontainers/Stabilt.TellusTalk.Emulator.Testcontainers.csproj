@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <Description>Runs TellusTalk Emulator, a local stand-in for TellusTalk's K8 send API, from Testcontainers.</Description>
+    <Authors>Stabilt AB</Authors>
+    <Company>Stabilt AB</Company>
+    <PackageTags>testcontainers;tellustalk;sms;emulator;testing</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/stabiltdev/TellusTalk.Emulator</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- The package names the image of its own version. A release sets that version from its tag for both; this one only
+       names a released image for a local build, so a release leaves it as it is. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

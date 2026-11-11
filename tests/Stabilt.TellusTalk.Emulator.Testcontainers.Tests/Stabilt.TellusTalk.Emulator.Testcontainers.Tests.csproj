@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Stabilt.TellusTalk.Emulator.Testcontainers\Stabilt.TellusTalk.Emulator.Testcontainers.csproj" />
+  </ItemGroup>
+
+</Project>
