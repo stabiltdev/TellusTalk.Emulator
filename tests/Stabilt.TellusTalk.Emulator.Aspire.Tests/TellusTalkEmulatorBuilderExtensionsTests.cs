@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Stabilt.TellusTalk.Emulator.Aspire.Tests;
 
@@ -54,7 +55,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .WithRetentionLimit(200)
             .Resource;
 
-        var environment = await emulator.GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Publish);
+        var environment = await EnvironmentOf(emulator);
 
         environment.Should().Contain([
             KeyValuePair.Create("Emulator__AccountSender", "Kliniken"),
@@ -75,7 +76,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .WithReference(emulator)
             .Resource;
 
-        var environment = await app.GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Publish);
+        var environment = await EnvironmentOf(app);
 
         environment.Should().Contain(KeyValuePair.Create("TellusTalk__BaseUrl", "{tellustalk.bindings.http.url}"));
     }
@@ -91,7 +92,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .WithReference(emulator, "Sms__BaseAddress")
             .Resource;
 
-        var environment = await app.GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Publish);
+        var environment = await EnvironmentOf(app);
 
         environment.Should().ContainKey("Sms__BaseAddress").And.NotContainKey("TellusTalk__BaseUrl");
     }
@@ -124,5 +125,19 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .AddTellusTalkEmulator("tellustalk");
 
         FluentActions.Invoking(() => emulator.WithRetentionLimit(0)).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    /// <summary>The resource's environment as publishing writes it, where an endpoint is a placeholder rather than an address.</summary>
+    private static async Task<Dictionary<string, string>> EnvironmentOf(IResource resource)
+    {
+        var configuration = await ExecutionConfigurationBuilder
+            .Create(resource)
+            .WithEnvironmentVariablesConfig()
+            .BuildAsync(
+                new DistributedApplicationExecutionContext(DistributedApplicationOperation.Publish),
+                NullLogger.Instance,
+                TestContext.Current.CancellationToken);
+
+        return configuration.EnvironmentVariables.ToDictionary(StringComparer.Ordinal);
     }
 }

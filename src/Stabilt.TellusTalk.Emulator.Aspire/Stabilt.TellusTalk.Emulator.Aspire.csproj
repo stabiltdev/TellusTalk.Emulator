@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- net8.0 and Aspire.Hosting 9.5.2, so an AppHost on Aspire 9.5 or later can take it without being made to upgrade;
-       9.0 has every method the package calls, but brings a KubernetesClient with a known vulnerability. -->
+  <!-- net8.0, so an AppHost on any supported .NET can take it, and Aspire.Hosting 13.6.5, the oldest without a known
+       vulnerability: every earlier version has GHSA-f7vh-h5g3-7jrh. -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
