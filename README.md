@@ -78,6 +78,22 @@ var tellusTalk = builder
 
 ### From Testcontainers
 
+The package [`Stabilt.TellusTalk.Emulator.Testcontainers`](src/Stabilt.TellusTalk.Emulator.Testcontainers/README.md)
+starts the emulator once it answers, and gives its address:
+
+```csharp
+await using var emulator = new TellusTalkEmulatorBuilder()
+    .WithAccountSender("Clinic")
+    .Build();
+
+await emulator.StartAsync();
+
+var baseAddress = new Uri(emulator.GetBaseAddress());
+```
+
+It has the Aspire package's settings, by the same names, and runs the image of its own version. Without the package, the
+same container is:
+
 ```csharp
 var emulator = new ContainerBuilder("ghcr.io/stabiltdev/tellustalk-emulator:<version>")
     .WithPortBinding(8080, assignRandomHostPort: true)
@@ -343,6 +359,9 @@ the SDK would prefer a platform's own container tool, such as `wslc` on Windows,
 for both `linux-x64` and `linux-arm64` as one image index, which needs a registry (`-p:ContainerRegistry=…`) or an
 archive (`-p:ContainerArchiveOutputPath=…`) rather than the local Docker; a version tag in CI publishes it that way to
 `ghcr.io`.
+
+The Testcontainers package's tests start the image named by `TELLUSTALK_EMULATOR_TEST_IMAGE`, such as
+`stabiltdev/tellustalk-emulator:latest` once it is built, and are skipped without it; CI builds the image and names it.
 
 Why the emulator works as it does is recorded in [docs/decisions](docs/decisions/README.md), and how its code and tests
 are written in [docs/conventions.md](docs/conventions.md). [CONTRIBUTING.md](CONTRIBUTING.md) says how to report a
