@@ -9,7 +9,7 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Messages;
 public sealed class MessageFactoryTests
 {
     private const string Welcome =
-        "Välkommen till kliniken! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
+        "Välkommen till tjänsten! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
         "arbetsdagar. Logga in med e-post för att följa ärendet och se vilka dokument vi behöver från dig.";
 
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 11, 7, 22, 0, 0, TimeSpan.Zero));

@@ -37,15 +37,15 @@ public sealed class TellusTalkEmulatorBuilderTests
     public async Task A_send_without_a_sender_shows_the_account_sender()
     {
         await using var emulator = LocalImage.Builder()
-            .WithAccountSender("Kliniken")
+            .WithAccountSender("Acme")
             .Build();
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);
 
-        await Send(client, """{"to": "sms:+46701740605", "text": "Your appointment is confirmed."}""");
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your order has shipped."}""");
 
         var message = await OnlyMessage(client);
-        message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("Kliniken");
+        message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("Acme");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed class TellusTalkEmulatorBuilderTests
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);
 
-        await Send(client, """{"to": "sms:+46701740698", "text": "Your appointment is confirmed.", "report_to": "reports@example.se"}""");
+        await Send(client, """{"to": "sms:+46701740698", "text": "Your order has shipped.", "report_to": "reports@example.se"}""");
 
         var report = (await Reported(client)).GetProperty("reports")[0];
         report.GetProperty("status").GetString().Should().Be("failed");
@@ -73,7 +73,7 @@ public sealed class TellusTalkEmulatorBuilderTests
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);
 
-        await Send(client, """{"to": "sms:+46701740605", "text": "Your appointment is confirmed.", "report_to": "reports@example.se"}""");
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your order has shipped.", "report_to": "reports@example.se"}""");
 
         var message = await Reported(client);
         var receivedAt = message.GetProperty("receivedAt").GetDateTimeOffset();

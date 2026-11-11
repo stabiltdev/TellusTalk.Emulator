@@ -5,7 +5,7 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Parts;
 public sealed class SmsPartsCalculatorTests
 {
     private const string Welcome =
-        "Välkommen till kliniken! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
+        "Välkommen till tjänsten! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
         "arbetsdagar. Logga in med e-post för att följa ärendet och se vilka dokument vi behöver från dig.";
 
     [Fact]

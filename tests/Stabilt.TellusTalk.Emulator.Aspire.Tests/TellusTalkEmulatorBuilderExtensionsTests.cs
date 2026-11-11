@@ -49,7 +49,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
 
         var emulator = builder
             .AddTellusTalkEmulator("tellustalk")
-            .WithAccountSender("Kliniken")
+            .WithAccountSender("Acme")
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
             .WithRetentionLimit(200)
@@ -58,7 +58,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         var environment = await EnvironmentOf(emulator);
 
         environment.Should().Contain([
-            KeyValuePair.Create("Emulator__AccountSender", "Kliniken"),
+            KeyValuePair.Create("Emulator__AccountSender", "Acme"),
             KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698, +46701740699"),
             KeyValuePair.Create("Emulator__ReportDelaySeconds", "3"),
             KeyValuePair.Create("Emulator__RetentionLimit", "200"),
