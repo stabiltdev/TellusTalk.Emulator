@@ -6,7 +6,7 @@ and serves them to tests; nothing reaches a real phone. Not affiliated with Tell
 
 ```csharp
 await using var tellusTalk = new TellusTalkEmulatorBuilder()
-    .WithAccountSender("Clinic")
+    .WithAccountSender("Acme")
     .Build();
 
 await tellusTalk.StartAsync();

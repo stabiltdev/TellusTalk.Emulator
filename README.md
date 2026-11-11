@@ -57,7 +57,7 @@ healthy once it answers, and gives an app its address:
 ```csharp
 var tellusTalk = builder
     .AddTellusTalkEmulator("tellustalk")
-    .WithAccountSender("Clinic");
+    .WithAccountSender("Acme");
 
 builder
     .AddProject<Projects.Api>("api")
@@ -83,7 +83,7 @@ starts the emulator once it answers, and gives its address:
 
 ```csharp
 await using var emulator = new TellusTalkEmulatorBuilder()
-    .WithAccountSender("Clinic")
+    .WithAccountSender("Acme")
     .Build();
 
 await emulator.StartAsync();
@@ -123,7 +123,7 @@ var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?to=%
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
-Assert.Equal("Clinic", message.GetProperty("sender").GetProperty("shown").GetString());
+Assert.Equal("Acme", message.GetProperty("sender").GetProperty("shown").GetString());
 Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 ```
 
@@ -197,8 +197,8 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
   "from_address": "user_id:tester",
   "from_name": "",
   "subject": null,
-  "text": "Your appointment is confirmed.",
-  "html": "Your appointment is confirmed.",
+  "text": "Your order has shipped.",
+  "html": "Your order has shipped.",
   "echo": null,
   "quantity": 1,
   "log_uuid": "5d656a5cdafd11f1ba39a2551b38e481",
@@ -206,7 +206,7 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
   "job_uuid": "5d656a5cdafd11f1ba39a2551b38e481",
   "report_time": "2026-11-07T22:00:01.000Z",
   "failed_details": null,
-  "text_linebreaksbr": "Your appointment is confirmed.",
+  "text_linebreaksbr": "Your order has shipped.",
   "template_optional_line": "--------------"
 }
 ```
@@ -258,12 +258,12 @@ A message:
   "receivedAt": "2026-11-07T22:00:00+00:00",
   "dueAt": null,
   "sender": { "shown": "Probe", "kind": "name", "source": "text", "fromAccount": false },
-  "text": "Your appointment is confirmed.",
+  "text": "Your order has shipped.",
   "links": [],
-  "parts": { "characterSet": "gsm", "count": 1, "length": 30, "starts": [0], "leftInLastPart": 130, "maxParts": 8 },
+  "parts": { "characterSet": "gsm", "count": 1, "length": 23, "starts": [0], "leftInLastPart": 137, "maxParts": 8 },
   "reportTo": [ { "kind": "url", "target": "https://example.se/reports", "contentType": null, "headers": {} } ],
   "replyTo": [],
-  "fields": { "to": "sms:+46 70 174 06 05", "text": "Your appointment is confirmed.", "sms_originator_source": "text", "sms_originator_text": "Probe", "report_to": "https://example.se/reports" },
+  "fields": { "to": "sms:+46 70 174 06 05", "text": "Your order has shipped.", "sms_originator_source": "text", "sms_originator_text": "Probe", "report_to": "https://example.se/reports" },
   "warnings": [ { "code": "to-spaces-removed", "field": "to", "text": "…" } ],
   "reports": [ { "at": "2026-11-07T22:00:01+00:00", "status": "delivered", "target": "https://example.se/reports", "sent": true, "outcome": "200 OK" } ],
   "request": "<the body as it arrived>"

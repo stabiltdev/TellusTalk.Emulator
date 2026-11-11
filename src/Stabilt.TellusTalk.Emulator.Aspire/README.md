@@ -7,7 +7,7 @@ tests; nothing reaches a real phone. Not affiliated with TellusTalk.
 ```csharp
 var tellusTalk = builder
     .AddTellusTalkEmulator("tellustalk")
-    .WithAccountSender("Clinic");
+    .WithAccountSender("Acme");
 
 builder
     .AddProject<Projects.Api>("api")
