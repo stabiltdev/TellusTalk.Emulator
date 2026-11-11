@@ -18,6 +18,8 @@ after goes a long way.
 - The title follows [Conventional Commits](https://www.conventionalcommits.org/): `fix: answer a send without a sender
   with the account's sender`.
 - CI builds, checks formatting and runs the tests. A first pull request waits for a maintainer to approve its run.
+- Dependabot keeps the packages, the SDK and the actions current, so a pull request leaves their versions alone unless
+  its change needs a newer one.
 - Contributions are made under the [MIT licence](LICENSE).
 
 ## Building and testing
