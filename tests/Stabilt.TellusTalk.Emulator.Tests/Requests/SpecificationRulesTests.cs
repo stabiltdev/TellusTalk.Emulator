@@ -31,7 +31,7 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void A_subject_as_sender_over_eleven_characters_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "subject", Subject = "Klinikbesked" })
+        SpecificationRules.Check(Plain with { OriginatorSource = "subject", Subject = "AcmeMessages" })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.SubjectTooLong && warning.Field == "subject");
     }

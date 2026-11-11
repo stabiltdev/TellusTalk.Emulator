@@ -10,7 +10,7 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Page;
 public sealed class PageTests
 {
     private const string Welcome =
-        "Välkommen till kliniken! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
+        "Välkommen till tjänsten! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
         "arbetsdagar. Logga in med e-post för att följa ärendet och se vilka dokument vi behöver från dig.";
 
     [Fact]
@@ -40,7 +40,7 @@ public sealed class PageTests
         row.GetAttribute("data-id").Should().Be(id);
         row.QuerySelector(".num")!.TextContent.Should().Be("+46701740605");
         row.QuerySelector(".from")!.TextContent.Should().Be("Probe");
-        row.QuerySelector(".prev")!.TextContent.Should().StartWith("Välkommen till kliniken!");
+        row.QuerySelector(".prev")!.TextContent.Should().StartWith("Välkommen till tjänsten!");
     }
 
     [Fact]

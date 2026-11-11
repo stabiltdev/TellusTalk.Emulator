@@ -28,8 +28,9 @@ dotnet format Stabilt.TellusTalk.Emulator.slnx --verify-no-changes
 dotnet test --solution Stabilt.TellusTalk.Emulator.slnx
 ```
 
-Build in Release before pushing: analyzer warnings fail it, and a Debug build hides them. The tests need neither Docker
-nor a TellusTalk account.
+Build in Release before pushing: analyzer warnings fail it, and a Debug build hides them. The tests need no TellusTalk
+account, and no Docker apart from the Testcontainers package's, which start a locally built image named by
+`TELLUSTALK_EMULATOR_TEST_IMAGE` and are skipped without one; the README's [Building](README.md#building) says how.
 
 ## How the code is written
 

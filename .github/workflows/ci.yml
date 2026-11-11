@@ -30,7 +30,13 @@ jobs:
       - name: Format
         run: dotnet format Stabilt.TellusTalk.Emulator.slnx --verify-no-changes --no-restore
 
+      # The Testcontainers package's tests start the emulator from this image, and are skipped without one.
+      - name: Build the image for the tests
+        run: dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer -p:LocalRegistry=Docker -p:ContainerImageTag=test
+
       - name: Test
+        env:
+          TELLUSTALK_EMULATOR_TEST_IMAGE: stabiltdev/tellustalk-emulator:test
         run: dotnet test --solution Stabilt.TellusTalk.Emulator.slnx -c Release --no-build
 
   # A version tag publishes the image for linux-x64 and linux-arm64 under the version without its v. A release is also
@@ -67,8 +73,8 @@ jobs:
             -p:ContainerRegistry=ghcr.io \
             "-p:ContainerImageTags=\"$tags\""
 
-  # The same tag publishes the Aspire package under the same version, which runs the image of that version, so it waits
-  # for the image to be published.
+  # The same tag publishes the Aspire and Testcontainers packages under the same version, each of which runs the image of
+  # that version, so it waits for the image to be published.
   nuget:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: publish
@@ -85,6 +91,9 @@ jobs:
 
       - name: Pack the Aspire package
         run: dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release -o packages "-p:Version=${GITHUB_REF_NAME#v}"
+
+      - name: Pack the Testcontainers package
+        run: dotnet pack src/Stabilt.TellusTalk.Emulator.Testcontainers -c Release -o packages "-p:Version=${GITHUB_REF_NAME#v}"
 
       # nuget.org's Trusted Publishing policy names this repository and this file, ci.yml, so renaming the file stops the
       # publishing. The key it hands out lasts an hour, so it is asked for just before the push.

@@ -34,8 +34,8 @@ public sealed class SenderResolverTests
     [Fact]
     public void A_subject_as_sender_is_shown_as_a_name()
     {
-        Resolve(Plain with { OriginatorSource = "subject", Subject = "Kliniken" })
-            .Should().Be(new ShownSender("Kliniken", SenderKind.Name, "subject", FromAccount: false));
+        Resolve(Plain with { OriginatorSource = "subject", Subject = "Acme" })
+            .Should().Be(new ShownSender("Acme", SenderKind.Name, "subject", FromAccount: false));
     }
 
     [Fact]

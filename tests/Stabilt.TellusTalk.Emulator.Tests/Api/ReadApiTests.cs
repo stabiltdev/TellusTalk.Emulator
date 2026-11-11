@@ -8,7 +8,7 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Api;
 public sealed class ReadApiTests
 {
     private const string Welcome =
-        "Välkommen till kliniken! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
+        "Välkommen till tjänsten! Vi har tagit emot din intresseanmälan och en av våra koordinatorer ringer dig inom två " +
         "arbetsdagar. Logga in med e-post för att följa ärendet och se vilka dokument vi behöver från dig.";
 
     private static readonly string Detailed = JsonSerializer.Serialize(new Dictionary<string, object>(StringComparer.Ordinal)

@@ -54,7 +54,7 @@ public sealed class MessageStoreTests
     public void Messages_filter_by_a_search_over_number_text_and_sender_ignoring_case()
     {
         var store = Store();
-        var welcome = Send(store, "Välkommen till kliniken!");
+        var welcome = Send(store, "Välkommen till tjänsten!");
         Send(store, "Din kod är 482913");
 
         store.List(search: "välkommen").Should().Equal(welcome);

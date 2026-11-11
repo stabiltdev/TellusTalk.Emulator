@@ -38,9 +38,11 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Http` | `IEndpoint`, `MapEndpoints` and the read API's error body |
 | `src/Stabilt.TellusTalk.Emulator/Ids` | `Guid.CreateVersion1` |
 | `src/Stabilt.TellusTalk.Emulator.Aspire` | The Aspire package: `AddTellusTalkEmulator`, its settings and `WithReference`, in Aspire's own namespaces |
+| `src/Stabilt.TellusTalk.Emulator.Testcontainers` | The Testcontainers package: `TellusTalkEmulatorBuilder`, its settings, and `TellusTalkEmulatorContainer.GetBaseAddress` |
 | `tests/Stabilt.TellusTalk.Emulator.Tests` | One folder per area; `Support` holds `EmulatorFactory` and `ReportReceiver` |
 | `tests/Stabilt.TellusTalk.Emulator.Aspire.Tests` | The Aspire package's app model, read without running it |
-| `.github/workflows/ci.yml` | Build, format check and tests; a `v*` tag publishes the image, then the Aspire package |
+| `tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests` | The Testcontainers package, started in Docker from a locally built image |
+| `.github/workflows/ci.yml` | Build, format check, the image for the tests, and the tests; a `v*` tag publishes the image, then both packages |
 
 ## Commands
 
@@ -51,7 +53,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | Test | `dotnet test --solution Stabilt.TellusTalk.Emulator.slnx` (Microsoft Testing Platform, through `global.json`) |
 | Run | `dotnet run --project src/Stabilt.TellusTalk.Emulator` |
 | Build the image | `dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer -p:LocalRegistry=Docker` |
-| Pack the Aspire package | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release` |
+| Test the Testcontainers package | Build the image, then the tests with `TELLUSTALK_EMULATOR_TEST_IMAGE=stabiltdev/tellustalk-emulator:latest`; without it they are skipped |
+| Pack the packages | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release`, and the same for `src/Stabilt.TellusTalk.Emulator.Testcontainers` |
 
 ## Traps
 
@@ -65,3 +68,4 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
   keeps its `id`.
 - Analyzers can misread C# 14 extension blocks; suppress what they report there with a reason.
 - Messages live in memory; a restart empties the lists.
+- A new setting goes into `EmulatorOptions`, the README's settings table, and both packages' builders.
