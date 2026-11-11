@@ -43,6 +43,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `tests/Stabilt.TellusTalk.Emulator.Aspire.Tests` | The Aspire package's app model, read without running it |
 | `tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests` | The Testcontainers package, started in Docker from a locally built image |
 | `.github/workflows/ci.yml` | Build, format check, the image for the tests, and the tests; a `v*` tag publishes the image, then both packages |
+| `.github/dependabot.yml` | Weekly updates to the packages, the SDK and the actions; `Aspire.Hosting` takes security updates only |
 
 ## Commands
 
@@ -69,3 +70,5 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 - Analyzers can misread C# 14 extension blocks; suppress what they report there with a reason.
 - Messages live in memory; a restart empties the lists.
 - A new setting goes into `EmulatorOptions`, the README's settings table, and both packages' builders.
+- `Aspire.Hosting` stays on the oldest version without a known vulnerability; moving every package to its newest leaves
+  it out.
