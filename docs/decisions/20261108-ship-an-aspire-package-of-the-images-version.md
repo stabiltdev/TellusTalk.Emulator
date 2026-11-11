@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261111-ship-an-aspire-package-on-the-oldest-aspire-without-known-vulnerabilities](20261111-ship-an-aspire-package-on-the-oldest-aspire-without-known-vulnerabilities.md)
 date: 2026-11-08
 deciders: [Peter Hedberg]
 ---
