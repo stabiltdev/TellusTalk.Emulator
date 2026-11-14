@@ -134,7 +134,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | `Emulator__AccountSender` | `Emulator` | The sender the TellusTalk account is configured with, shown when a request sets none. A number such as `+46701740699` stands in for an account with two-way SMS. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
-| `Emulator__FailingNumbers` | `+46701740699` | Numbers whose reports say the operator could not deliver, separated by commas. |
+| `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |
 
 ## Refusals and warnings
 

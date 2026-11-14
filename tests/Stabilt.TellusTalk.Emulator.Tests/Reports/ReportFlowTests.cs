@@ -28,13 +28,13 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
-    public async Task A_number_set_to_fail_gets_a_failure_report()
+    public async Task No_number_fails_by_default()
     {
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740699","text":"Hej","report_to":"https://example.se/reports"}""");
 
         using var body = JsonDocument.Parse((await StepUntilReported(emulator, 1)).Single().Body);
-        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtDELIVERY_FAILED");
+        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtDELIVERED");
     }
 
     [Fact]

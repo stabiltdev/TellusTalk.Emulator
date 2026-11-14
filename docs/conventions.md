@@ -82,7 +82,7 @@ code: `BannedSymbols.txt`, `src/Stabilt.TellusTalk.Emulator/Ids/GuidExtensions.c
 - The Testcontainers package's tests are the only ones that need Docker: each starts a container of its own from
   `LocalImage.Builder()`, the image built from the repository that `TELLUSTALK_EMULATOR_TEST_IMAGE` names, and is
   skipped without it. CI builds and names the image before the tests.
-- A test name is the rule it pins, as a sentence: `A_number_set_to_fail_gets_a_failure_report`.
+- A test name is the rule it pins, as a sentence: `No_number_fails_by_default`.
 - The report service's timer may start after a test has moved the fake clock, so a test waiting for a report moves the
   clock a second at a time rather than in one jump.
 - Before code that shapes an answer is rewritten, a test pins what the answer is; the rewrite then keeps it green.
