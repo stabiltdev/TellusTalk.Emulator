@@ -120,7 +120,7 @@ await emulatorApi.DeleteAsync("api/v1/messages");
 
 // … the code under test sends an SMS …
 
-var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?to=%2B46701740605");
+var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&to=%2B46701740605");
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
@@ -251,10 +251,10 @@ given an `http://host.docker.internal:<port>/…` address.
 | Request | Answer |
 |---|---|
 | `GET /api/v1/health` | `Healthy`, as `text/plain` |
-| `GET /api/v1/messages?state=sent\|scheduled&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
+| `GET /api/v1/messages?state=sent\|scheduled\|blocked&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
 | `GET /api/v1/messages/{id}` | `<message>`, or `404` |
 | `DELETE /api/v1/messages/{id}` | `204`, or `404` |
-| `DELETE /api/v1/messages` | `204`; both lists are emptied |
+| `DELETE /api/v1/messages` | `204`; every message is removed, the held-back ones too |
 | `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
 | `PUT /api/v1/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
@@ -273,6 +273,7 @@ A message:
   "id": "5d656a5cdafd11f1ba39a2551b38e481",
   "jobId": "5d656a5cdafd11f1ba39a2551b38e481",
   "state": "sent",
+  "duplicateOf": null,
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
   "notCaught": [],
@@ -292,6 +293,8 @@ A message:
 }
 ```
 
+- A held-back message has `state` `blocked`, and `duplicateOf` names the message it duplicates; every other message has
+  `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
   sends to them and `job_size` counts them, but the emulator catches SMS only.
