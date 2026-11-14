@@ -51,6 +51,28 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-07:** a send without sender fields → the phone shows the account's configured sender, not the
   specification's `replysms` default.
 
+### Sender fields K8 refuses
+
+Each refusal is a `400` with `Content-Type: text/html; charset=utf-8`, the same headers as every other answer, and the
+text as the body without a trailing newline. K8 runs on Python, so a value after `got` or `string:` is Python's `str()`
+of the parsed JSON value.
+
+- **2026-11-14:** `subject`, `sms_originator_source`, `sms_originator_text` or `sms_originator_number` that is `null`,
+  a number, `true`, a list or an object, with or without a source and beside a source and its value → `Invalid <field>
+  not a string: <value>`, such as `Invalid subject not a string: None`, `Invalid subject not a string: 1.5` for `1.50`,
+  `Invalid subject not a string: ['Acme', 1, None]` and `Invalid subject not a string: {'name': 'Acme', 'on': True}`.
+- **2026-11-14:** an `sms_originator_source` that is none of `replysms`, `text`, `number` and `subject`, matched exactly
+  (`Text` and the empty string included) → `Invalid sms_originator_source: <value>; must be one of
+  frozenset({'replysms', 'number', 'text', 'subject'})`. A Python `frozenset` is ordered by hash randomisation per
+  process, and the order was seen to vary between K8's servers; the emulator always gives the order seen twice.
+- **2026-11-14:** source `subject` without `subject`, or with `""` → `400 Bad Request: Missing/invalid 'subject'.
+  Expected non-empty string, got 'None'.` and `... got ''.`, the only text that ends in a period.
+- **2026-11-14:** source `text` without `sms_originator_text`, or with `""` → `400 Bad Request: Missing/invalid
+  'sms_originator_text'. Expected string, got 'None'` and `... got ''`.
+- **2026-11-14:** source `number` without `sms_originator_number`, or with `""` → `400 Bad Request: Missing/invalid
+  'sms_originator_number'. Expected number, got 'None'` and `... got ''`.
+- **2026-11-14:** `sms_originator_number: ""` without a source, with the user's Sender at Reply SMS → accepted.
+
 ## Not observed
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
@@ -63,15 +85,16 @@ is settled when someone observes the real thing.
 - What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
   address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
   specification's examples and ends an address at whitespace.
-- What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
-  `sms_originator_text`.
+- Which refusal K8 gives when a request breaks more than one sender rule, and how its sender refusals rank against what
+  the emulator itself cannot record; the emulator checks the types, then the source, then the missing value.
+- `null` or another type in any field other than the four sender fields.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
 - What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
   without a source.
 - What `html` and `attachments` do on an SMS.
-- Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
+- What else TellusTalk refuses, apart from a missing `Authorization` and the sender fields above, and with what text.
 - What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
   phrase, as the specification shows them.
 - What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.

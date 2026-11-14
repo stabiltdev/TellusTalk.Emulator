@@ -114,6 +114,22 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task A_sender_field_TellusTalk_refuses_is_answered_with_its_text_as_html()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"nonsense","subject":"Acme"}""");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/html; charset=utf-8");
+        (await Body(response)).Should().Be(
+            "Invalid sms_originator_source: nonsense; must be one of frozenset({'replysms', 'number', 'text', 'subject'})");
+        response.Headers.Contains("X-Request-Id").Should().BeTrue();
+        Store(emulator).List().Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task A_send_is_answered_as_TellusTalk_answers_one()
     {
         await using var emulator = new EmulatorFactory();

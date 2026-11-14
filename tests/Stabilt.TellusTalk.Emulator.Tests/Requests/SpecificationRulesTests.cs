@@ -44,14 +44,6 @@ public sealed class SpecificationRulesTests
     }
 
     [Fact]
-    public void An_undocumented_sender_source_is_warned_about()
-    {
-        SpecificationRules.Check(Plain with { OriginatorSource = "name" })
-            .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
-                warning.Code == WarningCodes.OriginatorSourceInvalid && warning.Field == "sms_originator_source");
-    }
-
-    [Fact]
     public void A_single_thread_with_another_source_than_replysms_is_warned_about()
     {
         SpecificationRules.Check(Plain with { SingleThread = true, OriginatorSource = "text", OriginatorText = "Probe" })

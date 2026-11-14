@@ -25,6 +25,10 @@ internal static class Refusals
             ? Unauthorized(response)
             : Write(response, statusCode, "text/plain; charset=utf-8", ReasonPhrases.GetReasonPhrase(statusCode));
 
+    /// <summary>A request K8 was seen to refuse: its text as the body, served as HTML though it holds no markup.</summary>
+    public static Task TellusTalk(HttpResponse response, string text) =>
+        Write(response, StatusCodes.Status400BadRequest, "text/html; charset=utf-8", text);
+
     /// <summary>A request the emulator cannot record; <paramref name="text"/> says it is the emulator's limit.</summary>
     public static Task EmulatorLimit(HttpResponse response, int statusCode, string text) =>
         Write(response, statusCode, "text/plain; charset=utf-8", text);

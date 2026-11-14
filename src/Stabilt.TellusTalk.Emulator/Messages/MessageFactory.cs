@@ -18,7 +18,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
         var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
 
         var messageWarnings = new List<Warning>();
-        var sender = SenderResolver.Resolve(request, options.Value.AccountSender, messageWarnings);
+        var sender = SenderResolver.Resolve(request, options.Value.AccountSender);
 
         var characterSet = SmsPartsCalculator.Choose(text, request.CharacterSet);
         if (string.Equals(request.CharacterSet, "gsm", StringComparison.Ordinal) &&

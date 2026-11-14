@@ -38,6 +38,11 @@ internal static class SendRequestReader
         }
 
         var body = root.Deserialize<SendRequestBody>()!;
+        if (SenderRefusals.Find(body) is { } senderRefusal)
+        {
+            return new RefusedByTellusTalk(senderRefusal);
+        }
+
         if (body.To.ValueKind == JsonValueKind.Undefined)
         {
             return new Refused(NoRecipient);

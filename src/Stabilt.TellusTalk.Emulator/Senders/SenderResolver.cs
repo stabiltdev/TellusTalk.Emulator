@@ -9,38 +9,28 @@ internal static class SenderResolver
     /// <summary>
     /// The specification names <c>replysms</c> as the default source, but TellusTalk was seen sending an SMS without a
     /// source from the name the account is configured with. <c>replysms</c> given explicitly is shown the same way
-    /// until TellusTalk is seen doing otherwise.
+    /// until TellusTalk is seen doing otherwise. A source other than those four, and a source without its value, are
+    /// refused before a request gets here.
     /// </summary>
-    public static ShownSender Resolve(SendRequest request, string accountSender, ICollection<Warning> warnings)
+    public static ShownSender Resolve(SendRequest request, string accountSender)
     {
         var source = request.OriginatorSource;
-        if (source is null || !SpecificationRules.OriginatorSources.Contains(source))
+        if (source is null)
         {
             return FromAccount(accountSender, AccountSource);
         }
 
-        var (shown, field) = source switch
+        var shown = source switch
         {
-            "text" => (request.OriginatorText, "sms_originator_text"),
-            "number" => (request.OriginatorNumber, "sms_originator_number"),
-            "subject" => (request.Subject, "subject"),
-            _ => (null, null),
+            "text" => request.OriginatorText,
+            "number" => request.OriginatorNumber,
+            "subject" => request.Subject,
+            _ => null,
         };
 
-        if (shown is not null)
-        {
-            return new ShownSender(shown, KindOf(shown), source, FromAccount: false);
-        }
-
-        if (field is not null)
-        {
-            warnings.Add(new Warning(
-                WarningCodes.OriginatorMissing,
-                field,
-                $"The sender source is {source} but {field} is missing; the emulator shows the account's sender."));
-        }
-
-        return FromAccount(accountSender, source);
+        return shown is null
+            ? FromAccount(accountSender, source)
+            : new ShownSender(shown, KindOf(shown), source, FromAccount: false);
     }
 
     private static ShownSender FromAccount(string accountSender, string source) =>

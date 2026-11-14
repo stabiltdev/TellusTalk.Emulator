@@ -46,14 +46,6 @@ internal static class SpecificationRules
                 $"The sender number '{number}' is not '+' followed by digits, as the specification asks.");
         }
 
-        if (request.OriginatorSource is { } source && !OriginatorSources.Contains(source))
-        {
-            yield return new Warning(
-                WarningCodes.OriginatorSourceInvalid,
-                "sms_originator_source",
-                $"'{source}' is not a documented sender source; the documented ones are replysms, text, number and subject.");
-        }
-
         if (request.SingleThread && request.OriginatorSource is { } threadSource && !IsSource(request, "replysms"))
         {
             yield return new Warning(

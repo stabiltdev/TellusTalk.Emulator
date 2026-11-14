@@ -75,6 +75,10 @@ internal sealed class SendEndpoint : IEndpoint
                     await Refusals.EmulatorLimit(response, StatusCodes.Status400BadRequest, refused.Text);
                     break;
 
+                case RefusedByTellusTalk refusedByTellusTalk:
+                    await Refusals.TellusTalk(response, refusedByTellusTalk.Text);
+                    break;
+
                 case Accepted accepted:
                     // A number's failures need the recipients, so they are spent once the request is read.
                     if (failures.TrySpend(accepted.Request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)

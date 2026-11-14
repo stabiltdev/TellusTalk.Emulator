@@ -102,7 +102,7 @@ public sealed class MessageFactoryTests
     [Fact]
     public void A_message_keeps_the_user_the_request_and_every_warning()
     {
-        const string body = """{"to":"sms:+46 70 174 06 05","text":"Hej","sms_originator_source":"text"}""";
+        const string body = """{"to":"sms:+46 70 174 06 05","text":"Hej","sms_originator_source":"text","sms_originator_text":"ProbeProbe12"}""";
 
         var message = Create(body).Messages.Single();
 
@@ -110,7 +110,7 @@ public sealed class MessageFactoryTests
         message.RawRequest.Should().Be(body);
         message.Warnings
             .Select(warning => warning.Code)
-            .Should().BeEquivalentTo([WarningCodes.SpacesRemoved, WarningCodes.OriginatorMissing]);
+            .Should().BeEquivalentTo([WarningCodes.SpacesRemoved, WarningCodes.OriginatorTextTooLong]);
     }
 
     private SendJob Create(string json)

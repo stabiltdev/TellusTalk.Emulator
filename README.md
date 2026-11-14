@@ -140,7 +140,12 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 
 The emulator refuses:
 
-- a request without credentials, or with malformed ones: `401` with TellusTalk's own text;
+- what TellusTalk refuses, each with TellusTalk's own text as `text/html`: a request without credentials, or with
+  malformed ones, with `401`; and with `400`, a sender field that is null or not a string
+  (`Invalid subject not a string: None`), an `sms_originator_source` other than `replysms`, `text`, `number` or
+  `subject`, and a source of `subject`, `text` or `number` without its value (`subject`, `sms_originator_text` or
+  `sms_originator_number`, absent or empty). They are checked in that order, which TellusTalk has not been seen to
+  settle, and before the emulator's own limits;
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
   emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object, a
   request without `to`, a `to` that is neither an address nor a list of addresses, recipient objects (the form secure
@@ -160,8 +165,6 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `originator-text-too-long` | `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
 | `subject-too-long` | `subject` as the sender, over 11 characters. |
 | `originator-number-invalid` | `sms_originator_number` that is not `+` followed by digits. |
-| `originator-source-invalid` | An `sms_originator_source` that is not `replysms`, `text`, `number` or `subject`. |
-| `originator-missing` | A sender source without its value, such as `text` without `sms_originator_text`. |
 | `single-thread-without-replysms` | `sms_single_thread` with another source than `replysms`. |
 | `character-set-invalid` | An `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
 | `format-deprecated` | `sms_format`, which `sms_character_set` replaces. |
