@@ -106,6 +106,28 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task An_empty_text_field_without_a_source_is_explained_by_the_field_name()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","sms_originator_text":""}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request named no source and sms_originator_text is empty, so the reply number is shown.");
+    }
+
+    [Fact]
+    public async Task A_text_field_TellusTalk_chose_without_a_source_is_explained_by_the_field_name()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","sms_originator_text":"Probe"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request named no source, so TellusTalk chose sms_originator_text.");
+    }
+
+    [Fact]
     public async Task Replysms_is_explained_as_showing_the_reply_number()
     {
         await using var emulator = new EmulatorFactory();

@@ -52,6 +52,35 @@ public sealed class SenderResolverTests
             .Should().Be(new ShownSender("+46701740697", SenderKind.Number, "account", FromAccount: true));
     }
 
+    [Fact]
+    public void A_text_sender_that_is_plus_and_digits_is_shown_as_a_number()
+    {
+        SenderResolver.Resolve(Plain, Settings(SmsSenderKind.Text, "+46701740697"))
+            .Should().Be(new ShownSender("+46701740697", SenderKind.Number, "account", FromAccount: true));
+    }
+
+    [Fact]
+    public void A_number_sender_that_is_not_plus_and_digits_is_shown_as_a_name()
+    {
+        SenderResolver.Resolve(Plain, Settings(SmsSenderKind.Number, "0701740697"))
+            .Should().Be(new ShownSender("0701740697", SenderKind.Name, "account", FromAccount: true));
+    }
+
+    [Fact]
+    public void A_reply_number_that_is_not_plus_and_digits_is_shown_as_a_name()
+    {
+        SenderResolver.Resolve(Plain, new SenderSettings(new SmsSender(SmsSenderKind.ReplySms, null), "Reply"))
+            .Should().Be(new ShownSender("Reply", SenderKind.Name, "account", FromAccount: true));
+    }
+
+    [Fact]
+    public void A_sender_kind_the_resolver_does_not_know_is_refused()
+    {
+        var act = () => SenderResolver.Resolve(Plain, Settings((SmsSenderKind)99, null));
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
     [Theory]
     [InlineData(nameof(SmsSenderKind.ReplySms))]
     [InlineData(nameof(SmsSenderKind.Subject))]

@@ -10,7 +10,7 @@ internal enum SmsSenderKind
     Subject,
 }
 
-/// <summary>The Sender setting of a TellusTalk user, in the words the TellusTalk portal uses.</summary>
+/// <summary>The Sender setting of a TellusTalk user, in the words a request uses in <c>sms_originator_source</c>.</summary>
 internal sealed record SmsSender(SmsSenderKind Kind, string? Value)
 {
     private const string TextPrefix = "text:";

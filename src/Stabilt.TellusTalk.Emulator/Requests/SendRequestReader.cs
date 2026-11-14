@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace Stabilt.TellusTalk.Emulator.Requests;
 
 /// <summary>
-/// Reads a send request the way TellusTalk accepts one: what its specification forbids becomes a warning, and only
-/// what the emulator cannot record is refused.
+/// Reads a send request the way TellusTalk accepts one: what TellusTalk was seen to refuse and what the emulator cannot
+/// record is refused, and what its specification forbids becomes a warning.
 /// </summary>
 internal static class SendRequestReader
 {

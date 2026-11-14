@@ -249,9 +249,16 @@
     {
         ({ Source: "account" }, _) => "The request has no sender field, so the user's Sender setting decides.",
         ({ Source: "replysms" }, _) => "The request asked for replysms, so the reply number is shown.",
-        ({ FromAccount: true, Source: var source }, _) => $"The request named no source and {source} is empty, so the reply number is shown.",
-        ({ Source: var source }, null) => $"The request named no source, so TellusTalk chose {source}.",
+        ({ FromAccount: true, Source: var source }, _) => $"The request named no source and {FieldName(source)} is empty, so the reply number is shown.",
+        ({ Source: var source }, null) => $"The request named no source, so TellusTalk chose {FieldName(source)}.",
         _ => null,
+    };
+
+    private static string FieldName(string source) => source switch
+    {
+        "text" => "sms_originator_text",
+        "number" => "sms_originator_number",
+        _ => source,
     };
 
     /// <summary>The text split where each part begins; binary content is no text a phone shows.</summary>

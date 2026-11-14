@@ -55,17 +55,17 @@ internal static class SenderResolver
 
     private static ShownSender FromSetting(SenderSettings settings) => settings.Sender switch
     {
-        { Kind: SmsSenderKind.Text, Value: { } name } => new ShownSender(name, SenderKind.Name, AccountSource, FromAccount: true),
-        { Kind: SmsSenderKind.Number, Value: { } number } => new ShownSender(number, SenderKind.Number, AccountSource, FromAccount: true),
-        _ => ReplyNumber(settings, AccountSource),
+        { Kind: SmsSenderKind.Text or SmsSenderKind.Number, Value: { } shown } => Shown(shown, AccountSource, fromAccount: true),
+        { Kind: SmsSenderKind.ReplySms or SmsSenderKind.Subject } => ReplyNumber(settings, AccountSource),
+        var other => throw new InvalidOperationException($"The Sender setting '{other.Kind}' has no way to be shown."),
     };
 
     private static ShownSender FromField(string shown, string source, SenderSettings settings) =>
-        shown.Length == 0 ? ReplyNumber(settings, source) : Own(shown, source);
+        shown.Length == 0 ? ReplyNumber(settings, source) : Shown(shown, source, fromAccount: false);
 
     private static ShownSender ReplyNumber(SenderSettings settings, string source) =>
-        new(settings.ReplyNumber, SenderKind.Number, source, FromAccount: true);
+        Shown(settings.ReplyNumber, source, fromAccount: true);
 
-    private static ShownSender Own(string shown, string source) =>
-        new(shown, PhoneNumbers.IsPlusDigits(shown) ? SenderKind.Number : SenderKind.Name, source, FromAccount: false);
+    private static ShownSender Shown(string shown, string source, bool fromAccount) =>
+        new(shown, PhoneNumbers.IsPlusDigits(shown) ? SenderKind.Number : SenderKind.Name, source, fromAccount);
 }

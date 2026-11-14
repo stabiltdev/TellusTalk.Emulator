@@ -91,6 +91,23 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
     };
 
     [Fact]
+    public async Task The_account_sender_is_written_as_its_setting()
+    {
+        var builder = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk");
+
+        // The alias is kept for existing configurations, so it is called here although it is obsolete.
+#pragma warning disable CS0618
+        var emulator = builder.WithAccountSender("Acme").Resource;
+#pragma warning restore CS0618
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__AccountSender", "Acme"));
+    }
+
+    [Fact]
     public void A_blank_sender_name_is_refused()
     {
         FluentActions.Invoking(() => new TextSender(" ")).Should().Throw<ArgumentException>();
