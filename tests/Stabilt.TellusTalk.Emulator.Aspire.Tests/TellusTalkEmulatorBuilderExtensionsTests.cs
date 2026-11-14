@@ -49,7 +49,8 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
 
         var emulator = builder
             .AddTellusTalkEmulator("tellustalk")
-            .WithAccountSender("Acme")
+            .WithSmsSender(new TextSender("Acme"))
+            .WithReplyNumber("+46701740697")
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
             .WithRetentionLimit(200)
@@ -58,11 +59,42 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         var environment = await EnvironmentOf(emulator);
 
         environment.Should().Contain([
-            KeyValuePair.Create("Emulator__AccountSender", "Acme"),
+            KeyValuePair.Create("Emulator__SmsSender", "text:Acme"),
+            KeyValuePair.Create("Emulator__ReplyNumber", "+46701740697"),
             KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698, +46701740699"),
             KeyValuePair.Create("Emulator__ReportDelaySeconds", "3"),
             KeyValuePair.Create("Emulator__RetentionLimit", "200"),
         ]);
+    }
+
+    [Theory]
+    [MemberData(nameof(SmsSenders))]
+    public async Task Each_sms_sender_is_written_in_TellusTalks_words(SmsSender sender, string setting)
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk")
+            .WithSmsSender(sender)
+            .Resource;
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__SmsSender", setting));
+    }
+
+    public static TheoryData<SmsSender, string> SmsSenders => new()
+    {
+        { new ReplySmsSender(), "replysms" },
+        { new NumberSender("+46701740697"), "number:+46701740697" },
+        { new TextSender("Acme"), "text:Acme" },
+        { new SubjectSender(), "subject" },
+    };
+
+    [Fact]
+    public void A_blank_sender_name_is_refused()
+    {
+        FluentActions.Invoking(() => new TextSender(" ")).Should().Throw<ArgumentException>();
+        FluentActions.Invoking(() => new NumberSender("")).Should().Throw<ArgumentException>();
     }
 
     [Fact]

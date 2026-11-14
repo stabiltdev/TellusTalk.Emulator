@@ -34,10 +34,10 @@ public sealed class TellusTalkEmulatorBuilderTests
     }
 
     [Fact]
-    public async Task A_send_without_a_sender_shows_the_account_sender()
+    public async Task A_send_without_a_sender_shows_the_sms_sender()
     {
         await using var emulator = LocalImage.Builder()
-            .WithAccountSender("Acme")
+            .WithSmsSender(new TextSender("Acme"))
             .Build();
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);
@@ -46,6 +46,21 @@ public sealed class TellusTalkEmulatorBuilderTests
 
         var message = await OnlyMessage(client);
         message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("Acme");
+    }
+
+    [Fact]
+    public async Task Replysms_shows_the_reply_number()
+    {
+        await using var emulator = LocalImage.Builder()
+            .WithReplyNumber("+46701740697")
+            .Build();
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your order has shipped.", "sms_originator_source": "replysms"}""");
+
+        var message = await OnlyMessage(client);
+        message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("+46701740697");
     }
 
     [Fact]

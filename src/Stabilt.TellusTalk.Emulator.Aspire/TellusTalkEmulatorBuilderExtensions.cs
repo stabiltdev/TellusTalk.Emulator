@@ -39,7 +39,30 @@ public static class TellusTalkEmulatorBuilderExtensions
             .WithHttpHealthCheck("/api/v1/health", endpointName: TellusTalkEmulatorResource.HttpEndpointName);
     }
 
+    /// <summary>The user's Sender setting, shown as the sender when a request sets none.</summary>
+    public static IResourceBuilder<TellusTalkEmulatorResource> WithSmsSender(
+        this IResourceBuilder<TellusTalkEmulatorResource> builder,
+        SmsSender sender)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(sender);
+
+        return builder.WithEnvironment("Emulator__SmsSender", sender.Setting);
+    }
+
+    /// <summary>The number TellusTalk assigns for replies, shown for <c>replysms</c>.</summary>
+    public static IResourceBuilder<TellusTalkEmulatorResource> WithReplyNumber(
+        this IResourceBuilder<TellusTalkEmulatorResource> builder,
+        string number)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+
+        return builder.WithEnvironment("Emulator__ReplyNumber", number);
+    }
+
     /// <summary>The sender the TellusTalk account is configured with, shown when a request sets none; a number stands in for two-way SMS.</summary>
+    [Obsolete("Use WithSmsSender, with a TextSender for a name or a ReplySmsSender and WithReplyNumber for a two-way number.")]
     public static IResourceBuilder<TellusTalkEmulatorResource> WithAccountSender(
         this IResourceBuilder<TellusTalkEmulatorResource> builder,
         string sender)
