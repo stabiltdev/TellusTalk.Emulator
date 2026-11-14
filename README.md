@@ -57,7 +57,7 @@ healthy once it answers, and gives an app its address:
 ```csharp
 var tellusTalk = builder
     .AddTellusTalkEmulator("tellustalk")
-    .WithSmsSender(new TextSender("Acme"));
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"));
 
 builder
     .AddProject<Projects.Api>("api")
@@ -83,7 +83,7 @@ starts the emulator once it answers, and gives its address:
 
 ```csharp
 await using var emulator = new TellusTalkEmulatorBuilder()
-    .WithSmsSender(new TextSender("Acme"))
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
     .Build();
 
 await emulator.StartAsync();

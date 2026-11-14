@@ -7,7 +7,7 @@ tests; nothing reaches a real phone. Not affiliated with TellusTalk.
 ```csharp
 var tellusTalk = builder
     .AddTellusTalkEmulator("tellustalk")
-    .WithSmsSender(new TextSender("Acme"));
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"));
 
 builder
     .AddProject<Projects.Api>("api")
@@ -21,7 +21,7 @@ TellusTalk client a user name and password; the emulator takes any. The dashboar
 
 | Method | Sets |
 |---|---|
-| `WithSmsSender(sender)` | The user's Sender setting, shown when a request sets none: a `TextSender`, `NumberSender`, `ReplySmsSender` or `SubjectSender` |
+| `WithSmsSender(sender)` | The user's Sender setting, shown when a request sets none: `TellusTalkSmsSender.Text(name)`, `.Number(number)`, `.ReplySms` or `.Subject` |
 | `WithReplyNumber(number)` | The number TellusTalk assigns for replies, shown for `replysms` |
 | `WithAccountSender(sender)` | Obsolete; use `WithSmsSender` |
 | `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |

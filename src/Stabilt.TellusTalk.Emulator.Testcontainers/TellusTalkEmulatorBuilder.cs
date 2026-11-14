@@ -51,7 +51,7 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
     protected override ContainerConfiguration DockerResourceConfiguration { get; }
 
     /// <summary>The user's Sender setting, shown as the sender when a request sets none.</summary>
-    public TellusTalkEmulatorBuilder WithSmsSender(SmsSender sender)
+    public TellusTalkEmulatorBuilder WithSmsSender(TellusTalkSmsSender sender)
     {
         ArgumentNullException.ThrowIfNull(sender);
 
@@ -67,7 +67,7 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
     }
 
     /// <summary>The sender the TellusTalk account is configured with, shown when a request sets none; a number stands in for two-way SMS.</summary>
-    [Obsolete("Use WithSmsSender, with a TextSender for a name or a ReplySmsSender and WithReplyNumber for a two-way number.")]
+    [Obsolete("Use WithSmsSender with TellusTalkSmsSender.Text for a name, or TellusTalkSmsSender.ReplySms and WithReplyNumber for a two-way number.")]
     public TellusTalkEmulatorBuilder WithAccountSender(string sender)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sender);

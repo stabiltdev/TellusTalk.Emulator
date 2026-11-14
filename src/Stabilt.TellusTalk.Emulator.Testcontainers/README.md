@@ -6,7 +6,7 @@ and serves them to tests; nothing reaches a real phone. Not affiliated with Tell
 
 ```csharp
 await using var tellusTalk = new TellusTalkEmulatorBuilder()
-    .WithSmsSender(new TextSender("Acme"))
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
     .Build();
 
 await tellusTalk.StartAsync();
@@ -22,7 +22,7 @@ test asserts with, `api/v1/messages`.
 
 | Method | Sets |
 |---|---|
-| `WithSmsSender(sender)` | The user's Sender setting, shown when a request sets none: a `TextSender`, `NumberSender`, `ReplySmsSender` or `SubjectSender` |
+| `WithSmsSender(sender)` | The user's Sender setting, shown when a request sets none: `TellusTalkSmsSender.Text(name)`, `.Number(number)`, `.ReplySms` or `.Subject` |
 | `WithReplyNumber(number)` | The number TellusTalk assigns for replies, shown for `replysms` |
 | `WithAccountSender(sender)` | Obsolete; use `WithSmsSender` |
 | `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |

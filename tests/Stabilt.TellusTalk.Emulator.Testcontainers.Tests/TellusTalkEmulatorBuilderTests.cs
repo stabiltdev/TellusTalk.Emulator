@@ -37,7 +37,7 @@ public sealed class TellusTalkEmulatorBuilderTests
     public async Task A_send_without_a_sender_shows_the_sms_sender()
     {
         await using var emulator = LocalImage.Builder()
-            .WithSmsSender(new TextSender("Acme"))
+            .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
             .Build();
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);

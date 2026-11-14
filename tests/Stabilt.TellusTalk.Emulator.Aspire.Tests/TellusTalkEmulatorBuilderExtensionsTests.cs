@@ -49,7 +49,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
 
         var emulator = builder
             .AddTellusTalkEmulator("tellustalk")
-            .WithSmsSender(new TextSender("Acme"))
+            .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
             .WithReplyNumber("+46701740697")
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
@@ -69,7 +69,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
 
     [Theory]
     [MemberData(nameof(SmsSenders))]
-    public async Task Each_sms_sender_is_written_in_TellusTalks_words(SmsSender sender, string setting)
+    public async Task Each_sms_sender_is_written_in_TellusTalks_words(TellusTalkSmsSender sender, string setting)
     {
         var emulator = DistributedApplication
             .CreateBuilder()
@@ -82,12 +82,12 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         environment.Should().Contain(KeyValuePair.Create("Emulator__SmsSender", setting));
     }
 
-    public static TheoryData<SmsSender, string> SmsSenders => new()
+    public static TheoryData<TellusTalkSmsSender, string> SmsSenders => new()
     {
-        { new ReplySmsSender(), "replysms" },
-        { new NumberSender("+46701740697"), "number:+46701740697" },
-        { new TextSender("Acme"), "text:Acme" },
-        { new SubjectSender(), "subject" },
+        { TellusTalkSmsSender.ReplySms, "replysms" },
+        { TellusTalkSmsSender.Number("+46701740697"), "number:+46701740697" },
+        { TellusTalkSmsSender.Text("Acme"), "text:Acme" },
+        { TellusTalkSmsSender.Subject, "subject" },
     };
 
     [Fact]
@@ -107,11 +107,22 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         environment.Should().Contain(KeyValuePair.Create("Emulator__AccountSender", "Acme"));
     }
 
-    [Fact]
-    public void A_blank_sender_name_is_refused()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void A_blank_sender_name_is_refused(string? name)
     {
-        FluentActions.Invoking(() => new TextSender(" ")).Should().Throw<ArgumentException>();
-        FluentActions.Invoking(() => new NumberSender("")).Should().Throw<ArgumentException>();
+        FluentActions.Invoking(() => TellusTalkSmsSender.Text(name!)).Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void A_blank_sender_number_is_refused(string? number)
+    {
+        FluentActions.Invoking(() => TellusTalkSmsSender.Number(number!)).Should().Throw<ArgumentException>();
     }
 
     [Fact]
