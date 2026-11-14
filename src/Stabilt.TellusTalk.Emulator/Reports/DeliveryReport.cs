@@ -36,13 +36,16 @@ internal sealed record DeliveryReport(
 
     /// <summary>
     /// <c>quantity</c> is taken as the number of parts: TellusTalk's e-mail report for the same SMS listed
-    /// "SMS Parts: 1" where the JSON report had a quantity of 1.
+    /// "SMS Parts: 1" where the JSON report had a quantity of 1. A subject heads the report's text, and the SMS
+    /// itself carries the message alone. An empty subject is taken as none, since K8 was not seen with one.
     /// </summary>
     public static DeliveryReport For(Message message, ReportStatus status, DateTimeOffset reportedAt)
     {
         var delivered = status == ReportStatus.Delivered;
         var body = message.Request.Body;
-        var html = body.Html.ValueKind == JsonValueKind.String ? body.Html.GetString()! : message.Text;
+        var text = string.IsNullOrEmpty(message.Request.Subject) ? message.Text : $"{message.Request.Subject}\n\n{message.Text}";
+        var textLineBreaksBr = text.Replace("\n", "<br>\n", StringComparison.Ordinal);
+        var html = body.Html.ValueKind == JsonValueKind.String ? body.Html.GetString()! : textLineBreaksBr;
 
         return new DeliveryReport(
             delivered ? "txtDELIVERED" : "txtDELIVERY_FAILED",
@@ -55,7 +58,7 @@ internal sealed record DeliveryReport(
             "user_id:" + message.UserName,
             string.Empty,
             message.Request.Subject,
-            message.Text,
+            text,
             html,
             body.Echo.ValueKind == JsonValueKind.Undefined ? null : body.Echo,
             message.Parts.Count,
@@ -64,7 +67,7 @@ internal sealed record DeliveryReport(
             message.JobId,
             reportedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
             null,
-            message.Text.Replace("\n", "<br>", StringComparison.Ordinal),
+            textLineBreaksBr,
             "--------------");
     }
 

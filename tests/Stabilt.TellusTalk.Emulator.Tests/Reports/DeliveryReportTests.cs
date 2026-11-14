@@ -64,7 +64,7 @@ public sealed class DeliveryReportTests
     }
 
     [Fact]
-    public void Quantity_counts_the_parts_and_line_breaks_become_br()
+    public void Quantity_counts_the_parts()
     {
         var text = "Rad ett\nrad två " + new string('a', 160);
         var message = Message(JsonSerializer.Serialize(new { to = "sms:+46701740605", text }));
@@ -72,7 +72,37 @@ public sealed class DeliveryReportTests
         using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
 
         report.RootElement.GetProperty("quantity").GetInt32().Should().Be(2);
-        report.RootElement.GetProperty("text_linebreaksbr").GetString().Should().StartWith("Rad ett<br>rad två");
+    }
+
+    [Fact]
+    public void A_subject_heads_the_text_with_a_blank_line()
+    {
+        var message = Message("""{"to":"sms:+46701740605","text":"Your order has shipped.","subject":"Acme"}""");
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
+
+        report.RootElement.GetProperty("text").GetString().Should().Be("Acme\n\nYour order has shipped.");
+    }
+
+    [Fact]
+    public void An_empty_subject_leaves_the_text_as_the_message()
+    {
+        var message = Message("""{"to":"sms:+46701740605","text":"Your order has shipped.","subject":""}""");
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
+
+        report.RootElement.GetProperty("text").GetString().Should().Be("Your order has shipped.");
+    }
+
+    [Fact]
+    public void Html_and_text_linebreaksbr_keep_each_line_break_after_a_br()
+    {
+        var message = Message("""{"to":"sms:+46701740605","text":"Line one\nline two","subject":"Acme"}""");
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
+
+        report.RootElement.GetProperty("html").GetString().Should().Be("Acme<br>\n<br>\nLine one<br>\nline two");
+        report.RootElement.GetProperty("text_linebreaksbr").GetString().Should().Be("Acme<br>\n<br>\nLine one<br>\nline two");
     }
 
     [Fact]
