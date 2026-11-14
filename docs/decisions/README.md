@@ -58,3 +58,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261114-record-each-observation-of-k8-with-its-date](20261114-record-each-observation-of-k8-with-its-date.md) | Follow TellusTalk's observed behaviour before its specification, and record each observation with its date | accepted |
 | [20261114-choose-and-refuse-the-sms-sender-as-k8-does](20261114-choose-and-refuse-the-sms-sender-as-k8-does.md) | Choose the SMS sender and refuse sender fields as K8 does | accepted |
 | [20261114-mirror-tellustalks-sender-setting-and-reply-number](20261114-mirror-tellustalks-sender-setting-and-reply-number.md) | Mirror TellusTalk's Sender setting and reply number in the settings | accepted |
+| [20261114-hold-back-a-duplicate-as-k8-does](20261114-hold-back-a-duplicate-as-k8-does.md) | Hold back a duplicate send as K8 does | accepted |

@@ -33,8 +33,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Requests` | Reading a send request: the typed body, the reader, the specification's rules, the warnings, and TellusTalk's sender refusals |
 | `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it, and the user's Sender setting and reply number |
 | `src/Stabilt.TellusTalk.Emulator/Parts` | GSM 03.38 and UCS-2 part counting |
-| `src/Stabilt.TellusTalk.Emulator/Messages` | The in-memory store, scheduled release, and the read API's message endpoints |
-| `src/Stabilt.TellusTalk.Emulator/Reports` | Delivery reports: their form, sending them, and sending them automatically or on request |
+| `src/Stabilt.TellusTalk.Emulator/Messages` | The in-memory store with its duplicate rule, scheduled release, and the read API's message endpoints |
+| `src/Stabilt.TellusTalk.Emulator/Reports` | Delivery reports: their form, sending them, sending them automatically or on request, and the blocked report of a held-back send, `HeldBackReports` |
 | `src/Stabilt.TellusTalk.Emulator/Page` | The page's Razor components and endpoint; `wwwroot` holds its CSS, script and fonts |
 | `src/Stabilt.TellusTalk.Emulator/Http` | `IEndpoint`, `MapEndpoints` and the read API's error body |
 | `src/Stabilt.TellusTalk.Emulator/Ids` | `Guid.CreateVersion1` |
@@ -70,6 +70,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
   keeps its `id`.
 - Analyzers can misread C# 14 extension blocks; suppress what they report there with a reason.
 - Messages live in memory; a restart empties the lists.
+- A test that sends the same text to the same number twice within five minutes meets a held-back message; give each send
+  its own text, unless the test is about duplicates.
 - A new setting goes into `EmulatorOptions`, the README's settings table, and both packages' builders.
 - `Aspire.Hosting` stays on the oldest version without a known vulnerability; moving every package to its newest leaves
   it out.
