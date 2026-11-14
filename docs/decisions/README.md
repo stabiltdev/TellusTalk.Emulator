@@ -56,3 +56,5 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261111-keep-dependencies-current-with-dependabot](20261111-keep-dependencies-current-with-dependabot.md) | Keep dependencies current with Dependabot, and move Aspire.Hosting only for a vulnerability | accepted |
 | [20261114-fail-reports-only-for-the-numbers-a-setting-names](20261114-fail-reports-only-for-the-numbers-a-setting-names.md) | Fail delivery reports only for the numbers a setting names | accepted |
 | [20261114-record-each-observation-of-k8-with-its-date](20261114-record-each-observation-of-k8-with-its-date.md) | Follow TellusTalk's observed behaviour before its specification, and record each observation with its date | accepted |
+| [20261114-choose-and-refuse-the-sms-sender-as-k8-does](20261114-choose-and-refuse-the-sms-sender-as-k8-does.md) | Choose the SMS sender and refuse sender fields as K8 does | accepted |
+| [20261114-mirror-tellustalks-sender-setting-and-reply-number](20261114-mirror-tellustalks-sender-setting-and-reply-number.md) | Mirror TellusTalk's Sender setting and reply number in the settings | accepted |
