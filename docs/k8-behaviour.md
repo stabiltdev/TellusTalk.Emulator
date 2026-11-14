@@ -124,6 +124,34 @@ of the parsed JSON value.
   'sms_originator_number'. Expected number, got 'None'` and `... got ''`.
 - **2026-11-14:** `sms_originator_number: ""` without a source, with the user's Sender at Reply SMS → accepted.
 
+### Duplicates
+
+Observed with fresh test users sending to numbers from PTS's range for fiction, each with `report_to` on a local
+receiver. A send that went out reported `txtDELIVERY_FAILED` within about three seconds; a send held back reported
+`txtBLOCKED` within half a second.
+
+- **2026-11-14:** an SMS identical to one the same user sent 10 seconds before → held back. The same text to another
+  number, or with a `subject` where the first had none, went out; the text in lower case, or with a trailing space, went
+  out too. The same text to the same number written `+46 70 174 06 08` was held back. So the key includes the user, the
+  recipient's number as K8 normalises it, `subject`, and `text` as sent, compared exactly.
+- **2026-11-14:** another `sms_originator_text`, `echo`, `report_to`, `sms_header`, `html`, `sms_flash`, `sms_max_parts`,
+  `sms_validity_time`, `reply_to`, `billing_id` or `sms_single_thread` → each held back, so none of them is part of the
+  key. The report of a held-back send with another `report_to` went to that send's own `report_to`.
+- **2026-11-14:** the same request from another user of the same organisation → went out.
+- **2026-11-14:** the same number twice in one request's `to` → the second held back as a duplicate of the first.
+- **2026-11-14:** an identical send 4 minutes 40 seconds after the first → held back; 5 minutes 20 seconds after → went
+  out. A send 5 minutes 21 seconds after the first that went out and 4 minutes 39 seconds after the last held back also
+  went out, so the window counts back from the request's arrival against sends that were not held back themselves.
+- **2026-11-14:** an identical send at once, 7 seconds after a send scheduled 4 minutes ahead and 5 seconds after one
+  scheduled 11 minutes ahead → each held back. Both scheduled sends went out when they fell due. A scheduled send
+  counts from when K8 received it.
+- **2026-11-14:** the answer to a held-back send → `200` with `job_id`, `job_uuid`, `log_uuid` and `job_size`, as for any
+  send.
+- **2026-11-14:** the report of a held-back send → the report of any send with `log_status` `txtBLOCKED`,
+  `log_status_code` `1`, `failed_reason` `txtFAILED_REASON: txtDUPLICATE_MESSAGE, Duplicate of message <id> sent within
+  5 minutes.`, `failed_details` `Duplicate of message <id> sent within 5 minutes.` and `report_time` `null`, where
+  `<id>` is the `log_uuid` of the send it duplicates. The other fields and the headers were those of every report.
+
 ## Not observed
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
@@ -158,3 +186,16 @@ is settled when someone observes the real thing.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status
   takes.
 - Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
+- Whether an absent `subject` and `subject: ""` count as the same in the key of a duplicate; the emulator takes them as
+  the same.
+- Whether a text with tracking links is compared before or after the links are shortened (issue #24); the emulator
+  compares the request's `text` as sent, before shortening.
+- Duplicates on channels other than SMS; a log of 2026-11-14 showed an e-mail held back 36 seconds after the first. The
+  emulator catches SMS only, so it holds back SMS only.
+- When a held-back send that was itself scheduled reports: at once, or when it would have fallen due; the emulator
+  reports it at once, as blocked, and never releases it.
+- Whether `sms_character_set`, `sms_format`, `sms_udh`, `sms_originator_source` or `sms_originator_number` are part of
+  the key of a duplicate; none was varied alone, and the emulator does not compare them.
+- Whether a scheduled send is checked again when it falls due; the emulator checks a send only when it is received.
+- Whether two sends exactly five minutes apart count as duplicates; the emulator holds the later one back, so its window
+  includes the five minutes.
