@@ -319,32 +319,8 @@ emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any se
 ## Behaviour that follows the specification, not observation
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its
-[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html). These are the places; each is settled
-when someone observes the real thing.
-
-- What TellusTalk does when the text needs more parts than `sms_max_parts`: refuse, truncate or send.
-- What `sms_character_set: gsm` does with a character outside the GSM alphabet.
-- How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
-- Whether `sms_header` is joined to the text with a separator.
-- What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
-  address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
-  specification's examples and ends an address at whitespace.
-- What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
-  `sms_originator_text`.
-- How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
-- What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
-  one or as each of its members; the emulator counts it as one.
-- What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
-  without a source.
-- What `html` and `attachments` do on an SMS.
-- Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
-- What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
-  phrase, as the specification shows them.
-- What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
-- How TellusTalk treats the other rules the warnings cover.
-- What a reply contains, whether any report comes before the final one, and which other values a report's status
-  takes.
-- Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
+[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html). [docs/k8-behaviour.md](docs/k8-behaviour.md)
+lists what was observed, with the dates, and what was not.
 
 ## Building
 

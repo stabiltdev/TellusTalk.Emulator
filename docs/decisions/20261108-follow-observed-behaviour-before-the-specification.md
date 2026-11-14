@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261114-record-each-observation-of-k8-with-its-date](20261114-record-each-observation-of-k8-with-its-date.md)
 date: 2026-11-08
 deciders: [Peter Hedberg]
 ---

@@ -1,0 +1,81 @@
+# What K8 was seen to do
+
+The emulator does what TellusTalk's K8 service was seen to do, and follows TellusTalk's
+[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html) where nothing was seen. Each
+observation carries its date, so a later change in TellusTalk's API can be told from an old observation. Numbers are
+from PTS's range for fiction, and no account is named.
+
+## Observed
+
+### Credentials
+
+- **2026-11-07:** a send without an `Authorization` header → `401` with `Content-Type: text/html; charset=utf-8`, no
+  `WWW-Authenticate`, and the text "The server could not verify that you are authorized to access the URL requested.
+  You either supplied the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply
+  the credentials required." The answer carries the same headers as every other answer to a send.
+
+### The answer to a send
+
+- **2026-11-07:** a send of one SMS → `200` with `Content-Type: application/json`, no charset, and a body of
+  `job_id`, `job_uuid`, `log_uuid` and `job_size`, where the three ids are the same value and `job_size` is the number
+  of recipients.
+- **2026-11-07:** any send → the headers `X-Request-Id`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security:
+  max-age=31536000; includeSubDomains`, `Cross-Origin-Opener-Policy: same-origin`, `Referrer-Policy:
+  strict-origin-when-cross-origin`, `Cross-Origin-Resource-Policy: same-origin` and `Permissions-Policy: geolocation=(),
+  camera=(), microphone=()`, on refusals too.
+- **2026-11-07:** a send → ids (`job_id`, `job_uuid`, `log_uuid`, `X-Request-Id` and a report's request id) that are
+  version 1 UUIDs written as 32 lowercase hexadecimal characters without hyphens.
+
+### Requests K8 accepts although the specification forbids them
+
+- **2026-11-07:** a send with a field no schema defines → accepted, and the field is ignored.
+- **2026-11-07:** a send with `"sms_flash": "true"`, a string where the specification has a boolean → accepted.
+- **2026-11-07:** a send to a number written with spaces → accepted, and the spaces are removed.
+- **2026-11-07:** a send with a bare e-mail address as `report_to` → accepted.
+- **2026-11-07:** a send with a twelve-character sender name → accepted, and the name is passed on whole.
+
+### Delivery reports
+
+- **2026-11-07:** a delivered SMS with a URL in `report_to` → a `POST` of JSON with `log_status` `txtDELIVERED`,
+  `log_status_code` `22`, an empty `failed_reason`, `article_id` `SMS_Sent`, `to_protocol` `SMS`, `to_address`
+  `sms:<number>`, `from_address` `user_id:<user>`, the message text as `text`, `html` and `text_linebreaksbr`, `echo`
+  as sent, `quantity` as the number of parts, the three ids, `report_time` and `template_optional_line`, in the order
+  the README shows.
+- **2026-11-07:** a failed SMS → the same report with `log_status` `txtDELIVERY_FAILED`, `log_status_code` `21` and
+  `failed_reason` `txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None`.
+- **2026-11-07:** a report → the headers `Content-Type: application/json`, `Accept: */*`, and a `webpages-request-id` and
+  an `x-webpages-request-id` with the same value, and every header named in the address's settings.
+
+### The sender
+
+- **2026-11-07:** a send without sender fields → the phone shows the account's configured sender, not the
+  specification's `replysms` default.
+
+## Not observed
+
+Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
+is settled when someone observes the real thing.
+
+- What TellusTalk does when the text needs more parts than `sms_max_parts`: refuse, truncate or send.
+- What `sms_character_set: gsm` does with a character outside the GSM alphabet.
+- How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
+- Whether `sms_header` is joined to the text with a separator.
+- What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
+  address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
+  specification's examples and ends an address at whitespace.
+- What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
+  `sms_originator_text`.
+- How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
+- What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
+  one or as each of its members; the emulator counts it as one.
+- What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
+  without a source.
+- What `html` and `attachments` do on an SMS.
+- Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
+- What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
+  phrase, as the specification shows them.
+- What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
+- How TellusTalk treats the other rules the warnings cover.
+- What a reply contains, whether any report comes before the final one, and which other values a report's status
+  takes.
+- Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
