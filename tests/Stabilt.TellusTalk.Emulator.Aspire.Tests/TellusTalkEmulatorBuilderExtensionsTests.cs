@@ -66,6 +66,36 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
     }
 
     [Fact]
+    public async Task Failing_numbers_from_several_calls_add_up()
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk")
+            .WithFailingNumbers("+46701740697", "+46701740698")
+            .WithFailingNumbers("+46701740699")
+            .Resource;
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__FailingNumbers", "+46701740697, +46701740698, +46701740699"));
+    }
+
+    [Fact]
+    public async Task A_call_without_numbers_adds_none()
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk")
+            .WithFailingNumbers("+46701740698")
+            .WithFailingNumbers()
+            .Resource;
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698"));
+    }
+
+    [Fact]
     public async Task A_reference_gives_the_app_the_emulators_address_as_TellusTalks_base_url()
     {
         var builder = DistributedApplication.CreateBuilder();

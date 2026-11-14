@@ -28,20 +28,20 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
-    public async Task A_number_set_to_fail_gets_a_failure_report()
+    public async Task No_number_fails_by_default()
     {
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740699","text":"Hej","report_to":"https://example.se/reports"}""");
 
         using var body = JsonDocument.Parse((await StepUntilReported(emulator, 1)).Single().Body);
-        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtDELIVERY_FAILED");
+        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtDELIVERED");
     }
 
     [Fact]
     public async Task The_failing_numbers_are_a_setting()
     {
         await using var emulator = new EmulatorFactory();
-        emulator.Settings["Emulator:FailingNumbers"] = "+46701740605, +46701740606";
+        emulator.Settings["Emulator:FailingNumbers"] = "+46701740606, +46701740605";
         await Send(emulator, WithReport);
 
         using var body = JsonDocument.Parse((await StepUntilReported(emulator, 1)).Single().Body);

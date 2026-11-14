@@ -10,6 +10,7 @@ public static class TellusTalkEmulatorBuilderExtensions
     private const string Registry = "ghcr.io";
     private const string Image = "stabiltdev/tellustalk-emulator";
     private const int ContainerPort = 8080;
+    private const string FailingNumbers = "Emulator__FailingNumbers";
 
     /// <summary>The package's own version without its build metadata: one release publishes the image and the package.</summary>
     private static readonly string ImageTag = typeof(TellusTalkEmulatorBuilderExtensions).Assembly
@@ -49,7 +50,7 @@ public static class TellusTalkEmulatorBuilderExtensions
         return builder.WithEnvironment("Emulator__AccountSender", sender);
     }
 
-    /// <summary>The numbers whose delivery reports say the operator could not deliver.</summary>
+    /// <summary>Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones.</summary>
     public static IResourceBuilder<TellusTalkEmulatorResource> WithFailingNumbers(
         this IResourceBuilder<TellusTalkEmulatorResource> builder,
         params string[] numbers)
@@ -57,7 +58,19 @@ public static class TellusTalkEmulatorBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(numbers);
 
-        return builder.WithEnvironment("Emulator__FailingNumbers", string.Join(", ", numbers));
+        if (numbers.Length == 0)
+        {
+            return builder;
+        }
+
+        var added = string.Join(", ", numbers);
+
+        // Environment callbacks run in the order they were added, so each call sees what earlier calls wrote.
+        return builder.WithEnvironment(context =>
+            context.EnvironmentVariables[FailingNumbers] =
+                context.EnvironmentVariables.TryGetValue(FailingNumbers, out var earlier) && earlier is string { Length: > 0 } written
+                    ? $"{written}, {added}"
+                    : added);
     }
 
     /// <summary>How long after a message is sent, or falls due, its delivery report goes out, in whole seconds.</summary>

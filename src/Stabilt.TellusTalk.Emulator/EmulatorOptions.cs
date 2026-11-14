@@ -15,7 +15,7 @@ internal sealed class EmulatorOptions
     public int ReportDelaySeconds { get; set; } = 1;
 
     /// <summary>Numbers whose reports say the operator could not deliver, separated by commas.</summary>
-    public string FailingNumbers { get; set; } = "+46701740699";
+    public string FailingNumbers { get; set; } = string.Empty;
 
     public bool Fails(string number) => FailingNumbers
         .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)

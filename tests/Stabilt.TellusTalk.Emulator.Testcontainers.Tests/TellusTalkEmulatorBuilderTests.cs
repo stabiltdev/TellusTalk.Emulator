@@ -65,6 +65,23 @@ public sealed class TellusTalkEmulatorBuilderTests
     }
 
     [Fact]
+    public async Task Failing_numbers_from_several_calls_add_up()
+    {
+        await using var emulator = LocalImage.Builder()
+            .WithFailingNumbers("+46701740697")
+            .WithFailingNumbers("+46701740698")
+            .WithReportDelay(TimeSpan.Zero)
+            .Build();
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, """{"to": "sms:+46701740697", "text": "Your order has shipped.", "report_to": "reports@example.se"}""");
+
+        var report = (await Reported(client)).GetProperty("reports")[0];
+        report.GetProperty("status").GetString().Should().Be("failed");
+    }
+
+    [Fact]
     public async Task A_report_waits_for_the_report_delay()
     {
         await using var emulator = LocalImage.Builder()

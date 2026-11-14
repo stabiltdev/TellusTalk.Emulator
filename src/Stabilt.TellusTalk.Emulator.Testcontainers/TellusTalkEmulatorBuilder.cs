@@ -17,6 +17,7 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
     public const ushort TellusTalkEmulatorPort = 8080;
 
     private const string Image = "ghcr.io/stabiltdev/tellustalk-emulator";
+    private const string FailingNumbers = "Emulator__FailingNumbers";
 
     /// <summary>The package's own version without its build metadata: one release publishes the image and the package.</summary>
     private static readonly string ImageTag = typeof(TellusTalkEmulatorBuilder).Assembly
@@ -57,12 +58,21 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
         return WithEnvironment("Emulator__AccountSender", sender);
     }
 
-    /// <summary>The numbers whose delivery reports say the operator could not deliver.</summary>
+    /// <summary>Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones.</summary>
     public TellusTalkEmulatorBuilder WithFailingNumbers(params string[] numbers)
     {
         ArgumentNullException.ThrowIfNull(numbers);
 
-        return WithEnvironment("Emulator__FailingNumbers", string.Join(", ", numbers));
+        if (numbers.Length == 0)
+        {
+            return this;
+        }
+
+        var added = string.Join(", ", numbers);
+
+        return DockerResourceConfiguration.Environments?.TryGetValue(FailingNumbers, out var earlier) == true && earlier.Length > 0
+            ? WithEnvironment(FailingNumbers, $"{earlier}, {added}")
+            : WithEnvironment(FailingNumbers, added);
     }
 
     /// <summary>How long after a message is sent, or falls due, its delivery report goes out, in whole seconds.</summary>
