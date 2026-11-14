@@ -16,11 +16,22 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     private readonly Dictionary<string, List<ReportAttempt>> _reports = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, Channel<StoreChange>> _subscribers = new();
 
-    public void Add(IReadOnlyList<Message> messages)
+    /// <summary>K8 holds a send back as a duplicate of one "sent within 5 minutes".</summary>
+    private static readonly TimeSpan DuplicateWindow = TimeSpan.FromMinutes(5);
+
+    /// <summary>Stores the messages, holding back each that duplicates one already stored, and returns them as stored.</summary>
+    public IReadOnlyList<Message> Add(IReadOnlyList<Message> messages)
     {
+        List<Message> stored = [];
         lock (_lock)
         {
-            _messages.AddRange(messages);
+            foreach (var message in messages)
+            {
+                var original = options.Value.BlockDuplicates ? FindOriginal(message) : null;
+                var added = original is null ? message : message with { DuplicateOf = original.Id };
+                _messages.Add(added);
+                stored.Add(added);
+            }
 
             var excess = _messages.Count - options.Value.RetentionLimit;
             if (excess > 0)
@@ -34,6 +45,8 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         }
 
         Publish(StoreChange.Added);
+
+        return stored;
     }
 
     /// <summary>
@@ -114,6 +127,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         lock (_lock)
         {
             var due = _messages
+                .Where(message => message.DuplicateOf is null)
                 .Where(message => message.Request.ReportTo.Count > 0)
                 .Where(message => message.ShownAt <= now - delay)
                 .Where(message => !_reportsTaken.Contains(message.Id))
@@ -160,6 +174,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         lock (_lock)
         {
             var due = _messages
+                .Where(message => message.DuplicateOf is null)
                 .Where(message => message.DueAt <= now)
                 .Where(message => !_released.Contains(message.Id))
                 .ToList();
@@ -207,6 +222,16 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
             _reports.Remove(id);
         }
     }
+
+    /// <summary>Called under the lock. Held-back messages are no original, so a held-back send does not extend the window.</summary>
+    private Message? FindOriginal(Message message) => _messages
+        .Where(other => other.DuplicateOf is null)
+        .Where(other => (other.ReceivedAt - message.ReceivedAt).Duration() <= DuplicateWindow)
+        .Where(other => string.Equals(other.UserName, message.UserName, StringComparison.Ordinal))
+        .Where(other => string.Equals(other.To.Number, message.To.Number, StringComparison.Ordinal))
+        .Where(other => string.Equals(other.Request.Subject ?? "", message.Request.Subject ?? "", StringComparison.Ordinal))
+        .Where(other => string.Equals(other.Request.Text ?? "", message.Request.Text ?? "", StringComparison.Ordinal))
+        .FirstOrDefault();
 
     private static bool Matches(Message message, string search) =>
         message.To.Number.Contains(search, StringComparison.OrdinalIgnoreCase) ||

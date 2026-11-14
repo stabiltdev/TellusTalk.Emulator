@@ -284,7 +284,7 @@ public sealed class PageTests
         await using var emulator = new EmulatorFactory();
         var smsOnly = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         emulator.Time.Advance(TimeSpan.FromMinutes(1));
-        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej igen"}""");
 
         using var smsOnlyPage = await Page(emulator, $"?id={smsOnly}");
         using var mixedPage = await Page(emulator);

@@ -16,6 +16,7 @@ Not affiliated with TellusTalk.
 - Serves what it caught to automated tests through a read API under `/api/v1/`.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in a message's `report_to`: delivered, or
   failed for a number set to fail, and on request from the page or the read API.
+- Holds back a send that duplicates one the same user made in the five minutes before, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
 - Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
@@ -137,6 +138,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
 | `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |
+| `Emulator__BlockDuplicates` | `true` | Whether a send is held back, as TellusTalk does, when the same user sent the same subject and text to the same number in the five minutes before. |
 
 ## Refusals and warnings
 
@@ -181,6 +183,13 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `report-address-invalid` | A `report_to` or `reply_to` that is no e-mail address, `sms:` number or http(s) URL. |
 
 A test can assert that a message carries no warnings, and so catch what TellusTalk would let through.
+
+## Duplicates
+
+A send is held back when the same user sent the same `subject` and `text` to the same number in the five minutes
+before it was received, whatever its other fields. Of two identical sends that arrive at once, the one the emulator
+stores second is held back. A held-back send counts for no later one. It is answered as any send, reaches no phone, and
+is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it off.
 
 ## Delivery reports
 

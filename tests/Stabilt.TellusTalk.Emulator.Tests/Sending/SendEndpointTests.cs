@@ -212,12 +212,33 @@ public sealed class SendEndpointTests
 
         var responses = await Task.WhenAll(Enumerable
             .Range(0, 50)
-            .Select(_ => emulator.Send(Probe)));
+            .Select(index => emulator.Send($$"""{"to":"sms:+46701740605","text":"Probe {{index}}"}""")));
 
         responses.Should().AllSatisfy(response => response.StatusCode.Should().Be(HttpStatusCode.OK));
         Store(emulator).List()
             .Select(message => message.Id)
             .Should().HaveCount(50).And.OnlyHaveUniqueItems();
+
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Of_identical_sends_made_at_once_only_one_goes_out()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        var responses = await Task.WhenAll(Enumerable
+            .Range(0, 50)
+            .Select(_ => emulator.Send(Probe)));
+
+        responses.Should().AllSatisfy(response => response.StatusCode.Should().Be(HttpStatusCode.OK));
+        var sent = Store(emulator).List(MessageState.Sent).Should().ContainSingle().Subject;
+        var held = Store(emulator).List(MessageState.Blocked);
+        held.Should().HaveCount(49);
+        held.Should().AllSatisfy(message => message.DuplicateOf.Should().Be(sent.Id));
 
         foreach (var response in responses)
         {
