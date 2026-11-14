@@ -147,6 +147,22 @@ public sealed class TellusTalkEmulatorBuilderTests
         message.GetProperty("text").GetString().Should().Be("Second");
     }
 
+    [Fact]
+    public async Task With_duplicate_blocking_off_a_repeated_send_goes_out()
+    {
+        await using var emulator = LocalImage.Builder()
+            .WithDuplicateBlocking(false)
+            .Build();
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your code is 482913"}""");
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your code is 482913"}""");
+
+        var sent = await client.GetFromJsonAsync<JsonElement>(new Uri("api/v1/messages?state=sent", UriKind.Relative), TestContext.Current.CancellationToken);
+        sent.GetProperty("total").GetInt32().Should().Be(2);
+    }
+
     private static HttpClient Client(TellusTalkEmulatorContainer emulator)
     {
         var client = new HttpClient { BaseAddress = new Uri(emulator.GetBaseAddress()) };
