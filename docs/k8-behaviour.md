@@ -26,7 +26,7 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-07:** a send → ids (`job_id`, `job_uuid`, `log_uuid`, `X-Request-Id` and a report's request id) that are
   version 1 UUIDs written as 32 lowercase hexadecimal characters without hyphens.
 
-### Requests K8 accepts although the specification forbids them
+### Requests K8 accepts that the specification forbids
 
 - **2026-11-07:** a send with a field no schema defines → accepted, and the field is ignored.
 - **2026-11-07:** a send with `"sms_flash": "true"`, a string where the specification has a boolean → accepted.
