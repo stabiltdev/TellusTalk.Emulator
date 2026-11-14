@@ -245,12 +245,13 @@
     private static string WarningCount(Message message) =>
         message.Warnings.Count == 1 ? "1 warning" : $"{message.Warnings.Count} warnings";
 
-    private static string? SenderNote(Message message) => message.Sender switch
+    private static string? SenderNote(Message message) => (message.Sender, message.Request.OriginatorSource) switch
     {
-        { FromAccount: false } => null,
-        { Source: "account" } => "The request set no sender, so the account's sender is shown.",
-        { Source: "replysms" } => "The request asked for replysms; the account's sender is shown, as TellusTalk was seen to do without a source.",
-        { Source: var source } => $"The request asked for {source} but left its value out, so the account's sender is shown.",
+        ({ Source: "account" }, _) => "The request has no sender field, so the user's Sender setting decides.",
+        ({ Source: "replysms" }, _) => "The request asked for replysms, so the reply number is shown.",
+        ({ FromAccount: true, Source: var source }, _) => $"The request named no source and {source} is empty, so the reply number is shown.",
+        ({ Source: var source }, null) => $"The request named no source, so TellusTalk chose {source}.",
+        _ => null,
     };
 
     /// <summary>The text split where each part begins; binary content is no text a phone shows.</summary>

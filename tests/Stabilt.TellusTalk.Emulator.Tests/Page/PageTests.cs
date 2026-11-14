@@ -73,14 +73,58 @@ public sealed class PageTests
     }
 
     [Fact]
-    public async Task A_message_without_a_sender_says_the_accounts_sender_is_shown()
+    public async Task A_message_without_sender_fields_says_the_sender_setting_decides()
     {
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
         using var page = await Page(emulator, $"?id={id}");
 
-        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request set no sender, so the account's sender is shown.");
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request has no sender field, so the user's Sender setting decides.");
+    }
+
+    [Fact]
+    public async Task A_field_TellusTalk_chose_without_a_source_is_explained()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","subject":"Probe"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request named no source, so TellusTalk chose subject.");
+    }
+
+    [Fact]
+    public async Task An_empty_field_without_a_source_is_explained_as_showing_the_reply_number()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","subject":""}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request named no source and subject is empty, so the reply number is shown.");
+    }
+
+    [Fact]
+    public async Task Replysms_is_explained_as_showing_the_reply_number()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"replysms"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().Contain("The request asked for replysms, so the reply number is shown.");
+    }
+
+    [Fact]
+    public async Task A_named_source_with_its_value_has_no_note()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":"Probe"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail")!.TextContent.Should().NotContain("The request named").And.NotContain("The request asked").And.NotContain("The request has");
     }
 
     [Fact]
