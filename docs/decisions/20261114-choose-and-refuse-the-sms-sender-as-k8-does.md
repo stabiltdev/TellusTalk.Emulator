@@ -44,7 +44,8 @@ in production.
 
 - **Good:** a client sees the sender and the refusals it will see in production.
 - **Bad:** `sender.source` can now be `subject`, `text` or `number` for a request without a source, a change to the read
-  API's contract; the warnings `originator-missing` and `originator-source-invalid` are gone; a test that sent a
-  `null` sender field is refused. The type of every other field stays unchecked.
+  API's contract; the warnings `originator-missing` and `originator-source-invalid` are gone; a request with a `null`
+  sender field, which a client's serializer may write for a field it leaves out, is refused. The type of every other
+  field stays unchecked.
 - **Follow-up:** which refusal wins when a request breaks several rules, and `null` in other fields, wait for a probe
   round.

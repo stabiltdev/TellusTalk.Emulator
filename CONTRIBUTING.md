@@ -8,8 +8,8 @@ after goes a long way.
 - **A bug:** what you sent, what the emulator answered, and what you expected. Leave out credentials and anything that
   identifies a person.
 - **Something TellusTalk does differently:** the most useful report of all. The emulator follows what TellusTalk was
-  seen to do, and [docs/k8-behaviour.md](docs/k8-behaviour.md) lists what it has not been seen to do yet. Say what you sent to TellusTalk and what came
-  back, with the same care for credentials and personal data.
+  seen to do, and [docs/k8-behaviour.md](docs/k8-behaviour.md) lists what it has not been seen to do yet. Say what you
+  sent to TellusTalk and what came back, with the same care for credentials and personal data.
 - **A larger change:** open an issue before the pull request, so the approach can be agreed before the work is done.
 
 ## Pull requests

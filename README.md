@@ -34,7 +34,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
 | Storage | In memory | Persistence: a restart empties the lists |
-| Failures | TellusTalk's own `401`, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
+| Failures | TellusTalk's own `401` and `400` sender refusals, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
 
 ## Running it
 
@@ -143,9 +143,10 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 The emulator refuses:
 
 - what TellusTalk refuses, each with TellusTalk's own text as `text/html`: a request without credentials, or with
-  malformed ones, with `401`; and with `400`, a sender field that is null or not a string
-  (`Invalid subject not a string: None`), an `sms_originator_source` other than `replysms`, `text`, `number` or
-  `subject`, and a source of `subject`, `text` or `number` without its value (`subject`, `sms_originator_text` or
+  malformed ones, with `401`; and with `400`, a sender field (`subject`, `sms_originator_source`,
+  `sms_originator_text` or `sms_originator_number`) that is null or not a string (`Invalid subject not a string: None`),
+  an `sms_originator_source` other than `replysms`, `text`, `number` or `subject`, matched exactly, case included, and a
+  source of `subject`, `text` or `number` without its value (`subject`, `sms_originator_text` or
   `sms_originator_number`, absent or empty). They are checked in that order, which TellusTalk has not been seen to
   settle, and before the emulator's own limits;
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
@@ -325,8 +326,8 @@ emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any se
 ## Behaviour that follows the specification, not observation
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its
-[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html). [docs/k8-behaviour.md](docs/k8-behaviour.md)
-lists what was observed, with the dates, and what was not.
+[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html).
+[docs/k8-behaviour.md](docs/k8-behaviour.md) lists what was observed, with the dates, and what was not.
 
 ## Building
 

@@ -48,13 +48,13 @@ from PTS's range for fiction, and no account is named.
 
 ### The sender
 
-- **2026-11-07:** a send without sender fields → the phone shows the account's configured sender, not the
-  specification's `replysms` default.
+- **2026-11-07:** a send without sender fields → the phone did not show the specification's `replysms` default; it
+  showed what the account's Sender setting said (see the user's Sender setting below).
 
 ### The user's Sender setting
 
-TellusTalk's user setting Sender (Settings, SMS) offers Reply SMS, Number, Short code, Text and Subject. Reply SMS is
-the default. The reply number is the two-way number TellusTalk assigns the account; it is no setting.
+As of 2026-11-14, TellusTalk's user setting Sender (Settings, SMS) offers Reply SMS, Number, Short code, Text and
+Subject. Reply SMS is the default. The reply number is the two-way number TellusTalk assigns the account; it is no setting.
 
 - **2026-11-14:** a send without sender fields, with the user's Sender at Reply SMS or at Subject → the phone shows the
   reply number.
