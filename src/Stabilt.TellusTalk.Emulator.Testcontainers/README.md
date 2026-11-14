@@ -23,7 +23,7 @@ test asserts with, `api/v1/messages`.
 | Method | Sets |
 |---|---|
 | `WithAccountSender(sender)` | The sender the TellusTalk account is configured with, shown when a request sets none |
-| `WithFailingNumbers(numbers)` | The numbers whose delivery reports say the operator could not deliver |
+| `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |
 | `WithReportDelay(delay)` | How long after a message is sent, or falls due, its delivery report goes out |
 | `WithRetentionLimit(limit)` | How many messages the emulator keeps |
 
