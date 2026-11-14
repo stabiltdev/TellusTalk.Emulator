@@ -63,6 +63,19 @@ the default. The reply number is the two-way number TellusTalk assigns the accou
 - **2026-11-14:** `sms_originator_source: replysms` with the user's Sender at Reply SMS, and again at Text → the phone
   shows the reply number both times.
 
+### Choosing the sender without a source
+
+Observed with the user's Sender at Reply SMS unless it says otherwise.
+
+- **2026-11-14:** `subject` alone → the phone shows the subject. `sms_originator_text` alone shows that text, also with
+  the user's Sender at Text, and `sms_originator_number` alone shows that number.
+- **2026-11-14:** `subject` beside `sms_originator_text`, and all three fields → the phone shows the subject.
+  `sms_originator_text` beside `sms_originator_number` → it shows the text.
+- **2026-11-14:** source `subject` beside `subject` → the phone shows the subject.
+- **2026-11-14:** `subject: ""` with the user's Sender at Text → the phone shows the reply number. So it does for
+  `sms_originator_text: ""` beside `sms_originator_number`, for `subject: ""` beside `sms_originator_text`, and for
+  `sms_originator_number: ""` alone. The empty field takes its place in the order and then shows the reply number.
+
 ### Sender fields K8 refuses
 
 Each refusal is a `400` with `Content-Type: text/html; charset=utf-8`, the same headers as every other answer, and the

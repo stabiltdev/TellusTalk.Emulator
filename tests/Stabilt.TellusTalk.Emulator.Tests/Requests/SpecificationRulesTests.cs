@@ -37,23 +37,25 @@ public sealed class SpecificationRulesTests
     }
 
     [Fact]
+    public void A_subject_over_eleven_characters_chosen_without_a_source_is_warned_about()
+    {
+        SpecificationRules.Check(Plain with { Subject = "AcmeMessages" })
+            .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
+                warning.Code == WarningCodes.SubjectTooLong && warning.Field == "subject");
+    }
+
+    [Fact]
+    public void A_long_subject_beside_a_sender_text_chosen_without_a_source_is_not_warned_about_as_the_sender()
+    {
+        SpecificationRules.Check(Plain with { OriginatorSource = "text", OriginatorText = "Probe", Subject = "AcmeMessages" })
+            .Should().BeEmpty();
+    }
+
+    [Fact]
     public void A_sender_number_that_is_not_plus_and_digits_is_warned_about()
     {
         SpecificationRules.Check(Plain with { OriginatorSource = "number", OriginatorNumber = "0701740605" })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.OriginatorNumberInvalid);
-    }
-
-    [Fact]
-    public void A_single_thread_with_another_source_than_replysms_is_warned_about()
-    {
-        SpecificationRules.Check(Plain with { SingleThread = true, OriginatorSource = "text", OriginatorText = "Probe" })
-            .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.SingleThreadWithoutReplySms);
-    }
-
-    [Fact]
-    public void A_single_thread_without_a_source_is_not_warned_about_since_replysms_is_the_default()
-    {
-        SpecificationRules.Check(Plain with { SingleThread = true }).Should().BeEmpty();
     }
 
     [Fact]

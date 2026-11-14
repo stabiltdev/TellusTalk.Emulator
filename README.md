@@ -165,9 +165,9 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `to-spaces-removed` | Spaces in a recipient's number; TellusTalk removes them, and so does the emulator. |
 | `to-not-digits` | A recipient that is not `+` followed by digits. |
 | `originator-text-too-long` | `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
-| `subject-too-long` | `subject` as the sender, over 11 characters. |
+| `subject-too-long` | `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
 | `originator-number-invalid` | `sms_originator_number` that is not `+` followed by digits. |
-| `single-thread-without-replysms` | `sms_single_thread` with another source than `replysms`. |
+| `single-thread-without-replysms` | `sms_single_thread` when the source that decided the sender is not `replysms`. |
 | `character-set-invalid` | An `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
 | `format-deprecated` | `sms_format`, which `sms_character_set` replaces. |
 | `binary-without-udh` | A binary SMS without `sms_udh`. |
@@ -278,8 +278,9 @@ A message:
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
   sends to them and `job_size` counts them, but the emulator catches SMS only.
-- `sender.source` is the source the request asked for, or `account` when it asked for none; `fromAccount` says the
-  shown sender is the account's.
+- `sender.source` is the source the request named, else the field TellusTalk chose (`subject`, `text` or `number`),
+  else `account` when the settings decided; whether the request named it is in `fields`. `fromAccount` says the shown
+  sender came from the settings or the reply number rather than from the request.
 - `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and each
   `--LINK_VIEW--` replaced by a short link in the form of the specification's examples, `https://ebox.nu/r_xxxxxx/0`
   and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each with its `kind`, `redirect`

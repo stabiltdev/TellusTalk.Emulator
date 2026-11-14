@@ -80,6 +80,21 @@ public sealed class ReadApiTests
     }
 
     [Fact]
+    public async Task A_sender_TellusTalk_chose_names_its_field_as_the_source()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","subject":"Acme"}""");
+
+        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+
+        var sender = message.RootElement.GetProperty("sender");
+        sender.GetProperty("shown").GetString().Should().Be("Acme");
+        sender.GetProperty("kind").GetString().Should().Be("name");
+        sender.GetProperty("source").GetString().Should().Be("subject");
+        sender.GetProperty("fromAccount").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_scheduled_state_Unicode_a_number_sender_and_e_mail_and_SMS_addresses_are_written_in_lower_case()
     {
         await using var emulator = new EmulatorFactory();

@@ -74,6 +74,78 @@ public sealed class SenderResolverTests
         Resolve(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe12" }).Display.Should().Be("ProbeProbe12");
     }
 
+    [Fact]
+    public void Without_a_source_the_subject_is_shown()
+    {
+        Resolve(Plain with { Subject = "SubjField" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender("SubjField", SenderKind.Name, "subject", FromAccount: false));
+    }
+
+    [Fact]
+    public void Without_a_source_the_sender_text_is_shown()
+    {
+        Resolve(Plain with { OriginatorText = "TextField" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender("TextField", SenderKind.Name, "text", FromAccount: false));
+    }
+
+    [Fact]
+    public void Without_a_source_a_sender_number_is_shown()
+    {
+        Resolve(Plain with { OriginatorNumber = "+46701740699" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender("+46701740699", SenderKind.Number, "number", FromAccount: false));
+    }
+
+    [Fact]
+    public void Without_a_source_the_subject_comes_before_the_text_and_the_number()
+    {
+        var settings = Settings(SmsSenderKind.Text, "Setting");
+
+        Resolve(Plain with { Subject = "SubjField", OriginatorText = "TextField" }, settings).Display.Should().Be("SubjField");
+        Resolve(Plain with { Subject = "SubjField", OriginatorText = "TextField", OriginatorNumber = "+46701740699" }, settings)
+            .Display.Should().Be("SubjField");
+    }
+
+    [Fact]
+    public void Without_a_source_the_text_comes_before_the_number()
+    {
+        Resolve(Plain with { OriginatorText = "TextField", OriginatorNumber = "+46701740699" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender("TextField", SenderKind.Name, "text", FromAccount: false));
+    }
+
+    [Theory]
+    [InlineData("", null, null, "subject")]
+    [InlineData(null, "", "+46701740699", "text")]
+    [InlineData("", "TextField", null, "subject")]
+    [InlineData(null, null, "", "number")]
+    public void An_empty_field_without_a_source_takes_its_place_and_shows_the_reply_number(
+        string? subject, string? text, string? number, string source)
+    {
+        Resolve(Plain with { Subject = subject, OriginatorText = text, OriginatorNumber = number }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, source, FromAccount: true));
+    }
+
+    [Fact]
+    public void A_named_replysms_shows_the_reply_number_beside_a_subject()
+    {
+        Resolve(Plain with { OriginatorSource = "replysms", Subject = "SubjField" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "replysms", FromAccount: true));
+    }
+
+    [Theory]
+    [InlineData(null, null, null, null)]
+    [InlineData("replysms", "Acme", null, "replysms")]
+    [InlineData(null, "Acme", "Probe", "subject")]
+    [InlineData(null, null, "Probe", "text")]
+    [InlineData("text", null, "Probe", "text")]
+    public void The_request_source_is_the_named_one_else_the_first_field_present(
+        string? named, string? subject, string? text, string? expected)
+    {
+        SenderResolver.RequestSource(Plain with { OriginatorSource = named, Subject = subject, OriginatorText = text })
+            .Should().Be(expected);
+    }
+
+    private static ShownSender Resolve(SendRequest request, SenderSettings settings) => SenderResolver.Resolve(request, settings);
+
     private static ShownSender Resolve(SendRequest request) => SenderResolver.Resolve(request, Settings(SmsSenderKind.ReplySms, null));
 
     private static SenderSettings Settings(SmsSenderKind kind, string? value) => new(new SmsSender(kind, value), ReplyNumber);

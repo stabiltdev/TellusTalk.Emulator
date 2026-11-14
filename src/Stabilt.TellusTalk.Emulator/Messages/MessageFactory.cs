@@ -22,6 +22,11 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
         var messageWarnings = new List<Warning>();
         var sender = SenderResolver.Resolve(request, _senderSettings);
 
+        if (SingleThreadWarning(request) is { } singleThread)
+        {
+            messageWarnings.Add(singleThread);
+        }
+
         var characterSet = SmsPartsCalculator.Choose(text, request.CharacterSet);
         if (string.Equals(request.CharacterSet, "gsm", StringComparison.Ordinal) &&
             !text.All(c => GsmAlphabet.IsBasic(c) || GsmAlphabet.IsExtension(c)))
@@ -68,5 +73,29 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             .ToList();
 
         return new SendJob(jobId, size, messages);
+    }
+
+    /// <summary>The source that decided the sender is the request's, or the user's Sender setting when the request holds none.</summary>
+    private Warning? SingleThreadWarning(SendRequest request)
+    {
+        if (!request.SingleThread)
+        {
+            return null;
+        }
+
+        var source = SenderResolver.RequestSource(request) ?? _senderSettings.Sender.Kind switch
+        {
+            SmsSenderKind.ReplySms => "replysms",
+            SmsSenderKind.Text => "text",
+            SmsSenderKind.Number => "number",
+            _ => "subject",
+        };
+
+        return source is "replysms"
+            ? null
+            : new Warning(
+                WarningCodes.SingleThreadWithoutReplySms,
+                "sms_single_thread",
+                $"sms_single_thread requires the sender source replysms, not '{source}'.");
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using Stabilt.TellusTalk.Emulator.Senders;
 
 namespace Stabilt.TellusTalk.Emulator.Requests;
 
@@ -27,7 +28,7 @@ internal static class SpecificationRules
                 $"The sender name '{text}' has {text.Length} characters; the specification allows {MaxSenderNameLength}, and TellusTalk passes it on whole.");
         }
 
-        if (IsSource(request, "subject") && request.Subject is { Length: > MaxSenderNameLength } subject)
+        if (SenderResolver.RequestSource(request) is "subject" && request.Subject is { Length: > MaxSenderNameLength } subject)
         {
             yield return new Warning(
                 WarningCodes.SubjectTooLong,
@@ -41,14 +42,6 @@ internal static class SpecificationRules
                 WarningCodes.OriginatorNumberInvalid,
                 "sms_originator_number",
                 $"The sender number '{number}' is not '+' followed by digits, as the specification asks.");
-        }
-
-        if (request.SingleThread && request.OriginatorSource is { } threadSource && !IsSource(request, "replysms"))
-        {
-            yield return new Warning(
-                WarningCodes.SingleThreadWithoutReplySms,
-                "sms_single_thread",
-                $"sms_single_thread requires the sender source replysms, not '{threadSource}'.");
         }
     }
 
@@ -120,9 +113,6 @@ internal static class SpecificationRules
                 $"'{scheduled}' is not an ISO 8601 date and time; the emulator sends the message at once.");
         }
     }
-
-    private static bool IsSource(SendRequest request, string source) =>
-        string.Equals(request.OriginatorSource, source, StringComparison.Ordinal);
 
     private static bool IsHex(string text) =>
         text.Length % 2 == 0 && text.All(char.IsAsciiHexDigit);
