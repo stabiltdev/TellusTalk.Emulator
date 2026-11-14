@@ -83,19 +83,21 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             return null;
         }
 
-        var source = SenderResolver.RequestSource(request) ?? _senderSettings.Sender.Kind switch
+        if (SenderResolver.RequestSource(request) is { } source)
         {
-            SmsSenderKind.ReplySms => "replysms",
-            SmsSenderKind.Text => "text",
-            SmsSenderKind.Number => "number",
-            _ => "subject",
-        };
+            return source is "replysms" ? null : RequiresReplySms($"the sender source replysms, not '{source}'");
+        }
 
-        return source is "replysms"
-            ? null
-            : new Warning(
-                WarningCodes.SingleThreadWithoutReplySms,
-                "sms_single_thread",
-                $"sms_single_thread requires the sender source replysms, not '{source}'.");
+        return _senderSettings.Sender.Kind switch
+        {
+            SmsSenderKind.ReplySms => null,
+            SmsSenderKind.Text => RequiresReplySms("the user's Sender setting to be replysms, not text"),
+            SmsSenderKind.Number => RequiresReplySms("the user's Sender setting to be replysms, not number"),
+            SmsSenderKind.Subject => RequiresReplySms("the user's Sender setting to be replysms, not subject"),
+            _ => throw new InvalidOperationException($"No single-thread rule for the Sender setting '{_senderSettings.Sender.Kind}'."),
+        };
     }
+
+    private static Warning RequiresReplySms(string requirement) =>
+        new(WarningCodes.SingleThreadWithoutReplySms, "sms_single_thread", $"sms_single_thread requires {requirement}.");
 }

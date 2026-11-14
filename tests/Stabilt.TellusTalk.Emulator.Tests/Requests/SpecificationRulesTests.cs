@@ -45,7 +45,7 @@ public sealed class SpecificationRulesTests
     }
 
     [Fact]
-    public void A_long_subject_beside_a_sender_text_chosen_without_a_source_is_not_warned_about_as_the_sender()
+    public void A_long_subject_beside_another_named_source_is_not_warned_about()
     {
         SpecificationRules.Check(Plain with { OriginatorSource = "text", OriginatorText = "Probe", Subject = "AcmeMessages" })
             .Should().BeEmpty();

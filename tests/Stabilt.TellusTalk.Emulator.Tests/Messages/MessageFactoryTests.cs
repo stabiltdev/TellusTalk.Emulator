@@ -138,6 +138,14 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
+    public void Single_thread_without_sender_fields_is_warned_about_when_the_sms_sender_is_subject()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_single_thread":true}""", new EmulatorOptions { SmsSender = "subject" }).Messages.Single();
+
+        message.Warnings.Should().ContainSingle().Which.Text.Should().Contain("Sender setting");
+    }
+
+    [Fact]
     public void Single_thread_without_sender_fields_is_not_warned_about_when_the_sms_sender_is_replysms()
     {
         var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_single_thread":true}""").Messages.Single();
