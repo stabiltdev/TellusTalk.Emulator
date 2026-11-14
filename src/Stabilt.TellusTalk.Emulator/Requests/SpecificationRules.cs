@@ -11,9 +11,6 @@ internal static class SpecificationRules
 {
     public const int MaxSenderNameLength = 11;
 
-    public static FrozenSet<string> OriginatorSources { get; } =
-        new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
-
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
 

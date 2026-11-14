@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 
 namespace Stabilt.TellusTalk.Emulator.Requests;
@@ -9,6 +10,9 @@ namespace Stabilt.TellusTalk.Emulator.Requests;
 internal static class SenderRefusals
 {
     private const string UnknownSourceSuffix = "; must be one of frozenset({'replysms', 'number', 'text', 'subject'})";
+
+    private static readonly FrozenSet<string> Sources =
+        new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>The first rule the body breaks, as K8 words it, or null.</summary>
     public static string? Find(SendRequestBody body)
@@ -35,7 +39,7 @@ internal static class SenderRefusals
         }
 
         var source = body.SmsOriginatorSource.GetString()!;
-        if (!SpecificationRules.OriginatorSources.Contains(source))
+        if (!Sources.Contains(source))
         {
             return $"Invalid sms_originator_source: {source}{UnknownSourceSuffix}";
         }

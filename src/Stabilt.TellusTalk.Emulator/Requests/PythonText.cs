@@ -22,9 +22,18 @@ internal static class PythonText
         JsonValueKind.False => "False",
         JsonValueKind.Number => Number(value.GetRawText()),
         JsonValueKind.String => Quoted(value.GetString()!),
-        JsonValueKind.Array => "[" + string.Join(", ", value.EnumerateArray().Select(Repr)) + "]",
+        JsonValueKind.Array => Array(value),
         _ => Dictionary(value),
     };
+
+    private static string Array(JsonElement value)
+    {
+        var items = value
+            .EnumerateArray()
+            .Select(Repr);
+
+        return "[" + string.Join(", ", items) + "]";
+    }
 
     private static string Dictionary(JsonElement value)
     {
@@ -43,14 +52,18 @@ internal static class PythonText
             }
         }
 
-        return "{" + string.Join(", ", entries.Select(entry => $"{Quoted(entry.Key)}: {entry.Text}")) + "}";
+        var rendered = entries.Select(entry => $"{Quoted(entry.Key)}: {entry.Text}");
+
+        return "{" + string.Join(", ", rendered) + "}";
     }
 
     private static string Number(string raw)
     {
-        if (raw.AsSpan().IndexOfAny('.', 'e', 'E') < 0)
+        if (raw.IndexOfAny(['.', 'e', 'E']) < 0)
         {
-            return BigInteger.Parse(raw, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
+            var integer = BigInteger.Parse(raw, CultureInfo.InvariantCulture);
+
+            return integer.ToString(CultureInfo.InvariantCulture);
         }
 
         return Float(double.Parse(raw, CultureInfo.InvariantCulture));
@@ -119,7 +132,8 @@ internal static class PythonText
             ? '"'
             : '\'';
 
-        var builder = new StringBuilder().Append(quote);
+        var builder = new StringBuilder();
+        builder.Append(quote);
         for (var index = 0; index < value.Length;)
         {
             if (!Rune.TryGetRuneAt(value, index, out var rune))
@@ -133,7 +147,9 @@ internal static class PythonText
             Escape(builder, rune, quote);
         }
 
-        return builder.Append(quote).ToString();
+        builder.Append(quote);
+
+        return builder.ToString();
     }
 
     private static void Escape(StringBuilder builder, Rune rune, char quote)
@@ -155,7 +171,8 @@ internal static class PythonText
             default:
                 if (rune.Value == quote)
                 {
-                    builder.Append('\\').Append(quote);
+                    builder.Append('\\');
+                    builder.Append(quote);
                 }
                 else if (IsPrintable(rune))
                 {
