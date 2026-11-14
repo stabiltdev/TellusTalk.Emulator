@@ -16,7 +16,8 @@
 </head>
 <body>
 <div class="tt">
-    <TopBar Scheduled="@IsScheduled" Search="@SearchText" SentCount="@Store.Count(MessageState.Sent)" ScheduledCount="@Store.Count(MessageState.Scheduled)" />
+    <TopBar Tab="@CurrentTab" Search="@SearchText" SentCount="@Store.Count(MessageState.Sent)" ScheduledCount="@Store.Count(MessageState.Scheduled)"
+            BlockedCount="@Store.Count(MessageState.Blocked)" />
     <main class="tt-body">
         <nav id="list" class="tt-list" aria-label="Messages">
             @foreach (var message in _messages)
@@ -50,7 +51,7 @@
     private IReadOnlyList<Message> _messages = [];
     private Message? _selected;
 
-    /// <summary><c>sent</c>, the default, or <c>scheduled</c>.</summary>
+    /// <summary><c>sent</c>, the default, <c>scheduled</c> or <c>blocked</c>.</summary>
     [Parameter]
     public string? Tab { get; set; }
 
@@ -60,18 +61,33 @@
     [Parameter]
     public string? Search { get; set; }
 
-    private bool IsScheduled => string.Equals(Tab, "scheduled", StringComparison.Ordinal);
+    private string CurrentTab => Tab switch
+    {
+        "scheduled" => "scheduled",
+        "blocked" => "blocked",
+        _ => "sent",
+    };
+
+    private bool IsScheduled => CurrentTab == "scheduled";
 
     private string? SearchText => string.IsNullOrWhiteSpace(Search) ? null : Search;
 
     private string EmptyText =>
         SearchText is not null ? "No message matches the search."
-        : IsScheduled ? "Nothing is scheduled."
+        : CurrentTab == "scheduled" ? "Nothing is scheduled."
+        : CurrentTab == "blocked" ? "Nothing is held back."
         : "No messages yet. Send one to POST /send/v1 and it shows up here.";
 
     protected override void OnParametersSet()
     {
-        _messages = Store.List(IsScheduled ? MessageState.Scheduled : MessageState.Sent, search: SearchText);
+        var state = CurrentTab switch
+        {
+            "scheduled" => MessageState.Scheduled,
+            "blocked" => MessageState.Blocked,
+            _ => MessageState.Sent,
+        };
+
+        _messages = Store.List(state, search: SearchText);
         _selected = _messages.FirstOrDefault(message => string.Equals(message.Id, SelectedId, StringComparison.Ordinal))
                     ?? _messages.FirstOrDefault();
     }
@@ -96,7 +112,8 @@
 
     private RenderFragment Detail(Message message) =>
         @<div class="tt-message">
-            <PhonePreview Sender="@message.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)" />
+            <PhonePreview Sender="@message.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)"
+                          Note="@(message.DuplicateOf is null ? null : "Not sent")" />
             <div class="tt-info">
                 <h2 class="tt-title">To @message.To.Number</h2>
                 <p class="tt-sub">From @message.Sender.Display, shown as @(message.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
@@ -108,6 +125,10 @@
                     {
                         <text> Due </text><time datetime="@PageTime.Iso(due)">@PageTime.Fallback(due)</time><text>.</text>
                     }</p>
+                @if (message.DuplicateOf is { } duplicateOf)
+                {
+                    @DuplicateLine(duplicateOf)
+                }
                 @if (message.Warnings.Count > 0)
                 {
                     <ul class="tt-warnings" aria-label="Warnings">
@@ -186,7 +207,7 @@
                     @foreach (var attempt in attempts)
                     {
                         <li class="@(attempt.Sent ? null : "unsent")">
-                            <span class="tt-status @(attempt.Status == ReportStatus.Failed ? "failed" : "delivered")">@(attempt.Status == ReportStatus.Failed ? "Failed" : "Delivered")</span>
+                            <span class="tt-status @(attempt.Status == ReportStatus.Failed ? "failed" : attempt.Status == ReportStatus.Blocked ? "blocked" : "delivered")">@(attempt.Status == ReportStatus.Failed ? "Failed" : attempt.Status == ReportStatus.Blocked ? "Blocked" : "Delivered")</span>
                             <code>@attempt.Target</code>
                             <span class="outcome">@attempt.Outcome</span>
                             <time datetime="@PageTime.Iso(attempt.At)">@PageTime.Fallback(attempt.At)</time>
@@ -237,10 +258,16 @@
         ? @<code>@target</code>
         : @<text>the message's own page</text>;
 
+    /// <summary>The original may be scheduled, trimmed by the retention limit or deleted, so the link goes to the tab that lists it, if any.</summary>
+    private RenderFragment DuplicateLine(string originalId) =>
+        Store.Find(originalId) is { } original
+            ? @<p class="tt-sub">Held back as a duplicate of <a href="/?tab=@(original.StateAt(Time.GetUtcNow()) == MessageState.Scheduled ? "scheduled" : "sent")&id=@original.Id">@original.Id</a> (received <time datetime="@PageTime.Iso(original.ReceivedAt)">@PageTime.Fallback(original.ReceivedAt)</time>).</p>
+            : @<p class="tt-sub">Held back as a duplicate of @originalId.</p>;
+
     private string Link(Message message) =>
         SearchText is null
-            ? $"/?tab={(IsScheduled ? "scheduled" : "sent")}&id={message.Id}"
-            : $"/?tab={(IsScheduled ? "scheduled" : "sent")}&id={message.Id}&q={Uri.EscapeDataString(SearchText)}";
+            ? $"/?tab={CurrentTab}&id={message.Id}"
+            : $"/?tab={CurrentTab}&id={message.Id}&q={Uri.EscapeDataString(SearchText)}";
 
     private static string WarningCount(Message message) =>
         message.Warnings.Count == 1 ? "1 warning" : $"{message.Warnings.Count} warnings";

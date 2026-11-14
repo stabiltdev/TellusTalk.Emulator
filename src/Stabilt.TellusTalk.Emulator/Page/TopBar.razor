@@ -5,11 +5,12 @@
         TellusTalk Emulator
     </span>
     <nav id="tabs" class="tt-tabs" aria-label="Lists">
-        <a class="tt-tab @(Scheduled ? null : "on")" data-tab="sent" href="@TabLink("sent")" aria-current="@(Scheduled ? null : "page")">Sent<span class="count">@SentCount</span></a>
-        <a class="tt-tab @(Scheduled ? "on" : null)" data-tab="scheduled" href="@TabLink("scheduled")" aria-current="@(Scheduled ? "page" : null)">Scheduled<span class="count sched">@ScheduledCount</span></a>
+        <a class="tt-tab @(IsOn("sent") ? "on" : null)" data-tab="sent" href="@TabLink("sent")" aria-current="@(IsOn("sent") ? "page" : null)">Sent<span class="count">@SentCount</span></a>
+        <a class="tt-tab @(IsOn("scheduled") ? "on" : null)" data-tab="scheduled" href="@TabLink("scheduled")" aria-current="@(IsOn("scheduled") ? "page" : null)">Scheduled<span class="count sched">@ScheduledCount</span></a>
+        <a class="tt-tab @(IsOn("blocked") ? "on" : null)" data-tab="blocked" href="@TabLink("blocked")" aria-current="@(IsOn("blocked") ? "page" : null)">Blocked<span class="count blocked">@BlockedCount</span></a>
     </nav>
     <form id="search" class="tt-search" method="get" action="/" role="search">
-        <input type="hidden" name="tab" value="@(Scheduled ? "scheduled" : "sent")" />
+        <input type="hidden" name="tab" value="@Tab" />
         <input type="search" name="q" value="@Search" placeholder="Search number or text" aria-label="Search number or text" />
     </form>
     <button type="button" class="tt-clear" data-clear>Clear all</button>
@@ -21,8 +22,9 @@
 </header>
 
 @code {
+    /// <summary><c>sent</c>, <c>scheduled</c> or <c>blocked</c>.</summary>
     [Parameter]
-    public bool Scheduled { get; set; }
+    public string Tab { get; set; } = "sent";
 
     [Parameter]
     public string? Search { get; set; }
@@ -32,6 +34,11 @@
 
     [Parameter]
     public int ScheduledCount { get; set; }
+
+    [Parameter]
+    public int BlockedCount { get; set; }
+
+    private bool IsOn(string tab) => string.Equals(Tab, tab, StringComparison.Ordinal);
 
     private string TabLink(string tab) =>
         string.IsNullOrEmpty(Search) ? $"/?tab={tab}" : $"/?tab={tab}&q={Uri.EscapeDataString(Search)}";

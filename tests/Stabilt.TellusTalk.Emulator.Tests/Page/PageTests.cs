@@ -25,6 +25,112 @@ public sealed class PageTests
         page.Title.Should().Be("TellusTalk Emulator");
         page.QuerySelector("#tabs a[data-tab='sent'] .count")!.TextContent.Should().Be("2");
         page.QuerySelector("#tabs a[data-tab='scheduled'] .count")!.TextContent.Should().Be("0");
+        page.QuerySelector("#tabs a[data-tab='blocked'] .count")!.TextContent.Should().Be("0");
+    }
+
+    [Fact]
+    public async Task A_held_back_message_is_counted_on_the_blocked_tab_and_not_on_the_sent_tab()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator);
+
+        page.QuerySelector("#tabs a[data-tab='sent'] .count")!.TextContent.Should().Be("1");
+        page.QuerySelector("#tabs a[data-tab='blocked'] .count")!.TextContent.Should().Be("1");
+    }
+
+    [Fact]
+    public async Task The_blocked_tab_lists_held_back_messages_and_links_to_the_message_each_duplicates()
+    {
+        await using var emulator = new EmulatorFactory();
+        var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        var second = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        var row = page.QuerySelectorAll("#list a.tt-row").Should().ContainSingle().Subject;
+        row.GetAttribute("href").Should().Be($"/?tab=blocked&id={second}");
+        page.QuerySelector("#tabs a[data-tab='blocked']")!.ClassList.Should().Contain("on");
+        page.QuerySelector("form#search input[name='tab']")!.GetAttribute("value").Should().Be("blocked");
+        var detail = page.QuerySelector("#detail")!;
+        detail.TextContent.Should().Contain("Held back as a duplicate of");
+        detail.QuerySelector(".tt-phone .note")!.TextContent.Should().Be("Not sent");
+        detail.QuerySelector("a[href]")!.GetAttribute("href").Should().Be($"/?tab=sent&id={first}");
+    }
+
+    [Fact]
+    public async Task A_message_held_back_against_a_scheduled_send_links_to_the_scheduled_tab()
+    {
+        await using var emulator = new EmulatorFactory();
+        var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","scheduled_send_time":"2026-11-07T22:10:00Z"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        var link = page.QuerySelector("#detail a[href]")!;
+        link.GetAttribute("href").Should().Be($"/?tab=scheduled&id={first}");
+        link.TextContent.Should().Be(first);
+    }
+
+    [Fact]
+    public async Task A_message_held_back_against_a_deleted_send_shows_its_id_without_a_link()
+    {
+        await using var emulator = new EmulatorFactory();
+        var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        using var client = emulator.CreateClient();
+        using var deleted = await client.DeleteAsync(new Uri($"/api/v1/messages/{first}", UriKind.Relative), TestContext.Current.CancellationToken);
+        deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        var detail = page.QuerySelector("#detail")!;
+        detail.QuerySelector("a[href]").Should().BeNull();
+        Collapsed(detail.TextContent).Should().Contain($"Held back as a duplicate of {first}.");
+    }
+
+    [Fact]
+    public async Task The_detail_of_a_held_back_message_shows_when_its_original_was_received()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        emulator.Time.Advance(TimeSpan.FromSeconds(30));
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        var line = page.QuerySelectorAll("#detail .tt-sub").Single(paragraph => paragraph.TextContent.Contains("Held back", StringComparison.Ordinal));
+        line.QuerySelector("time")!.GetAttribute("datetime").Should().Be("2026-11-07T22:00:00Z");
+        Collapsed(line.TextContent).Should().EndWith("(received 22:00 UTC).");
+    }
+
+    [Fact]
+    public async Task An_empty_blocked_tab_says_nothing_is_held_back()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Nu"}""");
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        page.QuerySelector("#detail")!.TextContent.Trim().Should().Be("Nothing is held back.");
+    }
+
+    [Fact]
+    public async Task A_blocked_report_attempt_reads_blocked()
+    {
+        await using var emulator = new EmulatorFactory();
+        const string request = """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports"}""";
+        await Send(emulator, request);
+        await Send(emulator, request);
+        await emulator.Reports.WaitFor(1);
+
+        using var page = await PageWith(emulator, "?tab=blocked", "#reports .tt-status");
+
+        var status = page.QuerySelector("#reports .tt-status")!;
+        status.TextContent.Should().Be("Blocked");
+        status.ClassList.Should().Contain("blocked").And.NotContain("delivered");
     }
 
     [Fact]
@@ -408,6 +514,28 @@ public sealed class PageTests
         using var page = await Page(emulator, "?tab=scheduled");
 
         page.QuerySelector("#detail")!.TextContent.Trim().Should().Be("Nothing is scheduled.");
+    }
+
+    /// <summary>The report attempt is recorded after the post, so the page is read again for a bounded while.</summary>
+    private static async Task<IHtmlDocument> PageWith(EmulatorFactory emulator, string query, string selector)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            var page = await Page(emulator, query);
+            if (page.QuerySelector(selector) is not null)
+            {
+                return page;
+            }
+
+            page.Dispose();
+            if (clock.Elapsed > TimeSpan.FromSeconds(5))
+            {
+                throw new TimeoutException($"{selector} did not appear within five seconds.");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
+        }
     }
 
     private static async Task<IHtmlDocument> Page(EmulatorFactory emulator, string query = "")

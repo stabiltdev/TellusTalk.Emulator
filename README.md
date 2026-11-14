@@ -11,8 +11,8 @@ Not affiliated with TellusTalk.
 - Takes `POST /send/v1` the way TellusTalk's K8 platform does, for SMS, so an app runs its real TellusTalk client
   against it with only the base address changed.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
-- Keeps every SMS in memory and shows it on a page at `/`: a list of the sent and the scheduled, and each SMS as the
-  recipient's phone shows it, with the parts it splits into.
+- Keeps every SMS in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, and each
+  SMS as the recipient's phone shows it, with the parts it splits into.
 - Serves what it caught to automated tests through a read API under `/api/v1/`.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in a message's `report_to`: delivered, or
   failed for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
