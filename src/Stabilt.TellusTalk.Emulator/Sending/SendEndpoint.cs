@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Ids;
 using Stabilt.TellusTalk.Emulator.Messages;
+using Stabilt.TellusTalk.Emulator.Reports;
 using Stabilt.TellusTalk.Emulator.Requests;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
@@ -32,7 +33,8 @@ internal sealed class SendEndpoint : IEndpoint
         TimeProvider time,
         MessageFactory factory,
         MessageStore store,
-        SendFailures failures)
+        SendFailures failures,
+        HeldBackReports heldBackReports)
     {
         var response = context.Response;
         TellusTalkHeaders.Apply(response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
@@ -80,18 +82,42 @@ internal sealed class SendEndpoint : IEndpoint
                     break;
 
                 case Accepted accepted:
-                    // A number's failures need the recipients, so they are spent once the request is read.
-                    if (failures.TrySpend(accepted.Request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)
-                    {
-                        await Fail(context, time, numberFailure);
-                        break;
-                    }
-
-                    var job = factory.Create(accepted.Request, user.Identity!.Name!, body);
-                    store.Add(job.Messages);
-                    await Answer(response, job);
+                    await Accept(context, accepted.Request, user.Identity!.Name!, body, time, factory, store, failures, heldBackReports);
                     break;
             }
+        }
+    }
+
+    private static async Task Accept(
+        HttpContext context,
+        SendRequest request,
+        string userName,
+        string body,
+        TimeProvider time,
+        MessageFactory factory,
+        MessageStore store,
+        SendFailures failures,
+        HeldBackReports heldBackReports)
+    {
+        // A number's failures need the recipients, so they are spent once the request is read.
+        if (failures.TrySpend(request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)
+        {
+            await Fail(context, time, numberFailure);
+
+            return;
+        }
+
+        var job = factory.Create(request, userName, body);
+        var stored = store.Add(job.Messages);
+        await Answer(context.Response, job);
+
+        var heldBack = stored
+            .Where(message => message.DuplicateOf is not null)
+            .Where(message => message.Request.ReportTo.Count > 0);
+
+        foreach (var message in heldBack)
+        {
+            heldBackReports.Enqueue(message);
         }
     }
 

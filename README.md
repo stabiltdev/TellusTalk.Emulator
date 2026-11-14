@@ -15,7 +15,7 @@ Not affiliated with TellusTalk.
   recipient's phone shows it, with the parts it splits into.
 - Serves what it caught to automated tests through a read API under `/api/v1/`.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in a message's `report_to`: delivered, or
-  failed for a number set to fail, and on request from the page or the read API.
+  failed for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
 - Holds back a send that duplicates one the same user made in the five minutes before, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
@@ -231,6 +231,11 @@ A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21
 sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
 itself carries the message alone. `text_linebreaksbr`, and `html` when the request has none of its own, write each line
 break as `<br>` followed by the line break.
+
+A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
+`"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,
+`"failed_reason": "txtFAILED_REASON: txtDUPLICATE_MESSAGE, Duplicate of message <id> sent within 5 minutes."` and
+`"failed_details": "Duplicate of message <id> sent within 5 minutes."`, where `<id>` is the message it duplicates.
 
 The request carries `Content-Type: application/json`, `Accept: */*`, a `webpages-request-id` and an
 `x-webpages-request-id` with the same value, and every header in the address's settings, such as

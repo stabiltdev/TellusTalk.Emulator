@@ -167,6 +167,29 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task A_held_back_send_is_answered_as_any_send()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var first = await emulator.Send(Probe);
+        using var firstAnswer = JsonDocument.Parse(await Body(first));
+
+        using var second = await emulator.Send(Probe);
+
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var answer = JsonDocument.Parse(await Body(second));
+        var root = answer.RootElement;
+        root.EnumerateObject()
+            .Select(property => property.Name)
+            .Should().Equal("job_id", "job_uuid", "log_uuid", "job_size");
+        var jobId = root.GetProperty("job_id").GetString();
+        jobId.Should().MatchRegex(Uuid1).And.NotBe(firstAnswer.RootElement.GetProperty("job_id").GetString());
+        root.GetProperty("job_uuid").GetString().Should().Be(jobId);
+        root.GetProperty("log_uuid").GetString().Should().Be(jobId);
+        root.GetProperty("job_size").GetInt32().Should().Be(1);
+        Store(emulator).List(MessageState.Blocked).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task An_unset_DateTime_as_scheduled_time_is_sent_at_once()
     {
         await using var emulator = new EmulatorFactory();

@@ -64,6 +64,32 @@ public sealed class DeliveryReportTests
     }
 
     [Fact]
+    public void A_blocked_report_names_the_message_it_duplicates_and_has_no_report_time()
+    {
+        var message = Message("""{"to":"sms:+46701740605","text":"Hej","echo":{"probe":"D1"}}""") with { DuplicateOf = "c21c0924e06111f19631aa670948fe16" };
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Blocked, _time.GetUtcNow()));
+
+        report.RootElement
+            .EnumerateObject()
+            .Select(field => field.Name)
+            .Should().Equal(
+                "log_status", "log_status_code", "failed_reason", "article_id", "to_protocol", "to_address", "to_name",
+                "from_address", "from_name", "subject", "text", "html", "echo", "quantity", "log_uuid", "conversation_uuid",
+                "job_uuid", "report_time", "failed_details", "text_linebreaksbr", "template_optional_line");
+
+        var root = report.RootElement;
+        root.GetProperty("log_status").GetString().Should().Be("txtBLOCKED");
+        root.GetProperty("log_status_code").GetInt32().Should().Be(1);
+        root.GetProperty("failed_reason").GetString().Should().Be("txtFAILED_REASON: txtDUPLICATE_MESSAGE, Duplicate of message c21c0924e06111f19631aa670948fe16 sent within 5 minutes.");
+        root.GetProperty("failed_details").GetString().Should().Be("Duplicate of message c21c0924e06111f19631aa670948fe16 sent within 5 minutes.");
+        root.GetProperty("report_time").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("article_id").GetString().Should().Be("SMS_Sent");
+        root.GetProperty("to_address").GetString().Should().Be("sms:+46701740605");
+        root.GetProperty("echo").GetProperty("probe").GetString().Should().Be("D1");
+    }
+
+    [Fact]
     public void Quantity_counts_the_parts()
     {
         var text = "Rad ett\nrad två " + new string('a', 160);
