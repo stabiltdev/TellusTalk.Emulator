@@ -41,7 +41,7 @@ public sealed class ReportFlowTests
     public async Task The_failing_numbers_are_a_setting()
     {
         await using var emulator = new EmulatorFactory();
-        emulator.Settings["Emulator:FailingNumbers"] = "+46701740605, +46701740606";
+        emulator.Settings["Emulator:FailingNumbers"] = "+46701740606, +46701740605";
         await Send(emulator, WithReport);
 
         using var body = JsonDocument.Parse((await StepUntilReported(emulator, 1)).Single().Body);
