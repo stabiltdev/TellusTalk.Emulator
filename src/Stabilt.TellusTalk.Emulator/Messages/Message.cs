@@ -26,7 +26,13 @@ internal sealed record Message(
     IReadOnlyList<Warning> Warnings,
     string RawRequest)
 {
-    public DateTimeOffset ShownAt => DueAt ?? ReceivedAt;
+    /// <summary>The id of the earlier message this one duplicates, which held it back; <c>null</c> for a message that went out.</summary>
+    public string? DuplicateOf { get; init; }
 
-    public MessageState StateAt(DateTimeOffset now) => DueAt > now ? MessageState.Scheduled : MessageState.Sent;
+    /// <summary>A held-back message never falls due, so it is shown from when it arrived.</summary>
+    public DateTimeOffset ShownAt => DuplicateOf is null ? DueAt ?? ReceivedAt : ReceivedAt;
+
+    public MessageState StateAt(DateTimeOffset now) =>
+        DuplicateOf is not null ? MessageState.Blocked :
+        DueAt > now ? MessageState.Scheduled : MessageState.Sent;
 }

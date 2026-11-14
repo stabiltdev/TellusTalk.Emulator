@@ -27,6 +27,7 @@ TellusTalk client a user name and password; the emulator takes any. The dashboar
 | `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |
 | `WithReportDelay(delay)` | How long after a message is sent, or falls due, its delivery report goes out |
 | `WithRetentionLimit(limit)` | How many messages the emulator keeps |
+| `WithDuplicateBlocking(enabled)` | Whether a send that duplicates one from the five minutes before is held back, as TellusTalk does; on by default |
 
 The package runs the emulator image of its own version, `ghcr.io/stabiltdev/tellustalk-emulator:<version>`;
 `WithImageTag` picks another.

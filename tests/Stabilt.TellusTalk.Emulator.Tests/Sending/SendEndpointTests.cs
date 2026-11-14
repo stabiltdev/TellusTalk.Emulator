@@ -167,6 +167,29 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task A_held_back_send_is_answered_as_any_send()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var first = await emulator.Send(Probe);
+        using var firstAnswer = JsonDocument.Parse(await Body(first));
+
+        using var second = await emulator.Send(Probe);
+
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var answer = JsonDocument.Parse(await Body(second));
+        var root = answer.RootElement;
+        root.EnumerateObject()
+            .Select(property => property.Name)
+            .Should().Equal("job_id", "job_uuid", "log_uuid", "job_size");
+        var jobId = root.GetProperty("job_id").GetString();
+        jobId.Should().MatchRegex(Uuid1).And.NotBe(firstAnswer.RootElement.GetProperty("job_id").GetString());
+        root.GetProperty("job_uuid").GetString().Should().Be(jobId);
+        root.GetProperty("log_uuid").GetString().Should().Be(jobId);
+        root.GetProperty("job_size").GetInt32().Should().Be(1);
+        Store(emulator).List(MessageState.Blocked).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task An_unset_DateTime_as_scheduled_time_is_sent_at_once()
     {
         await using var emulator = new EmulatorFactory();
@@ -212,12 +235,33 @@ public sealed class SendEndpointTests
 
         var responses = await Task.WhenAll(Enumerable
             .Range(0, 50)
-            .Select(_ => emulator.Send(Probe)));
+            .Select(index => emulator.Send($$"""{"to":"sms:+46701740605","text":"Probe {{index}}"}""")));
 
         responses.Should().AllSatisfy(response => response.StatusCode.Should().Be(HttpStatusCode.OK));
         Store(emulator).List()
             .Select(message => message.Id)
             .Should().HaveCount(50).And.OnlyHaveUniqueItems();
+
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Of_identical_sends_made_at_once_only_one_goes_out()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        var responses = await Task.WhenAll(Enumerable
+            .Range(0, 50)
+            .Select(_ => emulator.Send(Probe)));
+
+        responses.Should().AllSatisfy(response => response.StatusCode.Should().Be(HttpStatusCode.OK));
+        var sent = Store(emulator).List(MessageState.Sent).Should().ContainSingle().Subject;
+        var held = Store(emulator).List(MessageState.Blocked);
+        held.Should().HaveCount(49);
+        held.Should().AllSatisfy(message => message.DuplicateOf.Should().Be(sent.Id));
 
         foreach (var response in responses)
         {

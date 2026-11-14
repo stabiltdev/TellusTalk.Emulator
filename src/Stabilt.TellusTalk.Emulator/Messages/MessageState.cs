@@ -4,4 +4,5 @@ internal enum MessageState
 {
     Sent,
     Scheduled,
+    Blocked,
 }

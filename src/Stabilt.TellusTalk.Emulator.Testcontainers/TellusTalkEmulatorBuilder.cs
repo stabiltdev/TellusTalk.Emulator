@@ -111,6 +111,13 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
         return WithEnvironment("Emulator__RetentionLimit", limit.ToString(CultureInfo.InvariantCulture));
     }
 
+    /// <summary>
+    /// Whether the emulator holds back a send that duplicates one from the five minutes before, as TellusTalk does;
+    /// on by default.
+    /// </summary>
+    public TellusTalkEmulatorBuilder WithDuplicateBlocking(bool enabled) =>
+        WithEnvironment("Emulator__BlockDuplicates", enabled ? "true" : "false");
+
     /// <inheritdoc />
     public override TellusTalkEmulatorContainer Build()
     {

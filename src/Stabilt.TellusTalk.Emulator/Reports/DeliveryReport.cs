@@ -7,7 +7,7 @@ namespace Stabilt.TellusTalk.Emulator.Reports;
 
 /// <summary>
 /// A delivery report as TellusTalk's K8 platform was seen posting one: its fields, their order and their values for a
-/// delivered SMS and for one the operator could not route. TellusTalk publishes no format of its own.
+/// delivered SMS, for one the operator could not route and for one held back as a duplicate. TellusTalk publishes no format of its own.
 /// </summary>
 internal sealed record DeliveryReport(
     [property: JsonPropertyName("log_status")] string LogStatus,
@@ -27,7 +27,7 @@ internal sealed record DeliveryReport(
     [property: JsonPropertyName("log_uuid")] string LogUuid,
     [property: JsonPropertyName("conversation_uuid")] string ConversationUuid,
     [property: JsonPropertyName("job_uuid")] string JobUuid,
-    [property: JsonPropertyName("report_time")] string ReportTime,
+    [property: JsonPropertyName("report_time")] string? ReportTime,
     [property: JsonPropertyName("failed_details")] string? FailedDetails,
     [property: JsonPropertyName("text_linebreaksbr")] string TextLineBreaksBr,
     [property: JsonPropertyName("template_optional_line")] string TemplateOptionalLine)
@@ -41,16 +41,23 @@ internal sealed record DeliveryReport(
     /// </summary>
     public static DeliveryReport For(Message message, ReportStatus status, DateTimeOffset reportedAt)
     {
-        var delivered = status == ReportStatus.Delivered;
+        var duplicate = $"Duplicate of message {message.DuplicateOf} sent within 5 minutes.";
+        var (logStatus, logStatusCode, failedReason) = status switch
+        {
+            ReportStatus.Delivered => ("txtDELIVERED", 22, string.Empty),
+            ReportStatus.Failed => ("txtDELIVERY_FAILED", 21, "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"),
+            _ => ("txtBLOCKED", 1, $"txtFAILED_REASON: txtDUPLICATE_MESSAGE, {duplicate}"),
+        };
+        var blocked = status == ReportStatus.Blocked;
         var body = message.Request.Body;
         var text = string.IsNullOrEmpty(message.Request.Subject) ? message.Text : $"{message.Request.Subject}\n\n{message.Text}";
         var textLineBreaksBr = text.Replace("\n", "<br>\n", StringComparison.Ordinal);
         var html = body.Html.ValueKind == JsonValueKind.String ? body.Html.GetString()! : textLineBreaksBr;
 
         return new DeliveryReport(
-            delivered ? "txtDELIVERED" : "txtDELIVERY_FAILED",
-            delivered ? 22 : 21,
-            delivered ? string.Empty : "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None",
+            logStatus,
+            logStatusCode,
+            failedReason,
             "SMS_Sent",
             "SMS",
             "sms:" + message.To.Number,
@@ -65,8 +72,8 @@ internal sealed record DeliveryReport(
             message.Id,
             message.Id,
             message.JobId,
-            reportedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
-            null,
+            blocked ? null : reportedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
+            blocked ? duplicate : null,
             textLineBreaksBr,
             "--------------");
     }

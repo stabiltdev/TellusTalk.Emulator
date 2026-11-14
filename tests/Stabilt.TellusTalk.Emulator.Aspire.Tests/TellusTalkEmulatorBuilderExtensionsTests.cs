@@ -54,6 +54,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
             .WithRetentionLimit(200)
+            .WithDuplicateBlocking(false)
             .Resource;
 
         var environment = await EnvironmentOf(emulator);
@@ -64,6 +65,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698, +46701740699"),
             KeyValuePair.Create("Emulator__ReportDelaySeconds", "3"),
             KeyValuePair.Create("Emulator__RetentionLimit", "200"),
+            KeyValuePair.Create("Emulator__BlockDuplicates", "false"),
         ]);
     }
 

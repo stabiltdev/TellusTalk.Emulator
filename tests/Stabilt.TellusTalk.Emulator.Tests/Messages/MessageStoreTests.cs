@@ -216,21 +216,218 @@ public sealed class MessageStoreTests
         changes.Current.Should().Be(new StoreChange("reported"));
     }
 
+    [Fact]
+    public void A_send_identical_to_one_received_within_five_minutes_is_held_back_as_its_duplicate()
+    {
+        var store = Store();
+        var first = Send(store, "Your code is 482913");
+        _time.Advance(TimeSpan.FromSeconds(280));
+        var second = Send(store, "Your code is 482913");
+
+        second.DuplicateOf.Should().Be(first.Id);
+        second.StateAt(_time.GetUtcNow()).Should().Be(MessageState.Blocked);
+        store.List(MessageState.Sent).Should().Equal(first);
+        store.List(MessageState.Blocked).Should().Equal(second);
+    }
+
+    [Fact]
+    public void A_send_identical_to_one_received_more_than_five_minutes_before_goes_out()
+    {
+        var store = Store();
+        Send(store, "Your code is 482913");
+        _time.Advance(TimeSpan.FromSeconds(320));
+        var second = Send(store, "Your code is 482913");
+
+        second.DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_held_back_send_does_not_extend_the_window()
+    {
+        var store = Store();
+        Send(store, "Hej");
+        _time.Advance(TimeSpan.FromMinutes(3));
+        Send(store, "Hej").DuplicateOf.Should().NotBeNull();
+        _time.Advance(TimeSpan.FromSeconds(140));
+        var third = Send(store, "Hej");
+
+        third.DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void Another_number_user_subject_or_text_is_no_duplicate()
+    {
+        var store = Store();
+        Send(store, "Hej");
+        _time.Advance(TimeSpan.FromMinutes(1));
+
+        Send(store, "Hej", to: "sms:+46701740606").DuplicateOf.Should().BeNull();
+        Send(store, "Hej", user: "other").DuplicateOf.Should().BeNull();
+        Send(store, "Hej", subject: "Acme").DuplicateOf.Should().BeNull();
+        Send(store, "hej").DuplicateOf.Should().BeNull();
+        Send(store, "Hej ").DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void The_header_and_a_number_written_with_spaces_do_not_tell_sends_apart()
+    {
+        var store = Store();
+        var first = Send(store, "Hej");
+        _time.Advance(TimeSpan.FromMinutes(1));
+
+        Send(store, "Hej", header: "Header ").DuplicateOf.Should().Be(first.Id);
+        Send(store, "Hej", to: "sms:+46 70 174 06 05").DuplicateOf.Should().Be(first.Id);
+    }
+
+    [Fact]
+    public void An_empty_subject_is_the_same_as_none()
+    {
+        var store = Store();
+        var first = Send(store, "Hej");
+
+        Send(store, "Hej", subject: "").DuplicateOf.Should().Be(first.Id);
+    }
+
+    [Fact]
+    public void One_number_twice_in_a_request_is_held_back_the_second_time()
+    {
+        var store = Store();
+        var request = Request("""{"to":["sms:+46701740607","sms:+46701740607"],"text":"Hej"}""");
+
+        var stored = store.Add(Factory().Create(request, "tester", "{}").Messages);
+
+        stored[1].DuplicateOf.Should().Be(stored[0].Id);
+    }
+
+    [Fact]
+    public void A_send_scheduled_ahead_counts_from_when_it_was_received()
+    {
+        var store = Store();
+        var scheduled = Send(store, "Hej", scheduledSendTime: "2026-11-07T22:11:00Z");
+
+        Send(store, "Hej").DuplicateOf.Should().Be(scheduled.Id);
+    }
+
+    [Fact]
+    public async Task A_held_back_scheduled_send_stays_blocked_and_never_falls_due()
+    {
+        var store = Store();
+        var first = Send(store, "Hej");
+        var held = Send(store, "Hej", scheduledSendTime: "2026-11-07T22:10:00Z");
+        using var listening = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var changes = store
+            .Changes(listening.Token)
+            .GetAsyncEnumerator(listening.Token);
+        var next = changes.MoveNextAsync();
+        _time.Advance(TimeSpan.FromMinutes(15));
+
+        store.ReleaseDue();
+
+        held.StateAt(_time.GetUtcNow()).Should().Be(MessageState.Blocked);
+        store.List(MessageState.Sent).Should().Equal(first);
+        next.IsCompleted.Should().BeFalse();
+
+        await listening.CancelAsync();
+        await changes.DisposeAsync();
+    }
+
+    [Fact]
+    public void A_held_back_scheduled_send_is_listed_by_when_it_was_received()
+    {
+        var store = Store();
+        Send(store, "Hej");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var scheduled = Send(store, "Hej", scheduledSendTime: "2026-11-07T22:30:00Z");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var immediate = Send(store, "Hej");
+
+        scheduled.ShownAt.Should().Be(scheduled.ReceivedAt);
+        store.List(MessageState.Blocked).Should().Equal(immediate, scheduled);
+    }
+
+    [Fact]
+    public void A_send_identical_to_one_received_exactly_five_minutes_before_is_held_back()
+    {
+        var store = Store();
+        var first = Send(store, "Hej");
+        _time.Advance(TimeSpan.FromMinutes(5));
+
+        Send(store, "Hej").DuplicateOf.Should().Be(first.Id);
+    }
+
+    [Fact]
+    public void Of_two_sends_stored_in_the_opposite_order_the_later_stored_is_held_back()
+    {
+        var store = Store();
+        var a = Create("Hej");
+        _time.Advance(TimeSpan.FromSeconds(1));
+        var b = Create("Hej");
+
+        store.Add([b]);
+        var stored = store.Add([a]).Single();
+
+        stored.DuplicateOf.Should().Be(b.Id);
+    }
+
+    [Fact]
+    public void A_duplicate_is_held_back_though_its_original_leaves_in_the_same_add()
+    {
+        var store = Store(retentionLimit: 1);
+        var first = Send(store, "Hej");
+        var second = Send(store, "Hej");
+
+        second.DuplicateOf.Should().Be(first.Id);
+        store.List().Should().Equal(second);
+    }
+
+    [Fact]
+    public void Clearing_the_messages_forgets_what_could_hold_a_send_back()
+    {
+        var store = Store();
+        Send(store, "Hej");
+        store.Clear();
+
+        Send(store, "Hej").DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void With_holding_back_off_every_send_goes_out()
+    {
+        var store = Store(blockDuplicates: false);
+        Send(store, "Hej").DuplicateOf.Should().BeNull();
+        Send(store, "Hej").DuplicateOf.Should().BeNull();
+
+        store.Count(MessageState.Blocked).Should().Be(0);
+    }
+
+    [Fact]
+    public void A_held_back_message_is_not_handed_out_for_an_automatic_report()
+    {
+        var store = Store();
+        var first = Send(store, "Hej", reportTo: "https://example.se/reports");
+        Send(store, "Hej", reportTo: "https://example.se/reports");
+        _time.Advance(TimeSpan.FromSeconds(2));
+
+        store.TakeDueReports(TimeSpan.FromSeconds(1)).Should().Equal(first);
+    }
+
     private static ReportAttempt Attempt(DateTimeOffset at) =>
         new(at, ReportStatus.Delivered, "https://example.se/reports", Sent: true, "200 OK");
 
-    private MessageStore Store(int retentionLimit = 1000) =>
-        new(_time, Options.Create(new EmulatorOptions { RetentionLimit = retentionLimit }));
+    private MessageStore Store(int retentionLimit = 1000, bool blockDuplicates = true) =>
+        new(_time, Options.Create(new EmulatorOptions { RetentionLimit = retentionLimit, BlockDuplicates = blockDuplicates }));
 
     private MessageFactory Factory() =>
         new(_time, Options.Create(new EmulatorOptions()));
 
-    private Message Send(
-        MessageStore store,
+    private Message Create(
         string text,
         string to = "sms:+46701740605",
         string? scheduledSendTime = null,
-        string? reportTo = null)
+        string? reportTo = null,
+        string? subject = null,
+        string user = "tester",
+        string? header = null)
     {
         var fields = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -243,15 +440,36 @@ public sealed class MessageStoreTests
             fields["report_to"] = reportTo;
         }
 
+        if (subject is not null)
+        {
+            fields["subject"] = subject;
+        }
+
+        if (header is not null)
+        {
+            fields["sms_header"] = header;
+        }
+
         var json = JsonSerializer.Serialize(fields);
-        var message = Factory()
-            .Create(Request(json), "tester", json)
+
+        return Factory()
+            .Create(Request(json), user, json)
             .Messages
             .Single();
-        store.Add([message]);
-
-        return message;
     }
+
+    private Message Send(
+        MessageStore store,
+        string text,
+        string to = "sms:+46701740605",
+        string? scheduledSendTime = null,
+        string? reportTo = null,
+        string? subject = null,
+        string user = "tester",
+        string? header = null) =>
+        store
+            .Add([Create(text, to, scheduledSendTime, reportTo, subject, user, header)])
+            .Single();
 
     private static SendRequest Request(string json)
     {

@@ -11,11 +11,12 @@ Not affiliated with TellusTalk.
 - Takes `POST /send/v1` the way TellusTalk's K8 platform does, for SMS, so an app runs its real TellusTalk client
   against it with only the base address changed.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
-- Keeps every SMS in memory and shows it on a page at `/`: a list of the sent and the scheduled, and each SMS as the
-  recipient's phone shows it, with the parts it splits into.
+- Keeps every SMS in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, and each
+  SMS as the recipient's phone shows it, with the parts it splits into.
 - Serves what it caught to automated tests through a read API under `/api/v1/`.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in a message's `report_to`: delivered, or
-  failed for a number set to fail, and on request from the page or the read API.
+  failed for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
+- Holds back a send that duplicates one the same user made in the five minutes before, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
 - Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
@@ -119,7 +120,7 @@ await emulatorApi.DeleteAsync("api/v1/messages");
 
 // … the code under test sends an SMS …
 
-var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?to=%2B46701740605");
+var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&to=%2B46701740605");
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
@@ -137,6 +138,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
 | `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |
+| `Emulator__BlockDuplicates` | `true` | Whether a send is held back, as TellusTalk does, when the same user sent the same subject and text to the same number in the five minutes before. |
 
 ## Refusals and warnings
 
@@ -182,6 +184,13 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 
 A test can assert that a message carries no warnings, and so catch what TellusTalk would let through.
 
+## Duplicates
+
+A send is held back when the same user sent the same `subject` and `text` to the same number in the five minutes
+before it was received, whatever its other fields. Of two identical sends that arrive at once, the one the emulator
+stores second is held back. A held-back send counts for no later one. It is answered as any send, reaches no phone, and
+is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it off.
+
 ## Delivery reports
 
 A message with a URL in `report_to` gets a report `Emulator__ReportDelaySeconds` after it is sent, or after it falls
@@ -223,6 +232,11 @@ sent, and `quantity` the number of parts. A request's `subject` heads `text`, fo
 itself carries the message alone. `text_linebreaksbr`, and `html` when the request has none of its own, write each line
 break as `<br>` followed by the line break.
 
+A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
+`"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,
+`"failed_reason": "txtFAILED_REASON: txtDUPLICATE_MESSAGE, Duplicate of message <id> sent within 5 minutes."` and
+`"failed_details": "Duplicate of message <id> sent within 5 minutes."`, where `<id>` is the message it duplicates.
+
 The request carries `Content-Type: application/json`, `Accept: */*`, a `webpages-request-id` and an
 `x-webpages-request-id` with the same value, and every header in the address's settings, such as
 `https:{"headers":{"Authorization":"Basic …"}}://example.se/reports`. A `content_type` other than `application/json`
@@ -237,10 +251,10 @@ given an `http://host.docker.internal:<port>/…` address.
 | Request | Answer |
 |---|---|
 | `GET /api/v1/health` | `Healthy`, as `text/plain` |
-| `GET /api/v1/messages?state=sent\|scheduled&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
+| `GET /api/v1/messages?state=sent\|scheduled\|blocked&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
 | `GET /api/v1/messages/{id}` | `<message>`, or `404` |
 | `DELETE /api/v1/messages/{id}` | `204`, or `404` |
-| `DELETE /api/v1/messages` | `204`; both lists are emptied |
+| `DELETE /api/v1/messages` | `204`; every message is removed, the held-back ones too |
 | `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
 | `PUT /api/v1/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
@@ -259,6 +273,7 @@ A message:
   "id": "5d656a5cdafd11f1ba39a2551b38e481",
   "jobId": "5d656a5cdafd11f1ba39a2551b38e481",
   "state": "sent",
+  "duplicateOf": null,
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
   "notCaught": [],
@@ -278,6 +293,8 @@ A message:
 }
 ```
 
+- A held-back message has `state` `blocked`, and `duplicateOf` names the message it duplicates; every other message has
+  `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
   sends to them and `job_size` counts them, but the emulator catches SMS only.

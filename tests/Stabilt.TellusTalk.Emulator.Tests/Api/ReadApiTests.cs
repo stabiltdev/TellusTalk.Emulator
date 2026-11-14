@@ -255,6 +255,59 @@ public sealed class ReadApiTests
         using var response = await client.GetAsync(new Uri("/api/v1/messages?state=gone", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.RootElement.GetProperty("message").GetString().Should().Be("state must be sent, scheduled or blocked.");
+    }
+
+    [Fact]
+    public async Task A_held_back_message_is_blocked_and_names_the_message_it_duplicates()
+    {
+        await using var emulator = new EmulatorFactory();
+        var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        var second = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var held = await Get(emulator, $"/api/v1/messages/{second}");
+        using var original = await Get(emulator, $"/api/v1/messages/{first}");
+
+        held.RootElement.GetProperty("state").GetString().Should().Be("blocked");
+        held.RootElement.GetProperty("duplicateOf").GetString().Should().Be(first);
+        original.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        original.RootElement
+            .EnumerateObject()
+            .Select(property => property.Name)
+            .SkipWhile(name => !string.Equals(name, "state", StringComparison.Ordinal))
+            .Take(2)
+            .Should().Equal("state", "duplicateOf");
+    }
+
+    [Fact]
+    public async Task Messages_filter_by_the_blocked_state()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej då"}""");
+
+        (await Total(emulator, "/api/v1/messages?state=blocked")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?state=sent")).Should().Be(2);
+        (await Total(emulator, "/api/v1/messages")).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task With_holding_back_off_the_blocked_list_is_empty()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Settings["Emulator:BlockDuplicates"] = "false";
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?state=blocked")).Should().Be(0);
+        using var list = await Get(emulator, "/api/v1/messages");
+        list.RootElement
+            .GetProperty("messages")
+            .EnumerateArray()
+            .Select(message => message.GetProperty("duplicateOf").ValueKind)
+            .Should().OnlyContain(kind => kind == JsonValueKind.Null);
     }
 
     [Fact]

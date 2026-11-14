@@ -122,6 +122,19 @@ public static class TellusTalkEmulatorBuilderExtensions
     }
 
     /// <summary>
+    /// Whether the emulator holds back a send that duplicates one from the five minutes before, as TellusTalk does;
+    /// on by default.
+    /// </summary>
+    public static IResourceBuilder<TellusTalkEmulatorResource> WithDuplicateBlocking(
+        this IResourceBuilder<TellusTalkEmulatorResource> builder,
+        bool enabled)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.WithEnvironment("Emulator__BlockDuplicates", enabled ? "true" : "false");
+    }
+
+    /// <summary>
     /// Gives the app the emulator's address in <paramref name="environmentVariable"/>, by default
     /// <c>TellusTalk__BaseUrl</c>, the setting <c>TellusTalk:BaseUrl</c>.
     /// </summary>

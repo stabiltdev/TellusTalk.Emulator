@@ -147,6 +147,104 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
+    public async Task A_held_back_send_is_reported_blocked_without_waiting_for_the_delay()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Settings["Emulator:ReportDelaySeconds"] = "30";
+        await Send(emulator, WithReport);
+        var secondId = await Send(emulator, WithReport);
+
+        var report = (await emulator.Reports.WaitFor(1)).Single();
+
+        using var body = JsonDocument.Parse(report.Body);
+        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtBLOCKED");
+        body.RootElement.GetProperty("log_uuid").GetString().Should().Be(secondId);
+    }
+
+    [Fact]
+    public async Task A_held_back_send_gets_no_delivered_report()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, WithReport);
+        await Send(emulator, WithReport);
+
+        await StepUntilReported(emulator, 2);
+        for (var step = 0; step < 10; step++)
+        {
+            await Step(emulator);
+        }
+
+        emulator.Reports.Received
+            .Select(report => Field(report, "log_status"))
+            .Should().BeEquivalentTo(["txtDELIVERED", "txtBLOCKED"]);
+    }
+
+    [Fact]
+    public async Task A_held_back_scheduled_send_is_reported_once()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, WithReport);
+        var scheduledId = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports","scheduled_send_time":"2026-11-07T22:10:00Z"}""");
+
+        emulator.Time.Advance(TimeSpan.FromMinutes(9));
+        for (var step = 0; step < 70; step++)
+        {
+            await Step(emulator);
+        }
+
+        emulator.Reports.Received
+            .Where(report => string.Equals(Field(report, "log_uuid"), scheduledId, StringComparison.Ordinal))
+            .Select(report => Field(report, "log_status"))
+            .Should().Equal("txtBLOCKED");
+    }
+
+    [Fact]
+    public async Task A_held_back_report_to_a_silent_receiver_holds_up_no_other()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.SilentHosts.Add("silent.example.se");
+        const string silent = """{"to":"sms:+46701740605","text":"Hej","report_to":"https://silent.example.se/reports"}""";
+        const string other = """{"to":"sms:+46701740606","text":"Hej","report_to":"https://example.se/second"}""";
+        await Send(emulator, silent);
+        await Send(emulator, silent);
+        await Send(emulator, other);
+        await Send(emulator, other);
+
+        var received = await emulator.Reports.WaitFor(2);
+
+        received
+            .Where(report => string.Equals(report.Uri.AbsolutePath, "/second", StringComparison.Ordinal))
+            .Select(report => Field(report, "log_status"))
+            .Should().Equal("txtBLOCKED");
+    }
+
+    [Fact]
+    public async Task A_held_back_report_is_recorded_as_blocked()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, WithReport);
+        var secondId = await Send(emulator, WithReport);
+
+        var attempt = (await Attempts(emulator, secondId, expected: 1)).Single();
+
+        attempt.GetProperty("status").GetString().Should().Be("blocked");
+    }
+
+    [Fact]
+    public async Task A_held_back_send_to_a_failing_number_is_reported_blocked()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Settings["Emulator:FailingNumbers"] = "+46701740605";
+        await Send(emulator, WithReport);
+        await Send(emulator, WithReport);
+
+        var report = (await emulator.Reports.WaitFor(1)).Single();
+
+        using var body = JsonDocument.Parse(report.Body);
+        body.RootElement.GetProperty("log_status").GetString().Should().Be("txtBLOCKED");
+    }
+
+    [Fact]
     public async Task A_message_without_a_report_address_gets_no_report()
     {
         await using var emulator = new EmulatorFactory();
@@ -194,6 +292,13 @@ public sealed class ReportFlowTests
         emulator.Time.Advance(TimeSpan.FromSeconds(1));
 
         return Task.Delay(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
+    }
+
+    private static string? Field(ReceivedReport report, string name)
+    {
+        using var body = JsonDocument.Parse(report.Body);
+
+        return body.RootElement.GetProperty(name).GetString();
     }
 
     private static DateTimeOffset ReportTime(JsonDocument report) =>

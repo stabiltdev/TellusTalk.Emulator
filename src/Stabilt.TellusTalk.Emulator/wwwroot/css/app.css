@@ -173,6 +173,14 @@ pre {
   color: #A86400;
 }
 
+.tt-tab .count.blocked {
+  color: #F2A0A0;
+}
+
+.tt-tab.on .count.blocked {
+  color: #B42318;
+}
+
 .tt-search {
   margin-left: auto;
 }
@@ -410,6 +418,13 @@ pre {
   white-space: pre-wrap;
 }
 
+.tt-phone .note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
 .tt-bubble mark {
   background: transparent;
   box-shadow: inset 0 -2px 0 var(--accent);
@@ -567,6 +582,7 @@ pre {
   color: var(--accent-text);
 }
 
+.tt-status.blocked,
 .tt-status.failed {
   background: color-mix(in srgb, var(--red) 14%, transparent);
   color: var(--red);

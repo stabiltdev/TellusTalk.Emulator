@@ -4,4 +4,5 @@ internal enum ReportStatus
 {
     Delivered,
     Failed,
+    Blocked,
 }

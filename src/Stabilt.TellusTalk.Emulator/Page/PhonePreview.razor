@@ -18,6 +18,10 @@
                 <mark title="Part @(part + 1) begins here">@Parts[part]</mark>
             }
         }</p>
+    @if (Note is not null)
+    {
+        <p class="note">@Note</p>
+    }
 </div>
 
 @code {
@@ -30,6 +34,10 @@
     /// <summary>The text split where each part begins.</summary>
     [Parameter]
     public IReadOnlyList<string> Parts { get; set; } = [];
+
+    /// <summary>A line under the bubble, such as that the message was not sent.</summary>
+    [Parameter]
+    public string? Note { get; set; }
 
     private string Initial => Sender.Length == 0 ? "?" : Sender[..1].ToUpperInvariant();
 }

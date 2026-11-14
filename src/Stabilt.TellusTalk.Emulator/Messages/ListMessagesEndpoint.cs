@@ -16,7 +16,7 @@ internal sealed class ListMessagesEndpoint : IEndpoint
     {
         if (!TryReadState(state, out var wanted))
         {
-            return TypedResults.BadRequest(new ApiError("state must be sent or scheduled."));
+            return TypedResults.BadRequest(new ApiError("state must be sent, scheduled or blocked."));
         }
 
         var now = time.GetUtcNow();
@@ -35,6 +35,7 @@ internal sealed class ListMessagesEndpoint : IEndpoint
             null => (true, (MessageState?)null),
             "sent" => (true, MessageState.Sent),
             "scheduled" => (true, MessageState.Scheduled),
+            "blocked" => (true, MessageState.Blocked),
             _ => (false, null),
         };
 

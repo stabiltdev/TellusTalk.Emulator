@@ -26,6 +26,9 @@ internal sealed class EmulatorOptions
     /// <summary>Numbers whose reports say the operator could not deliver, separated by commas.</summary>
     public string FailingNumbers { get; set; } = string.Empty;
 
+    /// <summary>Whether a send is held back when the same user sent the same subject and text to the same number in the five minutes before.</summary>
+    public bool BlockDuplicates { get; set; } = true;
+
     public bool Fails(string number) => FailingNumbers
         .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
         .Contains(number, StringComparer.Ordinal);
