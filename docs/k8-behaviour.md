@@ -90,6 +90,9 @@ of the parsed JSON value.
   source `text` and its value → `Invalid sms_originator_number not a string: 46701740699`.
 - **2026-11-14:** `subject` that is `true`, `1.50`, `["Acme", 1, null]` or `{"name": "Acme", "on": true}` → `Invalid
   subject not a string: True`, `... 1.5`, `... ['Acme', 1, None]` and `... {'name': 'Acme', 'on': True}`.
+- **2026-11-14:** `sms_originator_source` that is `123` or `true`, `sms_originator_text` that is `true` or `["Acme"]`,
+  and `sms_originator_number` that is `true` or `{"number": "+46701740699"}` → `Invalid <field> not a string: 123`,
+  `... True`, `... True`, `... ['Acme']`, `... True` and `... {'number': '+46701740699'}`.
 - **2026-11-14:** an `sms_originator_source` that is none of `replysms`, `text`, `number` and `subject`, matched exactly
   (`Text` and the empty string included) → `Invalid sms_originator_source: <value>; must be one of
   frozenset({'replysms', 'number', 'text', 'subject'})`. A Python `frozenset` is ordered by hash randomisation per
@@ -116,8 +119,9 @@ is settled when someone observes the real thing.
   specification's examples and ends an address at whitespace.
 - Which refusal K8 gives when a request breaks more than one sender rule, and how its sender refusals rank against what
   the emulator itself cannot record; the emulator checks the types, then the source, then the missing value.
-- Every other type in each of the four sender fields, such as `true` or a list in `sms_originator_text`; the emulator
-  refuses all of them as it refuses the observed cases.
+- The types not yet tried in a given sender field, such as a decimal in `sms_originator_text` or a list in
+  `sms_originator_source`; each field was seen refusing several types that are not strings, with the same text, so the
+  emulator refuses every such type in all four.
 - `null` or another type in any field other than the four sender fields; not every field is type-checked, since
   `"sms_flash": "true"` was accepted on 2026-11-07.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
