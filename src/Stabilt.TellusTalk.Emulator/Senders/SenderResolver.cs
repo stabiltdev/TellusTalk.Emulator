@@ -5,37 +5,36 @@ namespace Stabilt.TellusTalk.Emulator.Senders;
 internal static class SenderResolver
 {
     private const string AccountSource = "account";
+    private const string ReplySmsSource = "replysms";
 
     /// <summary>
-    /// The specification names <c>replysms</c> as the default source, but TellusTalk was seen sending an SMS without a
-    /// source from the name the account is configured with. <c>replysms</c> given explicitly is shown the same way
-    /// until TellusTalk is seen doing otherwise. A source other than those four, and a source without its value, are
-    /// refused before a request gets here.
+    /// A request that names no source shows what the user's Sender setting says, and <c>replysms</c> shows the account's
+    /// reply number whatever that setting is. <c>text</c>, <c>number</c> and <c>subject</c> show the field they name,
+    /// which a request that gets here always holds.
     /// </summary>
-    public static ShownSender Resolve(SendRequest request, string accountSender)
+    public static ShownSender Resolve(SendRequest request, SenderSettings settings)
     {
         var source = request.OriginatorSource;
-        if (source is null)
+        return source switch
         {
-            return FromAccount(accountSender, AccountSource);
-        }
-
-        var shown = source switch
-        {
-            "text" => request.OriginatorText,
-            "number" => request.OriginatorNumber,
-            "subject" => request.Subject,
-            _ => null,
+            null => FromSetting(settings),
+            ReplySmsSource => ReplyNumber(settings, ReplySmsSource),
+            "text" => Own(request.OriginatorText!, source),
+            "number" => Own(request.OriginatorNumber!, source),
+            _ => Own(request.Subject!, source),
         };
-
-        return shown is null
-            ? FromAccount(accountSender, source)
-            : new ShownSender(shown, KindOf(shown), source, FromAccount: false);
     }
 
-    private static ShownSender FromAccount(string accountSender, string source) =>
-        new(accountSender, KindOf(accountSender), source, FromAccount: true);
+    private static ShownSender FromSetting(SenderSettings settings) => settings.Sender switch
+    {
+        { Kind: SmsSenderKind.Text, Value: { } name } => new ShownSender(name, SenderKind.Name, AccountSource, FromAccount: true),
+        { Kind: SmsSenderKind.Number, Value: { } number } => new ShownSender(number, SenderKind.Number, AccountSource, FromAccount: true),
+        _ => ReplyNumber(settings, AccountSource),
+    };
 
-    private static SenderKind KindOf(string shown) =>
-        PhoneNumbers.IsPlusDigits(shown) ? SenderKind.Number : SenderKind.Name;
+    private static ShownSender ReplyNumber(SenderSettings settings, string source) =>
+        new(settings.ReplyNumber, SenderKind.Number, source, FromAccount: true);
+
+    private static ShownSender Own(string shown, string source) =>
+        new(shown, PhoneNumbers.IsPlusDigits(shown) ? SenderKind.Number : SenderKind.Name, source, FromAccount: false);
 }

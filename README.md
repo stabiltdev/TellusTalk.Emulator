@@ -131,7 +131,9 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 
 | Environment variable | Default | Meaning |
 |---|---|---|
-| `Emulator__AccountSender` | `Emulator` | The sender the TellusTalk account is configured with, shown when a request sets none. A number such as `+46701740699` stands in for an account with two-way SMS. |
+| `Emulator__SmsSender` | `replysms` | The user's Sender in TellusTalk: `replysms`, `text:<name>`, `number:<number>` or `subject`. Shown when a request has no sender field. |
+| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, and when the sender field K8 chose is empty. |
+| `Emulator__AccountSender` | none | Obsolete. Honoured only when `Emulator__SmsSender` is not set: a value of `+` and digits means `replysms` with that number as `ReplyNumber` (unless `ReplyNumber` is set); anything else means `text:<value>`. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
 | `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |

@@ -11,6 +11,8 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     /// <summary>The specification's default for <c>sms_max_parts</c>.</summary>
     private const int DefaultMaxParts = 8;
 
+    private readonly SenderSettings _senderSettings = SenderSettings.From(options.Value);
+
     public SendJob Create(SendRequest request, string userName, string rawRequest)
     {
         var now = time.GetUtcNow();
@@ -18,7 +20,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
         var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
 
         var messageWarnings = new List<Warning>();
-        var sender = SenderResolver.Resolve(request, options.Value.AccountSender);
+        var sender = SenderResolver.Resolve(request, _senderSettings);
 
         var characterSet = SmsPartsCalculator.Choose(text, request.CharacterSet);
         if (string.Equals(request.CharacterSet, "gsm", StringComparison.Ordinal) &&

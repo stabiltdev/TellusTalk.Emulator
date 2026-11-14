@@ -51,6 +51,18 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-07:** a send without sender fields → the phone shows the account's configured sender, not the
   specification's `replysms` default.
 
+### The user's Sender setting
+
+TellusTalk's user setting Sender (Settings, SMS) offers Reply SMS, Number, Short code, Text and Subject. Reply SMS is
+the default. The reply number is the two-way number TellusTalk assigns the account; it is no setting.
+
+- **2026-11-14:** a send without sender fields, with the user's Sender at Reply SMS or at Subject → the phone shows the
+  reply number.
+- **2026-11-14:** a send without sender fields, with the user's Sender at Text → the phone shows that text.
+- **2026-11-14:** a send without sender fields, with the user's Sender at Number → the phone shows that number.
+- **2026-11-14:** `sms_originator_source: replysms` with the user's Sender at Reply SMS, and again at Text → the phone
+  shows the reply number both times.
+
 ### Sender fields K8 refuses
 
 Each refusal is a `400` with `Content-Type: text/html; charset=utf-8`, the same headers as every other answer, and the
@@ -97,8 +109,7 @@ is settled when someone observes the real thing.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
-- What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
-  without a source.
+- What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
 - What `html` and `attachments` do on an SMS.
 - What else TellusTalk refuses, apart from a missing `Authorization` and the sender fields above, and with what text.
 - What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason

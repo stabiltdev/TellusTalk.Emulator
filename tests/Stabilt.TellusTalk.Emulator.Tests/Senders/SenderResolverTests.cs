@@ -6,7 +6,7 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Senders;
 
 public sealed class SenderResolverTests
 {
-    private const string Account = "Emulator";
+    private const string ReplyNumber = SenderSettings.DefaultReplyNumber;
 
     private static readonly SendRequest Plain = new()
     {
@@ -39,22 +39,33 @@ public sealed class SenderResolverTests
     }
 
     [Fact]
-    public void Without_a_source_the_accounts_sender_is_shown()
+    public void Without_sender_fields_a_text_sender_shows_its_name()
     {
-        Resolve(Plain).Should().Be(new ShownSender(Account, SenderKind.Name, "account", FromAccount: true));
+        SenderResolver.Resolve(Plain, Settings(SmsSenderKind.Text, "Acme"))
+            .Should().Be(new ShownSender("Acme", SenderKind.Name, "account", FromAccount: true));
     }
 
     [Fact]
-    public void An_account_sender_of_digits_is_shown_as_a_number()
+    public void Without_sender_fields_a_number_sender_shows_its_number()
     {
-        SenderResolver.Resolve(Plain, "+46701740698").Kind.Should().Be(SenderKind.Number);
+        SenderResolver.Resolve(Plain, Settings(SmsSenderKind.Number, "+46701740697"))
+            .Should().Be(new ShownSender("+46701740697", SenderKind.Number, "account", FromAccount: true));
+    }
+
+    [Theory]
+    [InlineData(nameof(SmsSenderKind.ReplySms))]
+    [InlineData(nameof(SmsSenderKind.Subject))]
+    public void Without_sender_fields_replysms_and_subject_senders_show_the_reply_number(string kind)
+    {
+        SenderResolver.Resolve(Plain, Settings(Enum.Parse<SmsSenderKind>(kind), null))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "account", FromAccount: true));
     }
 
     [Fact]
-    public void Replysms_shows_the_accounts_sender_until_TellusTalk_is_seen_doing_otherwise()
+    public void Replysms_shows_the_reply_number_whatever_the_sms_sender()
     {
-        Resolve(Plain with { OriginatorSource = "replysms" })
-            .Should().Be(new ShownSender(Account, SenderKind.Name, "replysms", FromAccount: true));
+        SenderResolver.Resolve(Plain with { OriginatorSource = "replysms" }, Settings(SmsSenderKind.Text, "Acme"))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "replysms", FromAccount: true));
     }
 
     [Fact]
@@ -63,5 +74,7 @@ public sealed class SenderResolverTests
         Resolve(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe12" }).Display.Should().Be("ProbeProbe12");
     }
 
-    private static ShownSender Resolve(SendRequest request) => SenderResolver.Resolve(request, Account);
+    private static ShownSender Resolve(SendRequest request) => SenderResolver.Resolve(request, Settings(SmsSenderKind.ReplySms, null));
+
+    private static SenderSettings Settings(SmsSenderKind kind, string? value) => new(new SmsSender(kind, value), ReplyNumber);
 }
