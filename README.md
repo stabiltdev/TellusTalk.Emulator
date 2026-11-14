@@ -167,7 +167,7 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `originator-text-too-long` | `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
 | `subject-too-long` | `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
 | `originator-number-invalid` | `sms_originator_number` that is not `+` followed by digits. |
-| `single-thread-without-replysms` | `sms_single_thread` when the source that decided the sender is not `replysms`. |
+| `single-thread-without-replysms` | `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
 | `character-set-invalid` | An `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
 | `format-deprecated` | `sms_format`, which `sms_character_set` replaces. |
 | `binary-without-udh` | A binary SMS without `sms_udh`. |
