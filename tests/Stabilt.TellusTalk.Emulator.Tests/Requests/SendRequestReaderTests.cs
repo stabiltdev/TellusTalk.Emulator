@@ -140,12 +140,61 @@ public sealed class SendRequestReaderTests
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.WrongJsonType);
     }
 
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"subject"}""", "400 Bad Request: Missing/invalid 'subject'. Expected non-empty string, got 'None'.")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"subject","subject":""}""", "400 Bad Request: Missing/invalid 'subject'. Expected non-empty string, got ''.")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text"}""", "400 Bad Request: Missing/invalid 'sms_originator_text'. Expected string, got 'None'")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":""}""", "400 Bad Request: Missing/invalid 'sms_originator_text'. Expected string, got ''")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"number"}""", "400 Bad Request: Missing/invalid 'sms_originator_number'. Expected number, got 'None'")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":null}""", "Invalid subject not a string: None")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":null}""", "Invalid sms_originator_source not a string: None")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_text":null}""", "Invalid sms_originator_text not a string: None")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_number":null}""", "Invalid sms_originator_number not a string: None")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":123}""", "Invalid subject not a string: 123")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"nonsense"}""", "Invalid sms_originator_source: nonsense; must be one of frozenset({'replysms', 'number', 'text', 'subject'})")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":"Acme","subject":null}""", "Invalid subject not a string: None")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":"Acme","sms_originator_number":46701740699}""", "Invalid sms_originator_number not a string: 46701740699")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"Text"}""", "Invalid sms_originator_source: Text; must be one of frozenset({'replysms', 'number', 'text', 'subject'})")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":""}""", "Invalid sms_originator_source: ; must be one of frozenset({'replysms', 'number', 'text', 'subject'})")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"number","sms_originator_number":""}""", "400 Bad Request: Missing/invalid 'sms_originator_number'. Expected number, got ''")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":true}""", "Invalid subject not a string: True")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":1.50}""", "Invalid subject not a string: 1.5")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":["Acme", 1, null]}""", "Invalid subject not a string: ['Acme', 1, None]")]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej","subject":{"name": "Acme", "on": true}}""", "Invalid subject not a string: {'name': 'Acme', 'on': True}")]
+    public void A_sender_rule_TellusTalk_enforces_refuses_the_request_with_its_text(string json, string text)
+    {
+        Read(json).Should().Be(new RefusedByTellusTalk(text));
+    }
+
+    [Fact]
+    public void Sender_refusals_come_before_the_emulators_own_limits()
+    {
+        Read("""{"to":"email:a@example.se","text":"Hej","subject":null}""")
+            .Should().Be(new RefusedByTellusTalk("Invalid subject not a string: None"));
+    }
+
+    [Fact]
+    public void The_type_of_each_sender_field_is_checked_in_order()
+    {
+        Read("""{"to":"sms:+46701740605","sms_originator_number":null,"subject":null}""")
+            .Should().Be(new RefusedByTellusTalk("Invalid subject not a string: None"));
+    }
+
+    [Fact]
+    public void Null_in_a_field_that_is_no_sender_field_is_read_as_absent()
+    {
+        var request = Accepted("""{"to":"sms:+46701740605","text":null,"sms_header":null}""");
+
+        request.Text.Should().BeNull();
+        request.Header.Should().BeNull();
+    }
+
     [Fact]
     public void A_number_where_the_schema_says_string_is_read_as_its_json_text_with_a_warning()
     {
-        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":123}""");
+        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_header":123}""");
 
-        request.OriginatorText.Should().Be("123");
+        request.Header.Should().Be("123");
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.WrongJsonType);
     }
 

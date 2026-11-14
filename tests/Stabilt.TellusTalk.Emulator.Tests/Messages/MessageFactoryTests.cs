@@ -102,7 +102,7 @@ public sealed class MessageFactoryTests
     [Fact]
     public void A_message_keeps_the_user_the_request_and_every_warning()
     {
-        const string body = """{"to":"sms:+46 70 174 06 05","text":"Hej","sms_originator_source":"text"}""";
+        const string body = """{"to":"sms:+46 70 174 06 05","text":"Hej","sms_originator_source":"text","sms_originator_text":"ProbeProbe12"}""";
 
         var message = Create(body).Messages.Single();
 
@@ -110,14 +110,62 @@ public sealed class MessageFactoryTests
         message.RawRequest.Should().Be(body);
         message.Warnings
             .Select(warning => warning.Code)
-            .Should().BeEquivalentTo([WarningCodes.SpacesRemoved, WarningCodes.OriginatorMissing]);
+            .Should().BeEquivalentTo([WarningCodes.SpacesRemoved, WarningCodes.OriginatorTextTooLong]);
     }
 
-    private SendJob Create(string json)
+    [Fact]
+    public void Single_thread_beside_another_source_than_replysms_is_warned_about()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","subject":"Acme","sms_single_thread":true}""").Messages.Single();
+
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.SingleThreadWithoutReplySms);
+    }
+
+    [Fact]
+    public void Single_thread_beside_a_named_other_source_than_replysms_is_warned_about()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"text","sms_originator_text":"Probe","sms_single_thread":true}""").Messages.Single();
+
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.SingleThreadWithoutReplySms);
+    }
+
+    [Fact]
+    public void Single_thread_without_sender_fields_is_warned_about_when_the_sms_sender_is_not_replysms()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_single_thread":true}""", new EmulatorOptions { SmsSender = "text:Acme" }).Messages.Single();
+
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.SingleThreadWithoutReplySms);
+    }
+
+    [Fact]
+    public void Single_thread_without_sender_fields_is_warned_about_when_the_sms_sender_is_subject()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_single_thread":true}""", new EmulatorOptions { SmsSender = "subject" }).Messages.Single();
+
+        message.Warnings.Should().ContainSingle().Which.Text.Should().Contain("Sender setting");
+    }
+
+    [Fact]
+    public void Single_thread_without_sender_fields_is_not_warned_about_when_the_sms_sender_is_replysms()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_single_thread":true}""").Messages.Single();
+
+        message.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Single_thread_beside_replysms_is_not_warned_about()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_originator_source":"replysms","subject":"Acme","sms_single_thread":true}""").Messages.Single();
+
+        message.Warnings.Should().BeEmpty();
+    }
+
+    private SendJob Create(string json, EmulatorOptions? options = null)
     {
         using var document = JsonDocument.Parse(json);
         var request = SendRequestReader.Read(document.RootElement).Should().BeOfType<Accepted>().Subject.Request;
-        var factory = new MessageFactory(_time, Options.Create(new EmulatorOptions()));
+        var factory = new MessageFactory(_time, Options.Create(options ?? new EmulatorOptions()));
 
         return factory.Create(request, "tester", json);
     }

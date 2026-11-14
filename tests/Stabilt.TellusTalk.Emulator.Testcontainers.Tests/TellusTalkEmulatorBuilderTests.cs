@@ -34,10 +34,10 @@ public sealed class TellusTalkEmulatorBuilderTests
     }
 
     [Fact]
-    public async Task A_send_without_a_sender_shows_the_account_sender()
+    public async Task A_send_without_a_sender_shows_the_sms_sender()
     {
         await using var emulator = LocalImage.Builder()
-            .WithAccountSender("Acme")
+            .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
             .Build();
         await emulator.StartAsync(TestContext.Current.CancellationToken);
         using var client = Client(emulator);
@@ -46,6 +46,39 @@ public sealed class TellusTalkEmulatorBuilderTests
 
         var message = await OnlyMessage(client);
         message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("Acme");
+    }
+
+    [Fact]
+    public async Task The_account_sender_is_shown_on_a_send_without_sender_fields()
+    {
+        // The alias is kept for existing configurations, so it is called here although it is obsolete.
+#pragma warning disable CS0618
+        await using var emulator = LocalImage.Builder()
+            .WithAccountSender("Acme")
+            .Build();
+#pragma warning restore CS0618
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your order has shipped."}""");
+
+        var message = await OnlyMessage(client);
+        message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("Acme");
+    }
+
+    [Fact]
+    public async Task Replysms_shows_the_reply_number()
+    {
+        await using var emulator = LocalImage.Builder()
+            .WithReplyNumber("+46701740697")
+            .Build();
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, """{"to": "sms:+46701740605", "text": "Your order has shipped.", "sms_originator_source": "replysms"}""");
+
+        var message = await OnlyMessage(client);
+        message.GetProperty("sender").GetProperty("shown").GetString().Should().Be("+46701740697");
     }
 
     [Fact]

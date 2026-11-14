@@ -6,8 +6,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 
 ## Read first
 
-- [README.md](README.md): what it does, how it runs, the read API, and the behaviour that follows the specification
-  rather than observation.
+- [README.md](README.md): what it does, how it runs, and the read API.
+- [docs/k8-behaviour.md](docs/k8-behaviour.md): what K8 was seen to do, with dates, and what it was not.
 - [docs/decisions/README.md](docs/decisions/README.md): why things are the way they are.
 - [docs/conventions.md](docs/conventions.md): how code and tests are written here.
 
@@ -17,7 +17,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
   are delivery reports to the http(s) URLs a request names.
 - **Be stricter or more lenient than TellusTalk.** Refuse only what TellusTalk was seen to refuse and what the emulator
   cannot record; what the specification forbids becomes a warning.
-- **Present a reading of the specification as observed fact.** What rests on the document is listed in the README.
+- **Present a reading of the specification as observed fact.** What rests on the document is listed in
+  `docs/k8-behaviour.md`.
 - **Pass for TellusTalk's own product.** The project is not affiliated with TellusTalk.
 - **Borrow models from a TellusTalk client.** The emulator reads the specification on its own, so it cannot agree with
   a client's mistakes.
@@ -29,8 +30,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | Path | What |
 |---|---|
 | `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint, Basic authentication, refusals, TellusTalk's headers, and the failures a test arms |
-| `src/Stabilt.TellusTalk.Emulator/Requests` | Reading a send request: the typed body, the reader, the specification's rules and the warnings |
-| `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it |
+| `src/Stabilt.TellusTalk.Emulator/Requests` | Reading a send request: the typed body, the reader, the specification's rules, the warnings, and TellusTalk's sender refusals |
+| `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it, and the user's Sender setting and reply number |
 | `src/Stabilt.TellusTalk.Emulator/Parts` | GSM 03.38 and UCS-2 part counting |
 | `src/Stabilt.TellusTalk.Emulator/Messages` | The in-memory store, scheduled release, and the read API's message endpoints |
 | `src/Stabilt.TellusTalk.Emulator/Reports` | Delivery reports: their form, sending them, and sending them automatically or on request |

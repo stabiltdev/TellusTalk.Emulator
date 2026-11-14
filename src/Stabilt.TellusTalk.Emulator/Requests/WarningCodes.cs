@@ -11,8 +11,6 @@ internal static class WarningCodes
     public const string OriginatorTextTooLong = "originator-text-too-long";
     public const string SubjectTooLong = "subject-too-long";
     public const string OriginatorNumberInvalid = "originator-number-invalid";
-    public const string OriginatorSourceInvalid = "originator-source-invalid";
-    public const string OriginatorMissing = "originator-missing";
     public const string SingleThreadWithoutReplySms = "single-thread-without-replysms";
     public const string CharacterSetInvalid = "character-set-invalid";
     public const string FormatDeprecated = "format-deprecated";

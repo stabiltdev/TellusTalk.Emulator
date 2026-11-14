@@ -11,6 +11,8 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     /// <summary>The specification's default for <c>sms_max_parts</c>.</summary>
     private const int DefaultMaxParts = 8;
 
+    private readonly SenderSettings _senderSettings = SenderSettings.From(options.Value);
+
     public SendJob Create(SendRequest request, string userName, string rawRequest)
     {
         var now = time.GetUtcNow();
@@ -18,7 +20,12 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
         var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
 
         var messageWarnings = new List<Warning>();
-        var sender = SenderResolver.Resolve(request, options.Value.AccountSender, messageWarnings);
+        var sender = SenderResolver.Resolve(request, _senderSettings);
+
+        if (SingleThreadWarning(request) is { } singleThread)
+        {
+            messageWarnings.Add(singleThread);
+        }
 
         var characterSet = SmsPartsCalculator.Choose(text, request.CharacterSet);
         if (string.Equals(request.CharacterSet, "gsm", StringComparison.Ordinal) &&
@@ -67,4 +74,30 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
 
         return new SendJob(jobId, size, messages);
     }
+
+    /// <summary>The source that decided the sender is the request's, or the user's Sender setting when the request holds none.</summary>
+    private Warning? SingleThreadWarning(SendRequest request)
+    {
+        if (!request.SingleThread)
+        {
+            return null;
+        }
+
+        if (SenderResolver.RequestSource(request) is { } source)
+        {
+            return source is "replysms" ? null : RequiresReplySms($"the sender source replysms, not '{source}'");
+        }
+
+        return _senderSettings.Sender.Kind switch
+        {
+            SmsSenderKind.ReplySms => null,
+            SmsSenderKind.Text => RequiresReplySms("the user's Sender setting to be replysms, not text"),
+            SmsSenderKind.Number => RequiresReplySms("the user's Sender setting to be replysms, not number"),
+            SmsSenderKind.Subject => RequiresReplySms("the user's Sender setting to be replysms, not subject"),
+            _ => throw new InvalidOperationException($"No single-thread rule for the Sender setting '{_senderSettings.Sender.Kind}'."),
+        };
+    }
+
+    private static Warning RequiresReplySms(string requirement) =>
+        new(WarningCodes.SingleThreadWithoutReplySms, "sms_single_thread", $"sms_single_thread requires {requirement}.");
 }

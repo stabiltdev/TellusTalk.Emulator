@@ -6,6 +6,7 @@ using Stabilt.TellusTalk.Emulator;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;
+using Stabilt.TellusTalk.Emulator.Senders;
 using Stabilt.TellusTalk.Emulator.Sending;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,7 +26,11 @@ builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadReq
 
 builder.Services
     .AddOptions<EmulatorOptions>()
-    .BindConfiguration(EmulatorOptions.Section);
+    .BindConfiguration(EmulatorOptions.Section)
+    .Validate(
+        options => options.SmsSender is null || SmsSender.TryParse(options.SmsSender, out _),
+        "Emulator__SmsSender must be replysms, text:<name>, number:<number> or subject.")
+    .ValidateOnStart();
 
 builder.Services
     .AddSingleton<MessageFactory>()

@@ -49,7 +49,8 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
 
         var emulator = builder
             .AddTellusTalkEmulator("tellustalk")
-            .WithAccountSender("Acme")
+            .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
+            .WithReplyNumber("+46701740697")
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
             .WithRetentionLimit(200)
@@ -58,11 +59,70 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         var environment = await EnvironmentOf(emulator);
 
         environment.Should().Contain([
-            KeyValuePair.Create("Emulator__AccountSender", "Acme"),
+            KeyValuePair.Create("Emulator__SmsSender", "text:Acme"),
+            KeyValuePair.Create("Emulator__ReplyNumber", "+46701740697"),
             KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698, +46701740699"),
             KeyValuePair.Create("Emulator__ReportDelaySeconds", "3"),
             KeyValuePair.Create("Emulator__RetentionLimit", "200"),
         ]);
+    }
+
+    [Theory]
+    [MemberData(nameof(SmsSenders))]
+    public async Task Each_sms_sender_is_written_in_TellusTalks_words(TellusTalkSmsSender sender, string setting)
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk")
+            .WithSmsSender(sender)
+            .Resource;
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__SmsSender", setting));
+    }
+
+    public static TheoryData<TellusTalkSmsSender, string> SmsSenders => new()
+    {
+        { TellusTalkSmsSender.ReplySms, "replysms" },
+        { TellusTalkSmsSender.Number("+46701740697"), "number:+46701740697" },
+        { TellusTalkSmsSender.Text("Acme"), "text:Acme" },
+        { TellusTalkSmsSender.Subject, "subject" },
+    };
+
+    [Fact]
+    public async Task The_account_sender_is_written_as_its_setting()
+    {
+        var builder = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk");
+
+        // The alias is kept for existing configurations, so it is called here although it is obsolete.
+#pragma warning disable CS0618
+        var emulator = builder.WithAccountSender("Acme").Resource;
+#pragma warning restore CS0618
+
+        var environment = await EnvironmentOf(emulator);
+
+        environment.Should().Contain(KeyValuePair.Create("Emulator__AccountSender", "Acme"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void A_blank_sender_name_is_refused(string? name)
+    {
+        FluentActions.Invoking(() => TellusTalkSmsSender.Text(name!)).Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void A_blank_sender_number_is_refused(string? number)
+    {
+        FluentActions.Invoking(() => TellusTalkSmsSender.Number(number!)).Should().Throw<ArgumentException>();
     }
 
     [Fact]

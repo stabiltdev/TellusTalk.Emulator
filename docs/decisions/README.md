@@ -39,7 +39,7 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 |---|---|---|
 | [20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest](20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest.md) | Accept what TellusTalk accepts and warn about what its specification forbids | accepted |
 | [20261108-know-every-field-of-every-send-schema](20261108-know-every-field-of-every-send-schema.md) | Know every field of every send schema, whatever the channel | accepted |
-| [20261108-follow-observed-behaviour-before-the-specification](20261108-follow-observed-behaviour-before-the-specification.md) | Follow TellusTalk's observed behaviour before its specification | accepted |
+| [20261108-follow-observed-behaviour-before-the-specification](20261108-follow-observed-behaviour-before-the-specification.md) | Follow TellusTalk's observed behaviour before its specification | superseded by [20261114-record-each-observation-of-k8-with-its-date](20261114-record-each-observation-of-k8-with-its-date.md) |
 | [20261108-mint-version-1-ids-as-tellustalk-does](20261108-mint-version-1-ids-as-tellustalk-does.md) | Mint version 1 UUIDs as TellusTalk does | accepted |
 | [20261108-read-a-time-without-an-offset-as-swedish-time](20261108-read-a-time-without-an-offset-as-swedish-time.md) | Read a scheduled time without an offset as Swedish time | superseded by [20261110-read-a-time-without-an-offset-as-swedish-time-on-an-extra-image](20261110-read-a-time-without-an-offset-as-swedish-time-on-an-extra-image.md) |
 | [20261108-post-delivery-reports-only-to-http-urls](20261108-post-delivery-reports-only-to-http-urls.md) | Post delivery reports only to the http(s) URLs a request names, with certificates checked | accepted |
@@ -55,3 +55,6 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261111-ship-a-testcontainers-package-of-the-images-version](20261111-ship-a-testcontainers-package-of-the-images-version.md) | Ship a Testcontainers package that runs the image of its own version | accepted |
 | [20261111-keep-dependencies-current-with-dependabot](20261111-keep-dependencies-current-with-dependabot.md) | Keep dependencies current with Dependabot, and move Aspire.Hosting only for a vulnerability | accepted |
 | [20261114-fail-reports-only-for-the-numbers-a-setting-names](20261114-fail-reports-only-for-the-numbers-a-setting-names.md) | Fail delivery reports only for the numbers a setting names | accepted |
+| [20261114-record-each-observation-of-k8-with-its-date](20261114-record-each-observation-of-k8-with-its-date.md) | Follow TellusTalk's observed behaviour before its specification, and record each observation with its date | accepted |
+| [20261114-choose-and-refuse-the-sms-sender-as-k8-does](20261114-choose-and-refuse-the-sms-sender-as-k8-does.md) | Choose the SMS sender and refuse sender fields as K8 does | accepted |
+| [20261114-mirror-tellustalks-sender-setting-and-reply-number](20261114-mirror-tellustalks-sender-setting-and-reply-number.md) | Mirror TellusTalk's Sender setting and reply number in the settings | accepted |

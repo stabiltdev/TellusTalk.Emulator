@@ -34,7 +34,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
 | Storage | In memory | Persistence: a restart empties the lists |
-| Failures | TellusTalk's own `401`, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
+| Failures | TellusTalk's own `401` and `400` sender refusals, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
 
 ## Running it
 
@@ -57,7 +57,7 @@ healthy once it answers, and gives an app its address:
 ```csharp
 var tellusTalk = builder
     .AddTellusTalkEmulator("tellustalk")
-    .WithAccountSender("Acme");
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"));
 
 builder
     .AddProject<Projects.Api>("api")
@@ -83,7 +83,7 @@ starts the emulator once it answers, and gives its address:
 
 ```csharp
 await using var emulator = new TellusTalkEmulatorBuilder()
-    .WithAccountSender("Acme")
+    .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
     .Build();
 
 await emulator.StartAsync();
@@ -131,7 +131,9 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 
 | Environment variable | Default | Meaning |
 |---|---|---|
-| `Emulator__AccountSender` | `Emulator` | The sender the TellusTalk account is configured with, shown when a request sets none. A number such as `+46701740699` stands in for an account with two-way SMS. |
+| `Emulator__SmsSender` | `replysms` | The user's Sender in TellusTalk: `replysms`, `text:<name>`, `number:<number>` or `subject`. Shown when a request has no sender field. |
+| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, and when the sender field K8 chose is empty. |
+| `Emulator__AccountSender` | none | Obsolete. Honoured only when `Emulator__SmsSender` is not set: a value of `+` and digits means `replysms` with that number as `ReplyNumber` (unless `ReplyNumber` is set); anything else means `text:<value>`. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
 | `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |
@@ -140,7 +142,13 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 
 The emulator refuses:
 
-- a request without credentials, or with malformed ones: `401` with TellusTalk's own text;
+- what TellusTalk refuses, each with TellusTalk's own text as `text/html`: a request without credentials, or with
+  malformed ones, with `401`; and with `400`, a sender field (`subject`, `sms_originator_source`,
+  `sms_originator_text` or `sms_originator_number`) that is null or not a string (`Invalid subject not a string: None`),
+  an `sms_originator_source` other than `replysms`, `text`, `number` or `subject`, matched exactly, case included, and a
+  source of `subject`, `text` or `number` without its value (`subject`, `sms_originator_text` or
+  `sms_originator_number`, absent or empty). They are checked in that order, which TellusTalk has not been seen to
+  settle, and before the emulator's own limits;
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
   emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object, a
   request without `to`, a `to` that is neither an address nor a list of addresses, recipient objects (the form secure
@@ -158,11 +166,9 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `to-spaces-removed` | Spaces in a recipient's number; TellusTalk removes them, and so does the emulator. |
 | `to-not-digits` | A recipient that is not `+` followed by digits. |
 | `originator-text-too-long` | `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
-| `subject-too-long` | `subject` as the sender, over 11 characters. |
+| `subject-too-long` | `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
 | `originator-number-invalid` | `sms_originator_number` that is not `+` followed by digits. |
-| `originator-source-invalid` | An `sms_originator_source` that is not `replysms`, `text`, `number` or `subject`. |
-| `originator-missing` | A sender source without its value, such as `text` without `sms_originator_text`. |
-| `single-thread-without-replysms` | `sms_single_thread` with another source than `replysms`. |
+| `single-thread-without-replysms` | `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
 | `character-set-invalid` | An `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
 | `format-deprecated` | `sms_format`, which `sms_character_set` replaces. |
 | `binary-without-udh` | A binary SMS without `sms_udh`. |
@@ -273,8 +279,9 @@ A message:
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
   sends to them and `job_size` counts them, but the emulator catches SMS only.
-- `sender.source` is the source the request asked for, or `account` when it asked for none; `fromAccount` says the
-  shown sender is the account's.
+- `sender.source` is the source the request named, else the field TellusTalk chose (`subject`, `text` or `number`),
+  else `account` when the settings decided; whether the request named it is in `fields`. `fromAccount` says the shown
+  sender came from the settings or the reply number rather than from the request.
 - `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and each
   `--LINK_VIEW--` replaced by a short link in the form of the specification's examples, `https://ebox.nu/r_xxxxxx/0`
   and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each with its `kind`, `redirect`
@@ -319,32 +326,8 @@ emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any se
 ## Behaviour that follows the specification, not observation
 
 Where TellusTalk's behaviour has not been observed, the emulator follows its
-[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html). These are the places; each is settled
-when someone observes the real thing.
-
-- What TellusTalk does when the text needs more parts than `sms_max_parts`: refuse, truncate or send.
-- What `sms_character_set: gsm` does with a character outside the GSM alphabet.
-- How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
-- Whether `sms_header` is joined to the text with a separator.
-- What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
-  address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
-  specification's examples and ends an address at whitespace.
-- What the phone shows when `sms_originator_source` is `subject` without a `subject`, or `text` without
-  `sms_originator_text`.
-- How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
-- What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
-  one or as each of its members; the emulator counts it as one.
-- What `sms_originator_source: replysms` shows when given explicitly, and what an account with two-way SMS shows
-  without a source.
-- What `html` and `attachments` do on an SMS.
-- Whether TellusTalk refuses anything apart from a missing `Authorization`, and with what content type and text.
-- What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
-  phrase, as the specification shows them.
-- What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
-- How TellusTalk treats the other rules the warnings cover.
-- What a reply contains, whether any report comes before the final one, and which other values a report's status
-  takes.
-- Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
+[published specification](https://k8api.tellustalk.com/openapi_docs/redoc.html).
+[docs/k8-behaviour.md](docs/k8-behaviour.md) lists what was observed, with the dates, and what was not.
 
 ## Building
 
