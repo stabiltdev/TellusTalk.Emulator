@@ -57,10 +57,13 @@ Each refusal is a `400` with `Content-Type: text/html; charset=utf-8`, the same 
 text as the body without a trailing newline. K8 runs on Python, so a value after `got` or `string:` is Python's `str()`
 of the parsed JSON value.
 
-- **2026-11-14:** `subject`, `sms_originator_source`, `sms_originator_text` or `sms_originator_number` that is `null`,
-  a number, `true`, a list or an object, with or without a source and beside a source and its value → `Invalid <field>
-  not a string: <value>`, such as `Invalid subject not a string: None`, `Invalid subject not a string: 1.5` for `1.50`,
-  `Invalid subject not a string: ['Acme', 1, None]` and `Invalid subject not a string: {'name': 'Acme', 'on': True}`.
+- **2026-11-14:** `subject`, `sms_originator_source`, `sms_originator_text` or `sms_originator_number` that is `null`
+  → `Invalid <field> not a string: None`. `subject` was also null beside a source and its value, and the other three
+  without one.
+- **2026-11-14:** `subject: 123` → `Invalid subject not a string: 123`, and `sms_originator_number: 46701740699` beside
+  source `text` and its value → `Invalid sms_originator_number not a string: 46701740699`.
+- **2026-11-14:** `subject` that is `true`, `1.50`, `["Acme", 1, null]` or `{"name": "Acme", "on": true}` → `Invalid
+  subject not a string: True`, `... 1.5`, `... ['Acme', 1, None]` and `... {'name': 'Acme', 'on': True}`.
 - **2026-11-14:** an `sms_originator_source` that is none of `replysms`, `text`, `number` and `subject`, matched exactly
   (`Text` and the empty string included) → `Invalid sms_originator_source: <value>; must be one of
   frozenset({'replysms', 'number', 'text', 'subject'})`. A Python `frozenset` is ordered by hash randomisation per
@@ -87,7 +90,10 @@ is settled when someone observes the real thing.
   specification's examples and ends an address at whitespace.
 - Which refusal K8 gives when a request breaks more than one sender rule, and how its sender refusals rank against what
   the emulator itself cannot record; the emulator checks the types, then the source, then the missing value.
-- `null` or another type in any field other than the four sender fields.
+- Every other type in each of the four sender fields, such as `true` or a list in `sms_originator_text`; the emulator
+  refuses all of them as it refuses the observed cases.
+- `null` or another type in any field other than the four sender fields; not every field is type-checked, since
+  `"sms_flash": "true"` was accepted on 2026-11-07.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
