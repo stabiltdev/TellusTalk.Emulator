@@ -219,7 +219,9 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
 
 A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21` and
 `"failed_reason": "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"`. `echo` carries the request's `echo` as it was
-sent, and `quantity` the number of parts.
+sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
+itself carries the message alone. `text_linebreaksbr`, and `html` when the request has none of its own, write each line
+break as `<br>` followed by the line break.
 
 The request carries `Content-Type: application/json`, `Accept: */*`, a `webpages-request-id` and an
 `x-webpages-request-id` with the same value, and every header in the address's settings, such as
