@@ -45,6 +45,25 @@ from PTS's range for fiction, and no account is named.
   `failed_reason` `txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None`.
 - **2026-11-07:** a report → the headers `Content-Type: application/json`, `Accept: */*`, and a `webpages-request-id` and
   an `x-webpages-request-id` with the same value, and every header named in the address's settings.
+- **2026-11-14:** a send with a `subject` and a URL in `report_to` → a report whose `text` is the subject, a blank line
+  and the message, while the phone shows only the message; `html` and `text_linebreaksbr` write each line break as
+  `<br>` followed by the line break. The other fields and the headers were as on 2026-11-07, with a `User-Agent` of
+  Python's aiohttp.
+- **2026-11-14:** a failed SMS → its report about a second after the send; a delivered one → after five to eight
+  seconds.
+
+### The user's report recipients
+
+As of 2026-11-14, TellusTalk's user setting SMS Report Recipients (Settings, SMS) holds rows of a kind (Email, HTTP,
+HTTPS, SMS, MMS, Fax or SMPP), a "when" (Never, Always, When Success, When Failed, Always with message, Delivered with
+message or Failed with message) and an address, and one language for them all.
+
+- **2026-11-14:** sends to `send/v1`, delivered and failed, with and without `report_to` → no report on any of eight
+  rows: HTTPS at each of the seven "when", and Email at Always. A `report_to` URL got its report as usual.
+- **2026-11-14:** an SMS sent from TellusTalk's own Send page by the same user → a report on the HTTPS row at Always and
+  an e-mail on the Email row. The emulator catches only `send/v1`, so it has no report recipients of its own.
+- **2026-11-14:** the language at English → the same JSON report to a `report_to` URL as at the default, whose e-mail
+  report was in Swedish.
 
 ### The sender
 
@@ -128,7 +147,9 @@ is settled when someone observes the real thing.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
-- What `html` and `attachments` do on an SMS.
+- What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
+  passes the request's on.
+- What a report's `text` is for an empty `subject`; the emulator takes it as no subject.
 - What else TellusTalk refuses, apart from a missing `Authorization` and the sender fields above, and with what text.
 - What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
   phrase, as the specification shows them.
