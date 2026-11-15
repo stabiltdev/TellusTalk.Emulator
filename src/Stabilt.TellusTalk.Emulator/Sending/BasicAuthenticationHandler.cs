@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Stabilt.TellusTalk.Emulator.Ids;
+using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
 

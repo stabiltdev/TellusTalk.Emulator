@@ -1,3 +1,5 @@
+using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
+
 namespace Stabilt.TellusTalk.Emulator.Sending;
 
 /// <summary>

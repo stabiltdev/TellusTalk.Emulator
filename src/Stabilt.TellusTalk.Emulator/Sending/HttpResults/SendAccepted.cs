@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Stabilt.TellusTalk.Emulator.Messages;
 
-namespace Stabilt.TellusTalk.Emulator.Sending;
+namespace Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
 /// <summary>
 /// TellusTalk's answer to a send it takes: <c>application/json</c> with no charset, the job's id three times and the

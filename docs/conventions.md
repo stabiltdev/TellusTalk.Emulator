@@ -33,8 +33,9 @@ code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulato
   `send/v1` alone for now, keep TellusTalk's names, versions, status codes and headers.
 - `send/v1` requires authentication; `BasicAuthenticationHandler` accepts any credentials and refuses a request without
   them with TellusTalk's own `401`. Nothing else requires it.
-- Each kind of answer `send/v1` gives is a type of its own that writes it in TellusTalk's form: a `TextAnswer` made by
-  `Refusals`, or `SendAccepted`. Its `Handle` returns them as `Results<…>`, which so names every answer it gives.
+- Each kind of answer `send/v1` gives is a type of its own in `Sending/HttpResults/` that writes it in TellusTalk's
+  form: a `TextResult` made by `Refusals`, or `SendAccepted`. Its `Handle` returns them as `Results<…>`, which so names
+  every answer it gives.
 
 ## The read API's answers
 

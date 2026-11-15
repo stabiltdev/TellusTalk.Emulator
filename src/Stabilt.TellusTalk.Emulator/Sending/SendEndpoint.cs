@@ -8,6 +8,7 @@ using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;
 using Stabilt.TellusTalk.Emulator.Requests;
+using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 using Accepted = Stabilt.TellusTalk.Emulator.Requests.Accepted;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
@@ -36,7 +37,7 @@ internal sealed class SendEndpoint : IEndpoint
         SendAccepted,
         TellusTalkRefusal,
         EmulatorLimit,
-        FailureAnswer,
+        FailureResult,
         EmptyHttpResult
     >> Handle(
         [FromHeader(Name = "Content-Type")] string? contentType,

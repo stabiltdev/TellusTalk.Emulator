@@ -1,10 +1,10 @@
-namespace Stabilt.TellusTalk.Emulator.Sending;
+namespace Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
 internal static class Refusals
 {
     public static TellusTalkUnauthorized Unauthorized() => new();
 
-    public static FailureAnswer Failure(int statusCode) => new(statusCode);
+    public static FailureResult Failure(int statusCode) => new(statusCode);
 
     public static TellusTalkRefusal TellusTalk(string text) => new(text);
 
