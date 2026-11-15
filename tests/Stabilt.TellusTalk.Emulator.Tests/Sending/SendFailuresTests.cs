@@ -47,6 +47,20 @@ public sealed class SendFailuresTests
         next.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Theory]
+    [InlineData("{", "application/json")]
+    [InlineData("<send/>", "application/xml")]
+    [InlineData("""{"text":"Hej"}""", "application/json")]
+    public async Task A_failure_for_any_send_answers_whatever_the_request_holds(string body, string contentType)
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 503 });
+
+        using var failed = await emulator.Send(body, contentType: contentType);
+
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
     [Fact]
     public async Task An_order_without_a_body_arms_one_failure_with_500()
     {
