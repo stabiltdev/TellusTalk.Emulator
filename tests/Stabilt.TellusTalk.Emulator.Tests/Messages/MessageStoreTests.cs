@@ -41,6 +41,21 @@ public sealed class MessageStoreTests
     }
 
     [Fact]
+    public void A_scheduled_e_mail_is_listed_as_scheduled_until_it_falls_due_and_then_as_sent()
+    {
+        var store = Store();
+        var email = Send(store, "Shipped", to: "email:test.user@example.se", scheduledSendTime: "2026-11-07T22:30:00Z");
+
+        store.List(MessageState.Scheduled).Should().Equal(email);
+        store.List(MessageState.Sent).Should().BeEmpty();
+
+        _time.Advance(TimeSpan.FromMinutes(31));
+
+        store.List(MessageState.Scheduled).Should().BeEmpty();
+        store.List(MessageState.Sent).Should().Equal(email);
+    }
+
+    [Fact]
     public void Messages_filter_by_recipient()
     {
         var store = Store();

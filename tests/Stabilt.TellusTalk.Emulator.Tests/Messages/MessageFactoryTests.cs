@@ -68,6 +68,16 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
+    public void Every_message_of_a_request_carries_its_field_and_to_warnings()
+    {
+        var job = Create("""{"to":["sms:+46701740605","email:test.user@example.se","fax:+46 70 174 06 06"],"text":"Hej","unknown":1}""");
+
+        job.Messages.Should().HaveCount(3).And.AllSatisfy(message => message.Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.SpacesRemoved, WarningCodes.UnknownField));
+    }
+
+    [Fact]
     public void An_e_mail_with_a_long_subject_carries_no_sender_warning()
     {
         var message = Create("""{"to":"email:test.user@example.se","subject":"Your order has shipped","text":"Hej"}""").Messages.Single();
