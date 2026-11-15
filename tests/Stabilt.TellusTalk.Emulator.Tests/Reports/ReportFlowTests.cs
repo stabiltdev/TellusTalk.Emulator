@@ -147,6 +147,46 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
+    public async Task A_scheduled_e_mail_with_a_report_address_is_never_reported()
+    {
+        await using var emulator = new EmulatorFactory();
+        var emailId = await Send(emulator, """{"to":"email:test.user@example.se","text":"Hej","report_to":"https://example.se/reports","scheduled_send_time":"2026-11-07T22:01:00Z"}""");
+        var smsId = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports","scheduled_send_time":"2026-11-07T22:02:00Z"}""");
+
+        // The e-mail falls due first, so the SMS's report shows that the report service carried on past it.
+        emulator.Time.Advance(TimeSpan.FromSeconds(90));
+        await StepUntilReported(emulator, 1);
+        for (var step = 0; step < 5; step++)
+        {
+            await Step(emulator);
+        }
+
+        emulator.Reports.Received
+            .Select(report => Field(report, "log_uuid"))
+            .Should().Equal(smsId);
+        (await Attempts(emulator, emailId, expected: 0)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_report_asked_for_a_message_on_another_channel_is_refused()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"email:test.user@example.se","text":"Hej","report_to":"https://example.se/reports"}""");
+        using var client = emulator.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative),
+            new { status = "delivered" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.RootElement.GetProperty("message").GetString()
+            .Should().Be("The emulator sends reports for SMS only, since TellusTalk's report for another channel has not been observed.");
+        emulator.Reports.Received.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task A_held_back_send_is_reported_blocked_without_waiting_for_the_delay()
     {
         await using var emulator = new EmulatorFactory();

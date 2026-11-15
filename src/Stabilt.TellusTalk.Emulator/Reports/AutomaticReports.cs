@@ -28,7 +28,7 @@ internal sealed class AutomaticReports(
 
     private async Task Report(Message message, CancellationToken stoppingToken)
     {
-        var status = options.Value.Fails(message.To.Number) ? ReportStatus.Failed : ReportStatus.Delivered;
+        var status = options.Value.Fails(message.To.Address) ? ReportStatus.Failed : ReportStatus.Delivered;
         store.AddReports(message.Id, await sender.Send(message, status, stoppingToken));
     }
 }

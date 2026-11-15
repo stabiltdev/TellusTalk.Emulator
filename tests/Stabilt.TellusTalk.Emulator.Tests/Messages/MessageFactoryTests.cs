@@ -15,6 +15,77 @@ public sealed class MessageFactoryTests
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 11, 7, 22, 0, 0, TimeSpan.Zero));
 
     [Fact]
+    public void A_recipient_on_sms_is_an_sms_with_its_sms_part()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej"}""").Messages.Single();
+
+        message.To.Should().Be(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"));
+        message.Sms.Should().NotBeNull();
+        message.Sms!.MaxParts.Should().Be(8);
+    }
+
+    [Fact]
+    public void A_recipient_on_another_channel_has_no_sms_part_and_the_text_as_sent()
+    {
+        var message = Create("""{"to":"email:test.user@example.se","text":"Svara: redirect=https://example.se/quiz","sms_header":"[Test] "}""").Messages.Single();
+
+        message.Sms.Should().BeNull();
+        message.Text.Should().Be("Svara: redirect=https://example.se/quiz");
+    }
+
+    [Fact]
+    public void A_recipient_on_another_channel_without_a_text_has_an_empty_text()
+    {
+        var message = Create("""{"to":"email:test.user@example.se","html":"<p>Shipped</p>"}""").Messages.Single();
+
+        message.Text.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void The_job_counts_every_recipient_whatever_its_channel()
+    {
+        var job = Create("""{"to":["sms:+46701740605","email:test.user@example.se","group:box.abc123"],"text":"Hej"}""");
+
+        job.Size.Should().Be(3);
+        job.Messages.Should().HaveCount(3);
+        job.Messages.Should().AllSatisfy(message => message.JobId.Should().Be(job.JobId));
+        job.Messages
+            .Select(message => message.Id)
+            .Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void Only_the_sms_carries_the_sms_warnings()
+    {
+        var job = Create("""{"to":["sms:+46701740605","email:test.user@example.se"],"text":"Hej","sms_originator_text":"ProbeProbe12","unknown":1}""");
+
+        job.Messages[0].Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.UnknownField, WarningCodes.OriginatorTextTooLong);
+        job.Messages[1].Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.UnknownField);
+    }
+
+    [Fact]
+    public void Every_message_of_a_request_carries_its_field_and_to_warnings()
+    {
+        var job = Create("""{"to":["sms:+46701740605","email:test.user@example.se","fax:+46 70 174 06 06"],"text":"Hej","unknown":1}""");
+
+        job.Messages.Should().HaveCount(3).And.AllSatisfy(message => message.Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.SpacesRemoved, WarningCodes.UnknownField));
+    }
+
+    [Fact]
+    public void An_e_mail_with_a_long_subject_carries_no_sender_warning()
+    {
+        var message = Create("""{"to":"email:test.user@example.se","subject":"Your order has shipped","text":"Hej"}""").Messages.Single();
+
+        message.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
     public void A_single_recipients_message_takes_the_jobs_id()
     {
         var job = Create("""{"to":"sms:+46701740605","text":"Hej"}""");
@@ -40,7 +111,7 @@ public sealed class MessageFactoryTests
         var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_header":"[Test] "}""").Messages.Single();
 
         message.Text.Should().Be("[Test] Hej");
-        message.Parts.Length.Should().Be(12, "the brackets come from the GSM extension table and take two septets each");
+        message.Sms!.Parts.Length.Should().Be(12, "the brackets come from the GSM extension table and take two septets each");
     }
 
     [Fact]
@@ -51,8 +122,8 @@ public sealed class MessageFactoryTests
         var message = Create(Json(new { to = "sms:+46701740605", text = "Svara här: redirect=" + target })).Messages.Single();
 
         message.Text.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0");
-        message.Parts.Count.Should().Be(1);
-        message.Links.Should().ContainSingle().Which.Target.Should().Be(target);
+        message.Sms!.Parts.Count.Should().Be(1);
+        message.Sms.Links.Should().ContainSingle().Which.Target.Should().Be(target);
     }
 
     [Fact]
@@ -77,7 +148,7 @@ public sealed class MessageFactoryTests
     {
         var message = Create(Json(new { to = "sms:+46701740605", text = Welcome })).Messages.Single();
 
-        message.MaxParts.Should().Be(8);
+        message.Sms!.MaxParts.Should().Be(8);
         message.Warnings.Should().BeEmpty();
     }
 

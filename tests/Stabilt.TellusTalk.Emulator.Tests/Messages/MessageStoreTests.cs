@@ -41,6 +41,21 @@ public sealed class MessageStoreTests
     }
 
     [Fact]
+    public void A_scheduled_e_mail_is_listed_as_scheduled_until_it_falls_due_and_then_as_sent()
+    {
+        var store = Store();
+        var email = Send(store, "Shipped", to: "email:test.user@example.se", scheduledSendTime: "2026-11-07T22:30:00Z");
+
+        store.List(MessageState.Scheduled).Should().Equal(email);
+        store.List(MessageState.Sent).Should().BeEmpty();
+
+        _time.Advance(TimeSpan.FromMinutes(31));
+
+        store.List(MessageState.Scheduled).Should().BeEmpty();
+        store.List(MessageState.Sent).Should().Equal(email);
+    }
+
+    [Fact]
     public void Messages_filter_by_recipient()
     {
         var store = Store();
@@ -71,7 +86,7 @@ public sealed class MessageStoreTests
         store.Add(Factory().Create(request, "tester", "{}").Messages);
 
         store.List()
-            .Select(message => message.To.Number)
+            .Select(message => message.To.Address)
             .Should().BeEquivalentTo(["+46701740603", "+46701740604", "+46701740605"]);
     }
 
@@ -409,6 +424,51 @@ public sealed class MessageStoreTests
         _time.Advance(TimeSpan.FromSeconds(2));
 
         store.TakeDueReports(TimeSpan.FromSeconds(1)).Should().Equal(first);
+    }
+
+    [Fact]
+    public void An_sms_and_an_mms_to_the_same_number_do_not_hold_each_other_back()
+    {
+        var store = Store();
+        var sms = Send(store, "Hej", to: "sms:+46701740605");
+        var mms = Send(store, "Hej", to: "mms:+46701740605");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var again = Send(store, "Hej", to: "sms:+46701740605");
+
+        mms.DuplicateOf.Should().BeNull();
+        again.DuplicateOf.Should().Be(sms.Id);
+    }
+
+    [Fact]
+    public void An_mms_holds_back_no_later_sms_to_the_same_number()
+    {
+        var store = Store();
+        Send(store, "Hej", to: "mms:+46701740605");
+
+        Send(store, "Hej", to: "sms:+46701740605").DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_message_on_another_channel_is_never_held_back()
+    {
+        var store = Store();
+        var first = Send(store, "Hej", to: "email:test.user@example.se");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var second = Send(store, "Hej", to: "email:test.user@example.se");
+
+        first.DuplicateOf.Should().BeNull();
+        second.DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_message_on_another_channel_is_not_handed_out_for_an_automatic_report()
+    {
+        var store = Store();
+        Send(store, "Hej", to: "email:test.user@example.se", reportTo: "https://example.se/reports");
+        var sms = Send(store, "Hej", reportTo: "https://example.se/reports");
+        _time.Advance(TimeSpan.FromSeconds(2));
+
+        store.TakeDueReports(TimeSpan.FromSeconds(1)).Should().Equal(sms);
     }
 
     private static ReportAttempt Attempt(DateTimeOffset at) =>

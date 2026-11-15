@@ -99,8 +99,14 @@ internal sealed class SendEndpoint : IEndpoint
         SendFailures failures,
         HeldBackReports heldBackReports)
     {
-        // A number's failures need the recipients, so they are spent once the request is read.
-        if (failures.TrySpend(request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)
+        // A number's failures need the recipients, so they are spent once the request is read. An e-mail address or a
+        // group's id is no number, whatever it reads as.
+        var numbers = request.Recipients
+            .Where(recipient => recipient.Channel is MessageChannel.Sms or MessageChannel.Mms
+                or MessageChannel.Voice or MessageChannel.Fax)
+            .Select(recipient => recipient.Address);
+
+        if (failures.TrySpend(numbers) is { } numberFailure)
         {
             await Fail(context, time, numberFailure);
 

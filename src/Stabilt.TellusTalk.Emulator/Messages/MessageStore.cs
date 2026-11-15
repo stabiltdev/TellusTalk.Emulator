@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Stabilt.TellusTalk.Emulator.Reports;
+using Stabilt.TellusTalk.Emulator.Requests;
 
 namespace Stabilt.TellusTalk.Emulator.Messages;
 
@@ -27,7 +28,10 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         {
             foreach (var message in messages)
             {
-                var original = options.Value.BlockDuplicates ? FindOriginal(message) : null;
+                // K8's duplicate key on another channel is unobserved, so only an SMS is held back.
+                var original = options.Value.BlockDuplicates && message.To.Channel == MessageChannel.Sms
+                    ? FindOriginal(message)
+                    : null;
                 var added = original is null ? message : message with { DuplicateOf = original.Id };
                 _messages.Add(added);
                 stored.Add(added);
@@ -53,7 +57,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     /// Newest first by the time a message was shown: its due time if it was scheduled, else when it arrived. Messages
     /// at the same instant keep the order they arrived in, newest first.
     /// </summary>
-    public IReadOnlyList<Message> List(MessageState? state = null, string? to = null, string? search = null)
+    public IReadOnlyList<Message> List(MessageState? state = null, string? to = null, string? search = null, MessageChannel? channel = null)
     {
         var now = time.GetUtcNow();
         lock (_lock)
@@ -61,7 +65,8 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
             return _messages
                 .Select((message, order) => (Message: message, Order: order))
                 .Where(entry => state is null || entry.Message.StateAt(now) == state)
-                .Where(entry => to is null || string.Equals(entry.Message.To.Number, to, StringComparison.Ordinal))
+                .Where(entry => channel is null || entry.Message.To.Channel == channel)
+                .Where(entry => to is null || string.Equals(entry.Message.To.Address, to, StringComparison.Ordinal))
                 .Where(entry => search is null || Matches(entry.Message, search))
                 .OrderByDescending(entry => entry.Message.ShownAt)
                 .ThenByDescending(entry => entry.Order)
@@ -118,8 +123,8 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     }
 
     /// <summary>
-    /// The messages whose automatic report is due: they have a report address, were sent or fell due at least
-    /// <paramref name="delay"/> ago, and have not been taken before. Each is handed out once.
+    /// The messages whose automatic report is due: they are SMS with a report address, were sent or fell due at
+    /// least <paramref name="delay"/> ago, and have not been taken before. Each is handed out once.
     /// </summary>
     public IReadOnlyList<Message> TakeDueReports(TimeSpan delay)
     {
@@ -127,6 +132,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         lock (_lock)
         {
             var due = _messages
+                .Where(message => message.Sms is not null)
                 .Where(message => message.DuplicateOf is null)
                 .Where(message => message.Request.ReportTo.Count > 0)
                 .Where(message => message.ShownAt <= now - delay)
@@ -225,18 +231,21 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
 
     /// <summary>Called under the lock. Held-back messages are no original, so a held-back send does not extend the window.</summary>
     private Message? FindOriginal(Message message) => _messages
+        .Where(other => other.To.Channel == MessageChannel.Sms)
         .Where(other => other.DuplicateOf is null)
         .Where(other => (other.ReceivedAt - message.ReceivedAt).Duration() <= DuplicateWindow)
         .Where(other => string.Equals(other.UserName, message.UserName, StringComparison.Ordinal))
-        .Where(other => string.Equals(other.To.Number, message.To.Number, StringComparison.Ordinal))
+        .Where(other => string.Equals(other.To.Address, message.To.Address, StringComparison.Ordinal))
         .Where(other => string.Equals(other.Request.Subject ?? "", message.Request.Subject ?? "", StringComparison.Ordinal))
         .Where(other => string.Equals(other.Request.Text ?? "", message.Request.Text ?? "", StringComparison.Ordinal))
         .FirstOrDefault();
 
     private static bool Matches(Message message, string search) =>
-        message.To.Number.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+        message.To.Address.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         message.Text.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-        message.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase);
+        (message.Sms is null
+            ? message.Request.Subject?.Contains(search, StringComparison.OrdinalIgnoreCase) == true
+            : message.Sms.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase));
 
     private void Publish(StoreChange change)
     {

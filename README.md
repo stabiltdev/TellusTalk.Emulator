@@ -1,28 +1,29 @@
 # TellusTalk Emulator
 
 A local stand-in for [TellusTalk](https://tellustalk.com/)'s
-[K8 send API](https://k8api.tellustalk.com/openapi_docs/redoc.html). It catches the SMS an app sends and shows them on a
-web page, so nothing reaches a real phone during development and testing.
+[K8 send API](https://k8api.tellustalk.com/openapi_docs/redoc.html). It catches what an app sends and shows it on a
+web page, so nothing reaches a real phone or mailbox during development and testing.
 
 Not affiliated with TellusTalk.
 
 ## What it does
 
-- Takes `POST /send/v1` the way TellusTalk's K8 platform does, for SMS, so an app runs its real TellusTalk client
-  against it with only the base address changed.
+- Takes `POST /send/v1` the way TellusTalk's K8 platform does, so an app runs its real TellusTalk client against it
+  with only the base address changed.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
-- Keeps every SMS in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, and each
-  SMS as the recipient's phone shows it, with the parts it splits into.
+- Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
+- Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, each
+  SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
 - Serves what it caught to automated tests through a read API under `/api/v1/`.
-- Posts a delivery report, in the form TellusTalk posts one, to each URL in a message's `report_to`: delivered, or
-  failed for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
-- Holds back a send that duplicates one the same user made in the five minutes before, as TellusTalk does.
+- Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed
+  for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
+- Holds back an SMS that duplicates one the same user sent in the five minutes before, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
 - Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
   retries and timeouts can be tried.
 
-It sends no SMS onward. Its only outgoing calls are the delivery reports to the URLs a request names.
+It sends nothing onward. Its only outgoing calls are the delivery reports to the URLs a request names.
 
 ## What it covers
 
@@ -30,7 +31,7 @@ It sends no SMS onward. Its only outgoing calls are the delivery reports to the 
 |---|---|---|
 | Platform | K8, `k8api.tellustalk.com` | The legacy platform, `api.tellustalk.com`; the HTTP-GET API; e-mail-to-SMS |
 | API | `POST /send/v1` | K8's other APIs |
-| Channel | SMS, with every field the specification defines for it | MMS, e-mail, fax, voice and groups, which beside an SMS recipient are counted but not caught, and alone are refused; `log:` addresses, secure messages, signatures and payments, which are refused |
+| Channel | SMS, with every field the specification defines for it; e-mail, fax, MMS, voice and groups, caught and listed | A view of their own, reports and hold-back for e-mail, fax, MMS, voice and groups; `log:` addresses, secure messages, signatures and payments, which are refused |
 | Body | JSON | XML and form bodies |
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
@@ -120,7 +121,7 @@ await emulatorApi.DeleteAsync("api/v1/messages");
 
 // … the code under test sends an SMS …
 
-var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&to=%2B46701740605");
+var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&channel=sms&to=%2B46701740605");
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
@@ -138,7 +139,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
 | `Emulator__FailingNumbers` | none | Numbers whose reports say the operator could not deliver, separated by commas. |
-| `Emulator__BlockDuplicates` | `true` | Whether a send is held back, as TellusTalk does, when the same user sent the same subject and text to the same number in the five minutes before. |
+| `Emulator__BlockDuplicates` | `true` | Whether an SMS is held back, as TellusTalk does, when the same user sent the same subject and text to the same number in the five minutes before. |
 
 ## Refusals and warnings
 
@@ -154,8 +155,8 @@ The emulator refuses:
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
   emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object, a
   request without `to`, a `to` that is neither an address nor a list of addresses, recipient objects (the form secure
-  messages and signatures take), a request with recipients but none on `sms:`, and a `log:` recipient, which TellusTalk
-  answers with a `log_href` the emulator cannot give.
+  messages and signatures take), and a `log:` recipient, which TellusTalk answers with a `log_href` the emulator cannot
+  give.
 
 Everything else is accepted and answered as TellusTalk answers it. What TellusTalk's specification forbids, or what
 TellusTalk was seen to correct quietly, becomes a warning on the message, shown on the page and served by the read API:
@@ -164,39 +165,46 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 |---|---|
 | `unknown-field` | A field no send schema defines; TellusTalk ignores it. |
 | `wrong-json-type` | A field of another JSON type than the schema's, such as `"sms_flash": "true"`. |
-| `to-missing-prefix` | A recipient without `sms:`. |
-| `to-spaces-removed` | Spaces in a recipient's number; TellusTalk removes them, and so does the emulator. |
-| `to-not-digits` | A recipient that is not `+` followed by digits. |
-| `originator-text-too-long` | `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
-| `subject-too-long` | `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
-| `originator-number-invalid` | `sms_originator_number` that is not `+` followed by digits. |
-| `single-thread-without-replysms` | `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
-| `character-set-invalid` | An `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
-| `format-deprecated` | `sms_format`, which `sms_character_set` replaces. |
+| `to-missing-prefix` | A recipient without any channel's prefix; the emulator reads it as an SMS number. |
+| `to-spaces-removed` | Spaces in a number; the emulator removes them, as TellusTalk does in an SMS number. |
+| `to-not-digits` | A number that is not `+` followed by digits. |
+| `to-email-invalid` | An `email:` address without a name, `@` and a domain. |
+| `originator-text-too-long` | On an SMS, `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
+| `subject-too-long` | On an SMS, `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
+| `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits. |
+| `single-thread-without-replysms` | On an SMS, `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
+| `character-set-invalid` | On an SMS, an `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
+| `format-deprecated` | On an SMS, `sms_format`, which `sms_character_set` replaces. |
 | `binary-without-udh` | A binary SMS without `sms_udh`. |
 | `binary-not-hex` | A binary SMS whose text is not hex. |
-| `gsm-unsupported-characters` | Characters outside the GSM alphabet under `sms_character_set: gsm`. |
-| `max-parts-invalid` | `sms_max_parts` below 1. |
-| `max-parts-exceeded` | A text needing more parts than `sms_max_parts` allows; the emulator keeps it whole. |
+| `gsm-unsupported-characters` | On an SMS, characters outside the GSM alphabet under `sms_character_set: gsm`. |
+| `max-parts-invalid` | On an SMS, `sms_max_parts` below 1. |
+| `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator keeps it whole. |
 | `billing-id-invalid` | A `billing_id` that is not alphanumeric. |
 | `scheduled-time-invalid` | A `scheduled_send_time` that is not an ISO 8601 date and time; the message is sent at once. |
 | `report-address-invalid` | A `report_to` or `reply_to` that is no e-mail address, `sms:` number or http(s) URL. |
 
-A test can assert that a message carries no warnings, and so catch what TellusTalk would let through.
+A warning about the request, or about any of its recipients, is on every message of the request; one about an SMS is
+on its SMS messages only. A test can assert that a message carries no warnings, and so catch what TellusTalk would let
+through.
 
 ## Duplicates
 
-A send is held back when the same user sent the same `subject` and `text` to the same number in the five minutes
-before it was received, whatever its other fields. Of two identical sends that arrive at once, the one the emulator
-stores second is held back. A held-back send counts for no later one. It is answered as any send, reaches no phone, and
-is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it off.
+An SMS is held back when the same user sent an SMS with the same `subject` and `text` to the same number in the five
+minutes before it was received, whatever its other fields. Of two identical sends that arrive at once, the one the
+emulator stores second is held back. A held-back send counts for no later one. It is answered as any send, reaches no
+phone, and is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it off.
+
+A message on another channel is never held back and holds back no SMS, since what TellusTalk counts as a duplicate
+there has not been observed.
 
 ## Delivery reports
 
-A message with a URL in `report_to` gets a report `Emulator__ReportDelaySeconds` after it is sent, or after it falls
-due if it was scheduled. The report says delivered, or failed when the recipient is one of `Emulator__FailingNumbers`,
-so an app's failure path can be tried with a number of its own. A report of either kind can also be sent at once, any
-number of times: from the buttons beside the message on the page, or with `POST /api/v1/messages/{id}/reports`.
+An SMS with a URL in `report_to` gets a report `Emulator__ReportDelaySeconds` after it is sent, or after it falls due
+if it was scheduled. The report says delivered, or failed when the recipient is one of `Emulator__FailingNumbers`, so
+an app's failure path can be tried with a number of its own. A report of either kind can also be sent at once, any
+number of times: from the buttons beside the message on the page, or with `POST /api/v1/messages/{id}/reports`. A
+message on another channel is not reported, since TellusTalk's report for another channel has not been observed.
 
 Each report is a `POST` with the JSON TellusTalk was seen sending:
 
@@ -251,17 +259,20 @@ given an `http://host.docker.internal:<port>/…` address.
 | Request | Answer |
 |---|---|
 | `GET /api/v1/health` | `Healthy`, as `text/plain` |
-| `GET /api/v1/messages?state=sent\|scheduled\|blocked&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
+| `GET /api/v1/messages?state=sent\|scheduled\|blocked&channel=sms\|email\|fax\|mms\|voice\|group&to=<address>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` or `channel` is answered `400` |
 | `GET /api/v1/messages/{id}` | `<message>`, or `404` |
 | `DELETE /api/v1/messages/{id}` | `204`, or `404` |
 | `DELETE /api/v1/messages` | `204`; every message is removed, the held-back ones too |
-| `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | The attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for another status |
+| `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | For an SMS, the attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for a message on another channel or another status |
 | `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
 | `PUT /api/v1/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
 | `PUT /api/v1/send-failures/{number}` with `[<failure>, …]` | The same, for sends to that number only |
 | `GET /api/v1/send-failures` or `GET /api/v1/send-failures/{number}` | `[{"status":503,"remaining":1,"delaySeconds":0}, …]`, what is left in the order it will be spent; `[]` when nothing is armed |
 | `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
 | `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
+
+`to` matches a number on any channel, and an e-mail address or a group's id as given. `q` searches the address, the text,
+an SMS's sender and another channel's subject.
 
 A `400` or `415` from the read API carries `{"message": "…"}`, saying what is wrong; that includes a body that is
 missing, is not JSON, or is not the JSON the endpoint takes.
@@ -274,9 +285,9 @@ A message:
   "jobId": "5d656a5cdafd11f1ba39a2551b38e481",
   "state": "sent",
   "duplicateOf": null,
+  "channel": "sms",
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
-  "notCaught": [],
   "user": "tester",
   "receivedAt": "2026-11-07T22:00:00+00:00",
   "dueAt": null,
@@ -296,15 +307,16 @@ A message:
 - A held-back message has `state` `blocked`, and `duplicateOf` names the message it duplicates; every other message has
   `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
-- `notCaught` lists the request's recipients on `email:`, `fax:`, `mms:`, `voice:` and `group:`, as sent. TellusTalk
-  sends to them and `job_size` counts them, but the emulator catches SMS only.
+- `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
+  after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.
 - `sender.source` is the source the request named, else the field TellusTalk chose (`subject`, `text` or `number`),
   else `account` when the settings decided; whether the request named it is in `fields`. `fromAccount` says the shown
   sender came from the settings or the reply number rather than from the request.
-- `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and each
-  `--LINK_VIEW--` replaced by a short link in the form of the specification's examples, `https://ebox.nu/r_xxxxxx/0`
-  and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each with its `kind`, `redirect`
-  or `view`, the link as `shown`, and the `target` a redirect leads to; a view link's `target` is `null`.
+- An SMS's `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and
+  each `--LINK_VIEW--` replaced by a short link in the form of the specification's examples,
+  `https://ebox.nu/r_xxxxxx/0` and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each
+  with its `kind`, `redirect` or `view`, the link as `shown`, and the `target` a redirect leads to; a view link's
+  `target` is `null`.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
 - A number in `to` may be written with its `+` unescaped; it arrives as a space and is read as `+`.
@@ -335,7 +347,8 @@ emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any se
 - A failing send is answered with the status, its reason phrase as `text/plain`, such as `Service Unavailable`, and
   TellusTalk's headers, and nothing is recorded. A `401` is answered as TellusTalk answers a send without credentials.
 - Failures for any send are spent before the request is read. A number's are spent once it is read, by the first
-  recipient in `to` that has any; a send spends one failure at most, whatever its recipients.
+  recipient in `to` that has any, on `sms:`, `mms:`, `voice:` or `fax:` alike; a send spends one failure at most,
+  whatever its recipients.
 - A delay longer than the client's own timeout tries that timeout, and a client that gives up spends the failure all
   the same.
 - Credentials are checked first, so a send without them is answered `401` and spends no failure.

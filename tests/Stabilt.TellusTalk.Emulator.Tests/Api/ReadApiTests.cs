@@ -46,7 +46,7 @@ public sealed class ReadApiTests
         newest.GetProperty("state").GetString().Should().Be("sent");
         newest.GetProperty("to").GetString().Should().Be("+46701740605");
         newest.GetProperty("toAsSent").GetString().Should().Be("sms:+46 70 174 06 05");
-        newest.GetProperty("notCaught").GetArrayLength().Should().Be(0);
+        newest.GetProperty("channel").GetString().Should().Be("sms");
         newest.GetProperty("user").GetString().Should().Be("tester");
         newest.GetProperty("receivedAt").GetDateTimeOffset().Should().Be(new DateTimeOffset(2026, 11, 7, 22, 1, 0, TimeSpan.Zero));
         newest.GetProperty("dueAt").ValueKind.Should().Be(JsonValueKind.Null);
@@ -187,17 +187,40 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task A_message_names_its_requests_recipients_on_other_channels_as_sent()
+    public async Task A_message_on_another_channel_has_its_channel_and_address_and_no_sms_parts()
     {
         await using var emulator = new EmulatorFactory();
-        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+        var id = await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped","html":"<p>Shipped</p>"}""");
 
-        using var list = await Get(emulator, "/api/v1/messages");
+        using var message = await Get(emulator, $"/api/v1/messages/{id}");
 
-        list.RootElement.GetProperty("messages")[0].GetProperty("notCaught")
-            .EnumerateArray()
-            .Select(address => address.GetString())
-            .Should().Equal("email:test.user@example.se", "fax:+46701740606");
+        var root = message.RootElement;
+        root.GetProperty("channel").GetString().Should().Be("email");
+        root.GetProperty("to").GetString().Should().Be("test.user@example.se");
+        root.GetProperty("toAsSent").GetString().Should().Be("email:test.user@example.se");
+        root.GetProperty("text").GetString().Should().Be("Shipped");
+        root.GetProperty("sender").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("links").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("parts").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("reports").GetArrayLength().Should().Be(0);
+        root.GetProperty("fields").GetProperty("subject").GetString().Should().Be("Your order");
+        root.GetProperty("state").GetString().Should().Be("sent");
+    }
+
+    [Theory]
+    [InlineData("fax:+46701740606", "fax")]
+    [InlineData("mms:+46701740606", "mms")]
+    [InlineData("voice:+46701740606", "voice")]
+    [InlineData("group:box.abc123", "group")]
+    public async Task Each_channel_is_written_in_lower_case(string address, string channel)
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+
+        message.RootElement.GetProperty("channel").GetString().Should().Be(channel);
     }
 
     [Fact]
@@ -260,6 +283,75 @@ public sealed class ReadApiTests
     }
 
     [Fact]
+    public async Task Messages_filter_by_channel()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
+        await Send(emulator, """{"to":"mms:+46701740605","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?channel=email")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?channel=sms")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages")).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task An_unknown_channel_is_refused()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+
+        using var response = await client.GetAsync(new Uri("/api/v1/messages?channel=telegram", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.RootElement.GetProperty("message").GetString().Should().Be("channel must be sms, email, fax, mms, voice or group.");
+    }
+
+    [Fact]
+    public async Task A_number_filter_matches_every_channel_to_that_number_and_the_channel_narrows_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"mms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"voice:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"fax:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(4);
+        (await Total(emulator, "/api/v1/messages?channel=sms&to=%2B46701740605")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task An_e_mail_address_filter_is_compared_as_given()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
+        await Send(emulator, """{"to":"email:other.user@example.se","subject":"Hello","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=test.user%40example.se")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?to=test.user@example.se")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_group_filter_is_compared_as_given()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"group:box.abc123","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=box.abc123")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task The_search_finds_a_message_on_another_channel_by_its_subject()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""");
+
+        (await Total(emulator, "/api/v1/messages?q=order")).Should().Be(1);
+    }
+
+    [Fact]
     public async Task A_held_back_message_is_blocked_and_names_the_message_it_duplicates()
     {
         await using var emulator = new EmulatorFactory();
@@ -276,8 +368,8 @@ public sealed class ReadApiTests
             .EnumerateObject()
             .Select(property => property.Name)
             .SkipWhile(name => !string.Equals(name, "state", StringComparison.Ordinal))
-            .Take(2)
-            .Should().Equal("state", "duplicateOf");
+            .Take(3)
+            .Should().Equal("state", "duplicateOf", "channel");
     }
 
     [Fact]

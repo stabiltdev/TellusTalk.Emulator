@@ -6,9 +6,6 @@ internal sealed record SendRequest
 {
     public required IReadOnlyList<Recipient> Recipients { get; init; }
 
-    /// <summary>The recipients on other channels than SMS, as sent: TellusTalk sends to them, the emulator does not catch them.</summary>
-    public IReadOnlyList<string> NotCaught { get; init; } = [];
-
     public string? Text { get; init; }
 
     public string? Subject { get; init; }
@@ -40,5 +37,9 @@ internal sealed record SendRequest
     /// <summary>Every top-level member as sent and in the order it arrived, unknown ones included: what is shown as sent.</summary>
     public required IReadOnlyDictionary<string, JsonElement> Fields { get; init; }
 
+    /// <summary>The warnings every message of the request carries.</summary>
     public required IReadOnlyList<Warning> Warnings { get; init; }
+
+    /// <summary>The warnings about the request as an SMS, which only its SMS messages carry.</summary>
+    public IReadOnlyList<Warning> SmsWarnings { get; init; } = [];
 }

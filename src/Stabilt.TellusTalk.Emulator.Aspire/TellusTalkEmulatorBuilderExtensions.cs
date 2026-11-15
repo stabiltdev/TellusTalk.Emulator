@@ -122,7 +122,7 @@ public static class TellusTalkEmulatorBuilderExtensions
     }
 
     /// <summary>
-    /// Whether the emulator holds back a send that duplicates one from the five minutes before, as TellusTalk does;
+    /// Whether the emulator holds back an SMS that duplicates one from the five minutes before, as TellusTalk does;
     /// on by default.
     /// </summary>
     public static IResourceBuilder<TellusTalkEmulatorResource> WithDuplicateBlocking(

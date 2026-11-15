@@ -190,8 +190,15 @@ is settled when someone observes the real thing.
   the same.
 - Whether a text with tracking links is compared before or after the links are shortened (issue #24); the emulator
   compares the request's `text` as sent, before shortening.
-- Duplicates on channels other than SMS; a log of 2026-11-14 showed an e-mail held back 36 seconds after the first. The
-  emulator catches SMS only, so it holds back SMS only.
+- Duplicates on channels other than SMS, and what their key is; a log of 2026-11-14 showed an e-mail held back 36 seconds
+  after the first. The emulator catches every channel but holds back SMS only, since the key on another channel has not
+  been observed.
+- What K8 answers a request whose recipients are all on channels other than SMS; the emulator answers as for an SMS.
+- Whether K8 sends delivery reports for channels other than SMS, and in what form; the emulator reports SMS only.
+- Whether K8 removes spaces in a `fax:`, `mms:` or `voice:` number; the emulator does, as for an SMS.
+- How K8 reads a `to` address without a prefix, such as a bare e-mail address; the emulator reads it as an SMS number.
+- Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
+- Whether K8 refuses the sender fields as it does for an SMS when a request has no SMS recipient; the emulator does.
 - When a held-back send that was itself scheduled reports: at once, or when it would have fallen due; the emulator
   reports it at once, as blocked, and never releases it.
 - Whether `sms_character_set`, `sms_format`, `sms_udh`, `sms_originator_source` or `sms_originator_number` are part of

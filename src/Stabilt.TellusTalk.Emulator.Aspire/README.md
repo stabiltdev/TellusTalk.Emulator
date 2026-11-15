@@ -1,8 +1,8 @@
 # Stabilt.TellusTalk.Emulator.Aspire
 
 Runs [TellusTalk Emulator](https://github.com/stabiltdev/TellusTalk.Emulator), a local stand-in for TellusTalk's K8
-send API, from an Aspire AppHost. The emulator catches the SMS an app sends, shows them on a page, and serves them to
-tests; nothing reaches a real phone. Not affiliated with TellusTalk.
+send API, from an Aspire AppHost. The emulator catches what an app sends, shows it on a page, and serves it to tests;
+nothing reaches a real phone or mailbox. Not affiliated with TellusTalk.
 
 ```csharp
 var tellusTalk = builder
@@ -27,7 +27,7 @@ TellusTalk client a user name and password; the emulator takes any. The dashboar
 | `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |
 | `WithReportDelay(delay)` | How long after a message is sent, or falls due, its delivery report goes out |
 | `WithRetentionLimit(limit)` | How many messages the emulator keeps |
-| `WithDuplicateBlocking(enabled)` | Whether a send that duplicates one from the five minutes before is held back, as TellusTalk does; on by default |
+| `WithDuplicateBlocking(enabled)` | Whether an SMS that duplicates one from the five minutes before is held back, as TellusTalk does; on by default |
 
 The package runs the emulator image of its own version, `ghcr.io/stabiltdev/tellustalk-emulator:<version>`;
 `WithImageTag` picks another.
