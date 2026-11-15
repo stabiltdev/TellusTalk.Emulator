@@ -415,7 +415,9 @@ public sealed class PageTests
         detail.QuerySelector(".tt-phone").Should().BeNull();
         detail.QuerySelector(".tt-parts").Should().BeNull();
         page.QuerySelector("#reports").Should().BeNull();
-        Details(page).Should().Contain(KeyValuePair.Create("Subject", "Your order")).And.Contain(KeyValuePair.Create("Text", "Shipped")).And.ContainKey("Job id");
+        var details = Details(page);
+        details.Should().Contain(KeyValuePair.Create("Subject", "Your order")).And.Contain(KeyValuePair.Create("Text", "Shipped")).And.ContainKey("Job id");
+        details.Should().NotContainKeys("Flash", "Valid for");
         detail.QuerySelector($"button[data-delete='{id}']").Should().NotBeNull();
     }
 

@@ -296,7 +296,7 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task Another_channel_is_refused()
+    public async Task An_unknown_channel_is_refused()
     {
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
@@ -368,8 +368,8 @@ public sealed class ReadApiTests
             .EnumerateObject()
             .Select(property => property.Name)
             .SkipWhile(name => !string.Equals(name, "state", StringComparison.Ordinal))
-            .Take(2)
-            .Should().Equal("state", "duplicateOf");
+            .Take(3)
+            .Should().Equal("state", "duplicateOf", "channel");
     }
 
     [Fact]
