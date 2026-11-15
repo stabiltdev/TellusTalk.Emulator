@@ -28,7 +28,7 @@ internal sealed class ListMessagesEndpoint : IEndpoint
 
         var now = time.GetUtcNow();
         var messages = store
-            .List(wanted, Address(to), q, wantedChannel)
+            .List(wanted, to, q, wantedChannel)
             .Select(message => MessageResponse.From(message, now, store.Reports(message.Id)))
             .ToList();
 
@@ -64,28 +64,6 @@ internal sealed class ListMessagesEndpoint : IEndpoint
         };
 
         return valid;
-    }
-
-    /// <summary>
-    /// A value of digits and spaces with at most a leading <c>+</c> is a number: a <c>+</c> left unescaped in a query
-    /// string arrives as a space, so spaces are removed and the number read in its <c>+</c> form. Any other value, such
-    /// as an e-mail address or a group's id, is compared as given.
-    /// </summary>
-    private static string? Address(string? to)
-    {
-        if (to is null)
-        {
-            return null;
-        }
-
-        var digits = to.Replace(" ", string.Empty, StringComparison.Ordinal);
-        var body = digits.StartsWith('+', StringComparison.Ordinal) ? digits[1..] : digits;
-        if (body.Length == 0 || !body.All(char.IsAsciiDigit))
-        {
-            return to;
-        }
-
-        return "+" + body;
     }
 
     private sealed record MessageList(int Total, IReadOnlyList<MessageResponse> Messages);

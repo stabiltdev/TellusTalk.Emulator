@@ -249,14 +249,32 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task Messages_filter_by_recipient_even_with_an_unescaped_plus()
+    public async Task Messages_filter_by_recipient()
     {
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
 
         (await Total(emulator, "/api/v1/messages?to=%2B46701740605")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task An_unescaped_plus_in_the_recipient_filter_arrives_as_a_space_and_finds_nothing()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_number_filter_is_compared_as_given()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:0701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=0701740605")).Should().Be(1);
     }
 
     [Fact]
@@ -318,7 +336,7 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"fax:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(4);
+        (await Total(emulator, "/api/v1/messages?to=%2B46701740605")).Should().Be(4);
         (await Total(emulator, "/api/v1/messages?channel=sms&to=%2B46701740605")).Should().Be(1);
     }
 
@@ -338,8 +356,10 @@ public sealed class ReadApiTests
     {
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"group:box.abc123","text":"Hej"}""");
+        await Send(emulator, """{"to":"group:12345","text":"Hej"}""");
 
         (await Total(emulator, "/api/v1/messages?to=box.abc123")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?to=12345")).Should().Be(1);
     }
 
     [Fact]

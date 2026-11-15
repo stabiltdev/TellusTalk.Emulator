@@ -271,8 +271,8 @@ given an `http://host.docker.internal:<port>/…` address.
 | `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
 | `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
 
-`to` matches a number on any channel, and an e-mail address or a group's id as given. `q` searches the address, the text,
-an SMS's sender and another channel's subject.
+`to` matches a message's `to` as given, on any channel. A `+` in it is sent as `%2B`: one left unescaped arrives as a
+space, and the query finds nothing. `q` searches the address, the text, an SMS's sender and another channel's subject.
 
 A `400` or `415` from the read API carries `{"message": "…"}`, saying what is wrong; that includes a body that is
 missing, is not JSON, or is not the JSON the endpoint takes.
@@ -319,7 +319,6 @@ A message:
   `target` is `null`.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
-- A number in `to` may be written with its `+` unescaped; it arrives as a space and is read as `+`.
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it
   answered; `outcome` is the receiver's status, or why the report was not sent or not delivered.
 
