@@ -6,7 +6,7 @@ namespace Stabilt.TellusTalk.Emulator.Messages;
 
 internal sealed class ListMessagesEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapGet("api/v1/messages", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapGet("api/messages", Handle);
 
     private static Results<Ok<MessageList>, BadRequest<ApiError>> Handle(
         MessageStore store,

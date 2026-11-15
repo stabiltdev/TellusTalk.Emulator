@@ -5,7 +5,7 @@ namespace Stabilt.TellusTalk.Emulator.Sending;
 
 internal sealed class DeleteSendFailuresEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapDelete("api/v1/send-failures/{number?}", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapDelete("api/send-failures/{number?}", Handle);
 
     /// <summary>
     /// Without a number, every failure goes, every number's too, so a test suite can start over with one call; a test

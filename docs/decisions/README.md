@@ -60,3 +60,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261114-mirror-tellustalks-sender-setting-and-reply-number](20261114-mirror-tellustalks-sender-setting-and-reply-number.md) | Mirror TellusTalk's Sender setting and reply number in the settings | accepted |
 | [20261114-hold-back-a-duplicate-as-k8-does](20261114-hold-back-a-duplicate-as-k8-does.md) | Hold back a duplicate send as K8 does | accepted |
 | [20261115-catch-every-channel-as-a-message-of-its-own](20261115-catch-every-channel-as-a-message-of-its-own.md) | Catch a recipient on every channel as a message of its own | accepted |
+| [20261115-serve-the-emulators-own-api-without-a-version](20261115-serve-the-emulators-own-api-without-a-version.md) | Serve the emulator's own API without a version in its paths | accepted |

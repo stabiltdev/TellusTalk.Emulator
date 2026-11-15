@@ -66,6 +66,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapEndpoints();
-app.MapHealthChecks("api/v1/health");
+app.MapHealthChecks("api/health");
 
 await app.RunAsync();

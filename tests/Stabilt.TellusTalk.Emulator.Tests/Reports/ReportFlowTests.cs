@@ -99,7 +99,7 @@ public sealed class ReportFlowTests
         using var client = emulator.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative),
+            new Uri($"/api/messages/{id}/reports", UriKind.Relative),
             new { status = "failed" },
             TestContext.Current.CancellationToken);
 
@@ -119,7 +119,7 @@ public sealed class ReportFlowTests
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
 
 #pragma warning disable CA2025 // The request is awaited below, before the client and the caller's token are disposed.
-        var request = client.PostAsJsonAsync(new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative), new { status = "failed" }, caller.Token);
+        var request = client.PostAsJsonAsync(new Uri($"/api/messages/{id}/reports", UriKind.Relative), new { status = "failed" }, caller.Token);
 #pragma warning restore CA2025
         await emulator.Reports.WaitFor(1);
         await caller.CancelAsync();
@@ -139,8 +139,8 @@ public sealed class ReportFlowTests
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
 
-        using var unknownMessage = await client.PostAsJsonAsync(new Uri("/api/v1/messages/nothing/reports", UriKind.Relative), new { status = "failed" }, cancellation);
-        using var unknownStatus = await client.PostAsJsonAsync(new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative), new { status = "lost" }, cancellation);
+        using var unknownMessage = await client.PostAsJsonAsync(new Uri("/api/messages/nothing/reports", UriKind.Relative), new { status = "failed" }, cancellation);
+        using var unknownStatus = await client.PostAsJsonAsync(new Uri($"/api/messages/{id}/reports", UriKind.Relative), new { status = "lost" }, cancellation);
 
         unknownMessage.StatusCode.Should().Be(HttpStatusCode.NotFound);
         unknownStatus.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -175,7 +175,7 @@ public sealed class ReportFlowTests
         using var client = emulator.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
-            new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative),
+            new Uri($"/api/messages/{id}/reports", UriKind.Relative),
             new { status = "delivered" },
             TestContext.Current.CancellationToken);
 
@@ -350,7 +350,7 @@ public sealed class ReportFlowTests
         using var client = emulator.CreateClient();
         for (var attempt = 0; attempt < 50; attempt++)
         {
-            using var message = JsonDocument.Parse(await client.GetStringAsync(new Uri($"/api/v1/messages/{id}", UriKind.Relative), TestContext.Current.CancellationToken));
+            using var message = JsonDocument.Parse(await client.GetStringAsync(new Uri($"/api/messages/{id}", UriKind.Relative), TestContext.Current.CancellationToken));
             var reports = message.RootElement
                 .GetProperty("reports")
                 .EnumerateArray()

@@ -5,7 +5,7 @@ namespace Stabilt.TellusTalk.Emulator.Sending;
 
 internal sealed class SetSendFailuresEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapPut("api/v1/send-failures/{number?}", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapPut("api/send-failures/{number?}", Handle);
 
     /// <summary>Without a number the failures are for any send; without a body, one send fails with 500.</summary>
     private static Results<Ok<List<SendFailureResponse>>, BadRequest<ApiError>> Handle(

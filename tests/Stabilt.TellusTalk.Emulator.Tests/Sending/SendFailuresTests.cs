@@ -53,7 +53,7 @@ public sealed class SendFailuresTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
 
-        using var armed = await client.PutAsync(new Uri("/api/v1/send-failures", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
+        using var armed = await client.PutAsync(new Uri("/api/send-failures", UriKind.Relative), content: null, TestContext.Current.CancellationToken);
         using var failed = await emulator.Send(Probe);
 
         armed.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -236,11 +236,11 @@ public sealed class SendFailuresTests
     }
 
     [Theory]
-    [InlineData("/api/v1/send-failures", """[{"status":200}]""", "[0].status must be from 400 to 599.")]
-    [InlineData("/api/v1/send-failures", """[{"status":503},{"status":600}]""", "[1].status must be from 400 to 599.")]
-    [InlineData("/api/v1/send-failures", """[{"count":0}]""", "[0].count must be 1 or more.")]
-    [InlineData("/api/v1/send-failures", """[{"delaySeconds":-1}]""", "[0].delaySeconds must be 0 or more.")]
-    [InlineData("/api/v1/send-failures/46701740605", """[{"status":503}]""", "The number must be + followed by digits.")]
+    [InlineData("/api/send-failures", """[{"status":200}]""", "[0].status must be from 400 to 599.")]
+    [InlineData("/api/send-failures", """[{"status":503},{"status":600}]""", "[1].status must be from 400 to 599.")]
+    [InlineData("/api/send-failures", """[{"count":0}]""", "[0].count must be 1 or more.")]
+    [InlineData("/api/send-failures", """[{"delaySeconds":-1}]""", "[0].delaySeconds must be 0 or more.")]
+    [InlineData("/api/send-failures/46701740605", """[{"status":503}]""", "The number must be + followed by digits.")]
     public async Task An_order_outside_the_rules_is_refused_and_arms_nothing(string path, string json, string message)
     {
         await using var emulator = new EmulatorFactory();
@@ -255,10 +255,10 @@ public sealed class SendFailuresTests
         send.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    private static Task Arm(EmulatorFactory emulator, params object[] failures) => Put(emulator, "/api/v1/send-failures", failures);
+    private static Task Arm(EmulatorFactory emulator, params object[] failures) => Put(emulator, "/api/send-failures", failures);
 
     private static Task ArmFor(EmulatorFactory emulator, string number, params object[] failures) =>
-        Put(emulator, $"/api/v1/send-failures/{number}", failures);
+        Put(emulator, $"/api/send-failures/{number}", failures);
 
     private static async Task Put(EmulatorFactory emulator, string path, object[] failures)
     {
