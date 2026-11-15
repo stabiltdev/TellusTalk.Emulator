@@ -14,7 +14,8 @@ Not affiliated with TellusTalk.
 - Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
 - Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, each
   SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
-- Serves what it caught to automated tests through a read API under `/api/`.
+- Serves what it caught to automated tests through a read API under `/api/`, which the package
+  [`Stabilt.TellusTalk.Emulator.Client`](src/Stabilt.TellusTalk.Emulator.Client/README.md) reads as typed models.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed
   for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
 - Holds back an SMS that duplicates one the same user sent in the five minutes before, as TellusTalk does.
@@ -112,6 +113,32 @@ var baseAddress = new Uri($"http://{emulator.Hostname}:{emulator.GetMappedPublic
 ```
 
 ### Reading what was sent in a test
+
+The package [`Stabilt.TellusTalk.Emulator.Client`](src/Stabilt.TellusTalk.Emulator.Client/README.md) lists, reads and
+clears what the emulator caught, with the filters escaped:
+
+```csharp
+using var emulatorApi = new TellusTalkEmulatorClient(baseAddress);
+
+// Before each test: start from empty lists.
+await emulatorApi.DeleteMessagesAsync();
+
+// … the code under test sends an SMS …
+
+var sent = await emulatorApi.GetMessagesAsync(new MessageQuery
+{
+    State = MessageState.Sent,
+    Channel = MessageChannel.Sms,
+    To = "+46701740605",
+});
+var message = Assert.Single(sent);
+
+Assert.Equal("Your code is 482913", message.Text);
+Assert.Equal("Acme", message.Sender!.Shown);
+Assert.Empty(message.Warnings);
+```
+
+Without the package, the same is:
 
 ```csharp
 using var emulatorApi = new HttpClient { BaseAddress = baseAddress };
