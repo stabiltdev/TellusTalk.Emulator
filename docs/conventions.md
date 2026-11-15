@@ -25,8 +25,8 @@ disagree, the code is right and the page is a bug.
 code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulator.Tests/Http/EndpointConventionTests.cs`
 
 - An endpoint is an `internal sealed class` named with an `Endpoint` suffix that implements `IEndpoint`. Its `Map` only
-  wires the route to a `private static Handle`; `MapEndpoints` finds every one at startup, so `Program.cs` lists none.
-  `EndpointConventionTests` fails on an endpoint that is not sealed or lacks the suffix.
+  wires the route, and any filters, to a `private static Handle`; `MapEndpoints` finds every one at startup, so
+  `Program.cs` lists none. `EndpointConventionTests` fails on an endpoint that is not sealed or lacks the suffix.
 - One file per endpoint, in the folder of the resource it serves: `Messages/`, `Reports/`, `Sending/`, `Page/`. What only
   one endpoint uses, such as a small request or response record, stays in its file.
 - The read API lives under `api/`, without a version: the image's version is the API's. TellusTalk's own paths,

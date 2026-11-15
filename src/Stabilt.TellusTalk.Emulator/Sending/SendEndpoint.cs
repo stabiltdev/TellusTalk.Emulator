@@ -3,8 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
-using Stabilt.TellusTalk.Emulator.Ids;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;
 using Stabilt.TellusTalk.Emulator.Requests;
@@ -20,42 +20,39 @@ internal sealed class SendEndpoint : IEndpoint
 
     private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
 
+    // The headers' filter comes first, so the answer to a failure carries the headers too.
     public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder
         .MapPost("send/v1", Handle)
-        .RequireAuthorization();
+        .RequireAuthorization()
+        .AddEndpointFilter<TellusTalkHeadersFilter>()
+        .AddEndpointFilter<AnySendFailureFilter>();
 
     /// <summary>
     /// Reads the body itself rather than binding it, so that every refusal is TellusTalk's or names the emulator's
-    /// limit, and so the body is kept exactly as it arrived.
+    /// limit, and so the body is kept exactly as it arrived. Bound as a stream, the body is still unread when the
+    /// filters run.
     /// </summary>
     private static async Task<Results<SendAccepted, TellusTalkRefusal, EmulatorLimit, FailureAnswer, EmptyHttpResult>> Handle(
-        HttpContext context,
+        [FromHeader(Name = "Content-Type")] string? contentType,
+        Stream body,
         ClaimsPrincipal user,
+        HttpResponse response,
         TimeProvider time,
         MessageFactory factory,
         MessageStore store,
         SendFailures failures,
-        HeldBackReports heldBackReports)
+        HeldBackReports heldBackReports,
+        CancellationToken cancellationToken)
     {
-        TellusTalkHeaders.Apply(context.Response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
-
-        // Before the body is read: a TellusTalk that is down takes nothing, whatever the request holds.
-        if (failures.TrySpend() is { } failure)
-        {
-            return await failure.WaitOutDelay(time, context.RequestAborted)
-                ? Refusals.Failure(failure.Status)
-                : TypedResults.Empty;
-        }
-
-        if (!IsJson(context.Request.ContentType))
+        if (!IsJson(contentType))
         {
             return Refusals.EmulatorLimit(StatusCodes.Status415UnsupportedMediaType, NotJson);
         }
 
-        using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
-        var body = await reader.ReadToEndAsync(context.RequestAborted);
+        using var reader = new StreamReader(body, Encoding.UTF8);
+        var rawRequest = await reader.ReadToEndAsync(cancellationToken);
 
-        var read = Read(body);
+        var read = Read(rawRequest);
         if (read is not Accepted { Request: var request })
         {
             return read switch
@@ -76,12 +73,12 @@ internal sealed class SendEndpoint : IEndpoint
 
         if (failures.TrySpend(numbers) is { } numberFailure)
         {
-            return await numberFailure.WaitOutDelay(time, context.RequestAborted)
+            return await numberFailure.WaitOutDelay(time, cancellationToken)
                 ? Refusals.Failure(numberFailure.Status)
                 : TypedResults.Empty;
         }
 
-        return Accept(request, user.Identity!.Name!, body, context.Response, factory, store, heldBackReports);
+        return Accept(request, user.Identity!.Name!, rawRequest, response, factory, store, heldBackReports);
     }
 
     /// <summary>
