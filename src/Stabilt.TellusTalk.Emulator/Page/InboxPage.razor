@@ -96,13 +96,13 @@
         @<a class="tt-row @(message == _selected ? "sel" : null) @(message.Warnings.Count > 0 ? "warned" : null)"
             href="@Link(message)" data-id="@message.Id" data-at="@PageTime.Iso(message.ShownAt)">
             <span class="l1">
-                <span class="num">@message.To.Number</span>
+                <span class="num">@message.To.Address</span>
                 <span class="time">@if (IsScheduled)
                     {
                         <text>Due </text>
                     }<time datetime="@PageTime.Iso(message.ShownAt)">@PageTime.Fallback(message.ShownAt)</time></span>
             </span>
-            <span class="from @(message.Sender.Kind == SenderKind.Number ? "digits" : null)">@message.Sender.Display</span>
+            <span class="from @(message.Sms!.Sender.Kind == SenderKind.Number ? "digits" : null)">@message.Sms.Sender.Display</span>
             <span class="prev">@message.Text</span>
             @if (message.Warnings.Count > 0)
             {
@@ -112,11 +112,11 @@
 
     private RenderFragment Detail(Message message) =>
         @<div class="tt-message">
-            <PhonePreview Sender="@message.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)"
+            <PhonePreview Sender="@message.Sms!.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)"
                           Note="@(message.DuplicateOf is null ? null : "Not sent")" />
             <div class="tt-info">
-                <h2 class="tt-title">To @message.To.Number</h2>
-                <p class="tt-sub">From @message.Sender.Display, shown as @(message.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
+                <h2 class="tt-title">To @message.To.Address</h2>
+                <p class="tt-sub">From @message.Sms.Sender.Display, shown as @(message.Sms.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
                 @if (SenderNote(message) is { } note)
                 {
                     <p class="tt-sub">@note</p>
@@ -138,8 +138,8 @@
                         }
                     </ul>
                 }
-                <PartsBar Sizes="@Sizes(message.Parts)" Left="@message.Parts.LeftInLastPart" Length="@message.Parts.Length"
-                          MaxParts="@message.MaxParts" CharacterSet="@CharacterSetName(message.Parts.CharacterSet)" />
+                <PartsBar Sizes="@Sizes(message.Sms.Parts)" Left="@message.Sms.Parts.LeftInLastPart" Length="@message.Sms.Parts.Length"
+                          MaxParts="@message.Sms.MaxParts" CharacterSet="@CharacterSetName(message.Sms.Parts.CharacterSet)" />
                 <dl>
                     <dt>Job id</dt>
                     <dd>@message.JobId</dd>
@@ -148,10 +148,10 @@
                         <dt>Not caught</dt>
                         <dd>@string.Join(", ", message.Request.NotCaught)</dd>
                     }
-                    @if (message.Links.Count > 0)
+                    @if (message.Sms.Links.Count > 0)
                     {
                         <dt>Links</dt>
-                        <dd>@Links(message.Links)</dd>
+                        <dd>@Links(message.Sms.Links)</dd>
                     }
                     <dt>Flash</dt>
                     <dd>@(Shown(message.Request.Body.SmsFlash) ?? "No")</dd>
@@ -272,7 +272,7 @@
     private static string WarningCount(Message message) =>
         message.Warnings.Count == 1 ? "1 warning" : $"{message.Warnings.Count} warnings";
 
-    private static string? SenderNote(Message message) => (message.Sender, message.Request.OriginatorSource) switch
+    private static string? SenderNote(Message message) => (message.Sms!.Sender, message.Request.OriginatorSource) switch
     {
         ({ Source: "account" }, _) => "The request has no sender field, so the user's Sender setting decides.",
         ({ Source: "replysms" }, _) => "The request asked for replysms, so the reply number is shown.",
@@ -291,12 +291,13 @@
     /// <summary>The text split where each part begins; binary content is no text a phone shows.</summary>
     private static IReadOnlyList<string> Segments(Message message)
     {
-        if (message.Parts.CharacterSet == SmsCharacterSet.Binary)
+        var parts = message.Sms!.Parts;
+        if (parts.CharacterSet == SmsCharacterSet.Binary)
         {
-            return [$"Binary message, {message.Parts.Length} bytes"];
+            return [$"Binary message, {parts.Length} bytes"];
         }
 
-        var starts = message.Parts.Starts;
+        var starts = parts.Starts;
 
         return starts
             .Select((start, index) => message.Text[start..(index + 1 < starts.Count ? starts[index + 1] : message.Text.Length)])

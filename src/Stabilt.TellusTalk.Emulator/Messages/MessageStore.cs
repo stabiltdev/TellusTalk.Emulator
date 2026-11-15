@@ -61,7 +61,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
             return _messages
                 .Select((message, order) => (Message: message, Order: order))
                 .Where(entry => state is null || entry.Message.StateAt(now) == state)
-                .Where(entry => to is null || string.Equals(entry.Message.To.Number, to, StringComparison.Ordinal))
+                .Where(entry => to is null || string.Equals(entry.Message.To.Address, to, StringComparison.Ordinal))
                 .Where(entry => search is null || Matches(entry.Message, search))
                 .OrderByDescending(entry => entry.Message.ShownAt)
                 .ThenByDescending(entry => entry.Order)
@@ -228,15 +228,15 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         .Where(other => other.DuplicateOf is null)
         .Where(other => (other.ReceivedAt - message.ReceivedAt).Duration() <= DuplicateWindow)
         .Where(other => string.Equals(other.UserName, message.UserName, StringComparison.Ordinal))
-        .Where(other => string.Equals(other.To.Number, message.To.Number, StringComparison.Ordinal))
+        .Where(other => string.Equals(other.To.Address, message.To.Address, StringComparison.Ordinal))
         .Where(other => string.Equals(other.Request.Subject ?? "", message.Request.Subject ?? "", StringComparison.Ordinal))
         .Where(other => string.Equals(other.Request.Text ?? "", message.Request.Text ?? "", StringComparison.Ordinal))
         .FirstOrDefault();
 
     private static bool Matches(Message message, string search) =>
-        message.To.Number.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+        message.To.Address.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         message.Text.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-        message.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase);
+        message.Sms?.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase) == true;
 
     private void Publish(StoreChange change)
     {

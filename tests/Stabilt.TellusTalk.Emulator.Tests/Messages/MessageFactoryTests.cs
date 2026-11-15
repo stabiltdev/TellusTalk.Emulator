@@ -15,6 +15,16 @@ public sealed class MessageFactoryTests
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 11, 7, 22, 0, 0, TimeSpan.Zero));
 
     [Fact]
+    public void A_recipient_on_sms_is_an_sms_with_its_sms_part()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej"}""").Messages.Single();
+
+        message.To.Should().Be(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"));
+        message.Sms.Should().NotBeNull();
+        message.Sms!.MaxParts.Should().Be(8);
+    }
+
+    [Fact]
     public void A_single_recipients_message_takes_the_jobs_id()
     {
         var job = Create("""{"to":"sms:+46701740605","text":"Hej"}""");
@@ -40,7 +50,7 @@ public sealed class MessageFactoryTests
         var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_header":"[Test] "}""").Messages.Single();
 
         message.Text.Should().Be("[Test] Hej");
-        message.Parts.Length.Should().Be(12, "the brackets come from the GSM extension table and take two septets each");
+        message.Sms!.Parts.Length.Should().Be(12, "the brackets come from the GSM extension table and take two septets each");
     }
 
     [Fact]
@@ -51,8 +61,8 @@ public sealed class MessageFactoryTests
         var message = Create(Json(new { to = "sms:+46701740605", text = "Svara här: redirect=" + target })).Messages.Single();
 
         message.Text.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0");
-        message.Parts.Count.Should().Be(1);
-        message.Links.Should().ContainSingle().Which.Target.Should().Be(target);
+        message.Sms!.Parts.Count.Should().Be(1);
+        message.Sms.Links.Should().ContainSingle().Which.Target.Should().Be(target);
     }
 
     [Fact]
@@ -77,7 +87,7 @@ public sealed class MessageFactoryTests
     {
         var message = Create(Json(new { to = "sms:+46701740605", text = Welcome })).Messages.Single();
 
-        message.MaxParts.Should().Be(8);
+        message.Sms!.MaxParts.Should().Be(8);
         message.Warnings.Should().BeEmpty();
     }
 

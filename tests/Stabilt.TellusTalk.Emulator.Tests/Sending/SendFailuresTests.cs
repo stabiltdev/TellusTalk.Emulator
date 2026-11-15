@@ -158,7 +158,7 @@ public sealed class SendFailuresTests
         failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         next.StatusCode.Should().Be(HttpStatusCode.OK);
         Store(emulator).List()
-            .Select(message => message.To.Number)
+            .Select(message => message.To.Address)
             .Should().BeEquivalentTo(["+46701740606", "+46701740605"]);
     }
 

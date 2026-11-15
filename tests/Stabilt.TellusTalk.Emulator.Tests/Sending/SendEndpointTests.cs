@@ -109,7 +109,7 @@ public sealed class SendEndpointTests
         using var answer = JsonDocument.Parse(await Body(response));
         answer.RootElement.GetProperty("job_size").GetInt32().Should().Be(2);
         var message = Store(emulator).List().Should().ContainSingle().Subject;
-        message.To.Number.Should().Be("+46701740605");
+        message.To.Address.Should().Be("+46701740605");
         message.Id.Should().NotBe(message.JobId);
     }
 
@@ -224,7 +224,7 @@ public sealed class SendEndpointTests
         using var answer = JsonDocument.Parse(await Body(response));
         answer.RootElement.GetProperty("job_size").GetInt32().Should().Be(5);
         Store(emulator).List()
-            .Select(message => message.To.Number)
+            .Select(message => message.To.Address)
             .Should().BeEquivalentTo(["+46701740603", "+46701740604", "+46701740605"]);
     }
 

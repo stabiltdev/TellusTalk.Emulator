@@ -52,6 +52,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             : (DateTimeOffset?)null;
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. messageWarnings];
+        var sms = new SmsContent(sender, links, parts, maxParts);
         var size = request.Recipients.Count + request.NotCaught.Count;
         var single = size == 1;
         var messages = request.Recipients
@@ -62,11 +63,8 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                 userName,
                 now,
                 dueAt,
-                sender,
                 text,
-                links,
-                parts,
-                maxParts,
+                sms,
                 request,
                 warnings,
                 rawRequest))

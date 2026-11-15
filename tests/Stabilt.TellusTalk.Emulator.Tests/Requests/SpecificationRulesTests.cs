@@ -7,7 +7,7 @@ public sealed class SpecificationRulesTests
 {
     private static readonly SendRequest Plain = new()
     {
-        Recipients = [new Recipient("+46701740605", "sms:+46701740605")],
+        Recipients = [new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605")],
         Text = "Hej",
         Body = new SendRequestBody(),
         Fields = new Dictionary<string, JsonElement>(StringComparer.Ordinal),

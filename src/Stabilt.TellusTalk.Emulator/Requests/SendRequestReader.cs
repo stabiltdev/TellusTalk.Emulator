@@ -229,7 +229,7 @@ internal static class SendRequestReader
                 $"'{number}' is not '+' followed by digits, as the specification asks of an SMS number."));
         }
 
-        return new Recipient(number, address);
+        return new Recipient(MessageChannel.Sms, number, address);
     }
 
     /// <summary>In the order the fields arrived, so the warnings read the way the request does.</summary>

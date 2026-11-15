@@ -22,7 +22,7 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:+46701740605","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient("+46701740605", "sms:+46701740605"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"));
     }
 
     [Fact]
@@ -31,8 +31,8 @@ public sealed class SendRequestReaderTests
         var request = Accepted("""{"to":["sms:+46701740605","sms:+46701740606"],"text":"Hej"}""");
 
         request.Recipients.Should().Equal(
-            new Recipient("+46701740605", "sms:+46701740605"),
-            new Recipient("+46701740606", "sms:+46701740606"));
+            new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"),
+            new Recipient(MessageChannel.Sms, "+46701740606", "sms:+46701740606"));
     }
 
     [Theory]
@@ -60,7 +60,7 @@ public sealed class SendRequestReaderTests
 
         var request = Accepted(json);
 
-        request.Recipients.Should().Equal(new Recipient("+46701740605", "sms:+46701740605"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"));
         request.NotCaught.Should().Equal(address);
         request.Warnings.Should().BeEmpty();
     }
@@ -91,7 +91,7 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:+46 70 174 06 05","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient("+46701740605", "sms:+46 70 174 06 05"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46 70 174 06 05"));
         request.Warnings.Should().ContainSingle().Which.Should().Match<Warning>(warning => warning.Code == WarningCodes.SpacesRemoved && warning.Field == "to");
     }
 
@@ -100,7 +100,7 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"+46701740605","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient("+46701740605", "+46701740605"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740605", "+46701740605"));
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MissingPrefix);
     }
 
@@ -109,7 +109,7 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:+4670abc","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient("+4670abc", "sms:+4670abc"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc"));
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
     }
 

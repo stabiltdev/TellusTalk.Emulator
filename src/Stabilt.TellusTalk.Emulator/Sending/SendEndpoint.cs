@@ -100,7 +100,7 @@ internal sealed class SendEndpoint : IEndpoint
         HeldBackReports heldBackReports)
     {
         // A number's failures need the recipients, so they are spent once the request is read.
-        if (failures.TrySpend(request.Recipients.Select(recipient => recipient.Number)) is { } numberFailure)
+        if (failures.TrySpend(request.Recipients.Select(recipient => recipient.Address)) is { } numberFailure)
         {
             await Fail(context, time, numberFailure);
 

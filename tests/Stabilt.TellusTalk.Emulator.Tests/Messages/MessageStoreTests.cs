@@ -71,7 +71,7 @@ public sealed class MessageStoreTests
         store.Add(Factory().Create(request, "tester", "{}").Messages);
 
         store.List()
-            .Select(message => message.To.Number)
+            .Select(message => message.To.Address)
             .Should().BeEquivalentTo(["+46701740603", "+46701740604", "+46701740605"]);
     }
 

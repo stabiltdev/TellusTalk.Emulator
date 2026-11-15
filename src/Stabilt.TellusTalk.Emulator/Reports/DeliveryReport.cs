@@ -60,7 +60,7 @@ internal sealed record DeliveryReport(
             failedReason,
             "SMS_Sent",
             "SMS",
-            "sms:" + message.To.Number,
+            "sms:" + message.To.Address,
             null,
             "user_id:" + message.UserName,
             string.Empty,
@@ -68,7 +68,7 @@ internal sealed record DeliveryReport(
             text,
             html,
             body.Echo.ValueKind == JsonValueKind.Undefined ? null : body.Echo,
-            message.Parts.Count,
+            message.Sms!.Parts.Count, // Only an SMS is ever reported.
             message.Id,
             message.Id,
             message.JobId,
