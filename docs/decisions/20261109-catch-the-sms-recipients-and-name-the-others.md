@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261115-catch-every-channel-as-a-message-of-its-own](20261115-catch-every-channel-as-a-message-of-its-own.md)
 date: 2026-11-09
 deciders: [Peter Hedberg]
 ---
