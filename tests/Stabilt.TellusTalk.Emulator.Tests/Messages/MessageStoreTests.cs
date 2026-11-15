@@ -343,6 +343,9 @@ public sealed class MessageStoreTests
         next.IsCompleted.Should().BeFalse();
 
         await listening.CancelAsync();
+        await FluentActions
+            .Awaiting(async () => await next)
+            .Should().ThrowAsync<OperationCanceledException>();
         await changes.DisposeAsync();
     }
 
