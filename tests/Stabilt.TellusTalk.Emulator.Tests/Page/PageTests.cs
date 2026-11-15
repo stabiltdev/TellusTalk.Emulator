@@ -81,7 +81,7 @@ public sealed class PageTests
         var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         using var client = emulator.CreateClient();
-        using var deleted = await client.DeleteAsync(new Uri($"/api/v1/messages/{first}", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var deleted = await client.DeleteAsync(new Uri($"/api/messages/{first}", UriKind.Relative), TestContext.Current.CancellationToken);
         deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         using var page = await Page(emulator, "?tab=blocked");
@@ -328,7 +328,7 @@ public sealed class PageTests
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":["https://example.se/reports","email:ops@example.se"]}""");
         using var client = emulator.CreateClient();
         using var report = await client.PostAsJsonAsync(
-            new Uri($"/api/v1/messages/{id}/reports", UriKind.Relative),
+            new Uri($"/api/messages/{id}/reports", UriKind.Relative),
             new { status = "failed" },
             TestContext.Current.CancellationToken);
         report.StatusCode.Should().Be(HttpStatusCode.OK);

@@ -28,7 +28,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         await SendTwo(emulator);
 
-        using var list = await Get(emulator, "/api/v1/messages");
+        using var list = await Get(emulator, "/api/messages");
 
         var root = list.RootElement;
         root.GetProperty("total").GetInt32().Should().Be(2);
@@ -85,7 +85,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","subject":"Acme"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         var sender = message.RootElement.GetProperty("sender");
         sender.GetProperty("shown").GetString().Should().Be("Acme");
@@ -100,7 +100,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         var sender = message.RootElement.GetProperty("sender");
         sender.GetProperty("shown").GetString().Should().Be("+46701740698");
@@ -115,7 +115,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej 😀","sms_originator_source":"number","sms_originator_number":"+46701740699","report_to":["email:ops@example.se","sms:+46701740698"],"scheduled_send_time":"2026-11-08T10:00:00Z"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         var root = message.RootElement;
         root.GetProperty("state").GetString().Should().Be("scheduled");
@@ -133,7 +133,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         var root = message.RootElement;
         root.GetProperty("text").GetString().Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0 eller läs https://ebox.nu/z_xxxxxx");
@@ -156,7 +156,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"0102","sms_character_set":"binary","sms_udh":"050003000101"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         message.RootElement.GetProperty("parts").GetProperty("characterSet").GetString().Should().Be("binary");
     }
@@ -192,7 +192,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped","html":"<p>Shipped</p>"}""");
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         var root = message.RootElement;
         root.GetProperty("channel").GetString().Should().Be("email");
@@ -218,7 +218,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, JsonSerializer.Serialize(new { to = address, text = "Hej" }));
 
-        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+        using var message = await Get(emulator, $"/api/messages/{id}");
 
         message.RootElement.GetProperty("channel").GetString().Should().Be(channel);
     }
@@ -229,12 +229,12 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-07T23:00:00Z"}""");
 
-        (await Total(emulator, "/api/v1/messages?state=scheduled")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?state=sent")).Should().Be(0);
+        (await Total(emulator, "/api/messages?state=scheduled")).Should().Be(1);
+        (await Total(emulator, "/api/messages?state=sent")).Should().Be(0);
 
         emulator.Time.Advance(TimeSpan.FromHours(2));
 
-        (await Total(emulator, "/api/v1/messages?state=sent")).Should().Be(1);
+        (await Total(emulator, "/api/messages?state=sent")).Should().Be(1);
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-08T00:30:00"}""");
 
-        using var list = await Get(emulator, "/api/v1/messages");
+        using var list = await Get(emulator, "/api/messages");
 
         list.RootElement.GetProperty("messages")[0].GetProperty("dueAt").GetString().Should().Be("2026-11-07T23:30:00+00:00");
     }
@@ -255,7 +255,7 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=%2B46701740605")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=%2B46701740605")).Should().Be(1);
     }
 
     [Fact]
@@ -264,7 +264,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(0);
+        (await Total(emulator, "/api/messages?to=+46701740605")).Should().Be(0);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"sms:0701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=0701740605")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=0701740605")).Should().Be(1);
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class ReadApiTests
         await Send(emulator, JsonSerializer.Serialize(new { to = "sms:+46701740605", text = Welcome }));
         await Send(emulator, """{"to":"sms:+46701740605","text":"Din kod är 482913"}""");
 
-        (await Total(emulator, "/api/v1/messages?q=v%C3%A4lkommen")).Should().Be(1);
+        (await Total(emulator, "/api/messages?q=v%C3%A4lkommen")).Should().Be(1);
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/api/v1/messages?state=gone", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/messages?state=gone", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -308,9 +308,9 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
         await Send(emulator, """{"to":"mms:+46701740605","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?channel=email")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?channel=sms")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages")).Should().Be(3);
+        (await Total(emulator, "/api/messages?channel=email")).Should().Be(1);
+        (await Total(emulator, "/api/messages?channel=sms")).Should().Be(1);
+        (await Total(emulator, "/api/messages")).Should().Be(3);
     }
 
     [Fact]
@@ -319,7 +319,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
 
-        using var response = await client.GetAsync(new Uri("/api/v1/messages?channel=telegram", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var response = await client.GetAsync(new Uri("/api/messages?channel=telegram", UriKind.Relative), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -336,8 +336,8 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"fax:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=%2B46701740605")).Should().Be(4);
-        (await Total(emulator, "/api/v1/messages?channel=sms&to=%2B46701740605")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=%2B46701740605")).Should().Be(4);
+        (await Total(emulator, "/api/messages?channel=sms&to=%2B46701740605")).Should().Be(1);
     }
 
     [Fact]
@@ -347,8 +347,8 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
         await Send(emulator, """{"to":"email:other.user@example.se","subject":"Hello","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=test.user%40example.se")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?to=test.user@example.se")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=test.user%40example.se")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=test.user@example.se")).Should().Be(1);
     }
 
     [Fact]
@@ -358,8 +358,8 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"group:box.abc123","text":"Hej"}""");
         await Send(emulator, """{"to":"group:12345","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?to=box.abc123")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?to=12345")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=box.abc123")).Should().Be(1);
+        (await Total(emulator, "/api/messages?to=12345")).Should().Be(1);
     }
 
     [Fact]
@@ -368,7 +368,7 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""");
 
-        (await Total(emulator, "/api/v1/messages?q=order")).Should().Be(1);
+        (await Total(emulator, "/api/messages?q=order")).Should().Be(1);
     }
 
     [Fact]
@@ -378,8 +378,8 @@ public sealed class ReadApiTests
         var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         var second = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        using var held = await Get(emulator, $"/api/v1/messages/{second}");
-        using var original = await Get(emulator, $"/api/v1/messages/{first}");
+        using var held = await Get(emulator, $"/api/messages/{second}");
+        using var original = await Get(emulator, $"/api/messages/{first}");
 
         held.RootElement.GetProperty("state").GetString().Should().Be("blocked");
         held.RootElement.GetProperty("duplicateOf").GetString().Should().Be(first);
@@ -400,9 +400,9 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej då"}""");
 
-        (await Total(emulator, "/api/v1/messages?state=blocked")).Should().Be(1);
-        (await Total(emulator, "/api/v1/messages?state=sent")).Should().Be(2);
-        (await Total(emulator, "/api/v1/messages")).Should().Be(3);
+        (await Total(emulator, "/api/messages?state=blocked")).Should().Be(1);
+        (await Total(emulator, "/api/messages?state=sent")).Should().Be(2);
+        (await Total(emulator, "/api/messages")).Should().Be(3);
     }
 
     [Fact]
@@ -413,8 +413,8 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        (await Total(emulator, "/api/v1/messages?state=blocked")).Should().Be(0);
-        using var list = await Get(emulator, "/api/v1/messages");
+        (await Total(emulator, "/api/messages?state=blocked")).Should().Be(0);
+        using var list = await Get(emulator, "/api/messages");
         list.RootElement
             .GetProperty("messages")
             .EnumerateArray()
@@ -429,8 +429,8 @@ public sealed class ReadApiTests
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
 
-        using var get = await client.GetAsync(new Uri("/api/v1/messages/nothing", UriKind.Relative), cancellation);
-        using var delete = await client.DeleteAsync(new Uri("/api/v1/messages/nothing", UriKind.Relative), cancellation);
+        using var get = await client.GetAsync(new Uri("/api/messages/nothing", UriKind.Relative), cancellation);
+        using var delete = await client.DeleteAsync(new Uri("/api/messages/nothing", UriKind.Relative), cancellation);
 
         get.StatusCode.Should().Be(HttpStatusCode.NotFound);
         delete.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -444,15 +444,15 @@ public sealed class ReadApiTests
         var cancellation = TestContext.Current.CancellationToken;
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
 
-        using (var message = await Get(emulator, $"/api/v1/messages/{id}"))
+        using (var message = await Get(emulator, $"/api/messages/{id}"))
         {
             message.RootElement.GetProperty("text").GetString().Should().Be("Hej");
         }
 
-        using var delete = await client.DeleteAsync(new Uri($"/api/v1/messages/{id}", UriKind.Relative), cancellation);
+        using var delete = await client.DeleteAsync(new Uri($"/api/messages/{id}", UriKind.Relative), cancellation);
 
         delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await Total(emulator, "/api/v1/messages")).Should().Be(0);
+        (await Total(emulator, "/api/messages")).Should().Be(0);
     }
 
     [Fact]
@@ -463,10 +463,10 @@ public sealed class ReadApiTests
         await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
         await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
 
-        using var delete = await client.DeleteAsync(new Uri("/api/v1/messages", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var delete = await client.DeleteAsync(new Uri("/api/messages", UriKind.Relative), TestContext.Current.CancellationToken);
 
         delete.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await Total(emulator, "/api/v1/messages")).Should().Be(0);
+        (await Total(emulator, "/api/messages")).Should().Be(0);
     }
 
     [Fact]
@@ -476,19 +476,19 @@ public sealed class ReadApiTests
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
 
-        (await PutText(client, "/api/v1/send-failures", """[{"status":503,"count":2},{"status":429,"delaySeconds":5}]"""))
+        (await PutText(client, "/api/send-failures", """[{"status":503,"count":2},{"status":429,"delaySeconds":5}]"""))
             .Should().Be("""[{"status":503,"remaining":2,"delaySeconds":0},{"status":429,"remaining":1,"delaySeconds":5}]""");
 
         using (await emulator.Send("""{"to":"sms:+46701740605","text":"Hej"}"""))
         {
-            (await GetText(client, "/api/v1/send-failures"))
+            (await GetText(client, "/api/send-failures"))
                 .Should().Be("""[{"status":503,"remaining":1,"delaySeconds":0},{"status":429,"remaining":1,"delaySeconds":5}]""");
         }
 
-        using var cleared = await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation);
+        using var cleared = await client.DeleteAsync(new Uri("/api/send-failures", UriKind.Relative), cancellation);
 
         cleared.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("[]");
+        (await GetText(client, "/api/send-failures")).Should().Be("[]");
     }
 
     [Fact]
@@ -497,21 +497,21 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
-        await PutText(client, "/api/v1/send-failures/+46701740605", """[{"status":503}]""");
-        await PutText(client, "/api/v1/send-failures/+46701740606", """[{"status":401}]""");
+        await PutText(client, "/api/send-failures/+46701740605", """[{"status":503}]""");
+        await PutText(client, "/api/send-failures/+46701740606", """[{"status":401}]""");
 
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("[]");
-        (await GetText(client, "/api/v1/send-failures/+46701740605")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":0}]""");
+        (await GetText(client, "/api/send-failures")).Should().Be("[]");
+        (await GetText(client, "/api/send-failures/+46701740605")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":0}]""");
 
-        using (await client.DeleteAsync(new Uri("/api/v1/send-failures/+46701740605", UriKind.Relative), cancellation))
+        using (await client.DeleteAsync(new Uri("/api/send-failures/+46701740605", UriKind.Relative), cancellation))
         {
-            (await GetText(client, "/api/v1/send-failures/+46701740605")).Should().Be("[]");
-            (await GetText(client, "/api/v1/send-failures/+46701740606")).Should().Be("""[{"status":401,"remaining":1,"delaySeconds":0}]""");
+            (await GetText(client, "/api/send-failures/+46701740605")).Should().Be("[]");
+            (await GetText(client, "/api/send-failures/+46701740606")).Should().Be("""[{"status":401,"remaining":1,"delaySeconds":0}]""");
         }
 
-        using (await client.DeleteAsync(new Uri("/api/v1/send-failures", UriKind.Relative), cancellation))
+        using (await client.DeleteAsync(new Uri("/api/send-failures", UriKind.Relative), cancellation))
         {
-            (await GetText(client, "/api/v1/send-failures/+46701740606")).Should().Be("[]");
+            (await GetText(client, "/api/send-failures/+46701740606")).Should().Be("[]");
         }
     }
 
@@ -521,18 +521,18 @@ public sealed class ReadApiTests
         await using var emulator = new EmulatorFactory();
         using var client = emulator.CreateClient();
         var cancellation = TestContext.Current.CancellationToken;
-        await PutText(client, "/api/v1/send-failures", """[{"status":503,"delaySeconds":30}]""");
+        await PutText(client, "/api/send-failures", """[{"status":503,"delaySeconds":30}]""");
 
-        using var delete = await client.DeleteAsync(new Uri("/api/v1/messages", UriKind.Relative), cancellation);
+        using var delete = await client.DeleteAsync(new Uri("/api/messages", UriKind.Relative), cancellation);
 
-        (await GetText(client, "/api/v1/send-failures")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":30}]""");
+        (await GetText(client, "/api/send-failures")).Should().Be("""[{"status":503,"remaining":1,"delaySeconds":30}]""");
     }
 
     [Theory]
-    [InlineData("PUT", "/api/v1/send-failures", """{"status":503}""", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
-    [InlineData("POST", "/api/v1/messages/nothing/reports", "{", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
-    [InlineData("POST", "/api/v1/messages/nothing/reports", "", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
-    [InlineData("PUT", "/api/v1/send-failures", "[]", "text/plain", 415, """{"message":"The request body must be JSON."}""")]
+    [InlineData("PUT", "/api/send-failures", """{"status":503}""", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("POST", "/api/messages/nothing/reports", "{", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("POST", "/api/messages/nothing/reports", "", "application/json", 400, """{"message":"The request body is missing or is not the JSON this endpoint takes."}""")]
+    [InlineData("PUT", "/api/send-failures", "[]", "text/plain", 415, """{"message":"The request body must be JSON."}""")]
     public async Task A_request_whose_body_the_read_API_cannot_read_is_answered_with_its_error_body(
         string method,
         string path,
@@ -582,7 +582,7 @@ public sealed class ReadApiTests
     private static async Task<(string EventType, string Data)> ReadFirstEvent(HttpClient client, CancellationToken cancellationToken)
     {
         using var response = await client.GetAsync(
-            new Uri("/api/v1/events", UriKind.Relative),
+            new Uri("/api/events", UriKind.Relative),
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -611,7 +611,7 @@ public sealed class ReadApiTests
         emulator.Time.Advance(TimeSpan.FromMinutes(1));
         await Send(emulator, Detailed);
 
-        using var list = await Get(emulator, "/api/v1/messages");
+        using var list = await Get(emulator, "/api/messages");
 
         return list.RootElement.GetProperty("messages")[0].Clone();
     }

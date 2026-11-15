@@ -6,7 +6,7 @@ namespace Stabilt.TellusTalk.Emulator.Reports;
 
 internal sealed class SendReportEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapPost("api/v1/messages/{id}/reports", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapPost("api/messages/{id}/reports", Handle);
 
     /// <summary>
     /// Sends a delivery report now, with the status asked for, whatever reports the message had before. It runs under
