@@ -12,9 +12,9 @@ internal sealed record MessageResponse(
     string JobId,
     MessageState State,
     string? DuplicateOf,
+    MessageChannel Channel,
     string To,
     string ToAsSent,
-    IReadOnlyList<string> NotCaught,
     string User,
     DateTimeOffset ReceivedAt,
     DateTimeOffset? DueAt,
@@ -29,27 +29,32 @@ internal sealed record MessageResponse(
     IReadOnlyList<ReportAttemptResponse> Reports,
     string Request)
 {
-    public static MessageResponse From(Message message, DateTimeOffset now, IReadOnlyList<ReportAttempt> reports) => new(
-        message.Id,
-        message.JobId,
-        message.StateAt(now),
-        message.DuplicateOf,
-        message.To.Address,
-        message.To.AsSent,
-        message.Request.NotCaught,
-        message.UserName,
-        message.ReceivedAt,
-        message.DueAt,
-        message.Sms is { } sms ? SenderResponse.From(sms.Sender) : null,
-        message.Text,
-        message.Sms is { } smsLinks ? [.. smsLinks.Links.Select(LinkResponse.From)] : null,
-        message.Sms is { } smsParts ? PartsResponse.From(smsParts.Parts, smsParts.MaxParts) : null,
-        [.. message.Request.ReportTo.Select(AddressResponse.From)],
-        [.. message.Request.ReplyTo.Select(AddressResponse.From)],
-        message.Request.Fields,
-        [.. message.Warnings.Select(WarningResponse.From)],
-        [.. reports.Select(ReportAttemptResponse.From)],
-        message.RawRequest);
+    public static MessageResponse From(Message message, DateTimeOffset now, IReadOnlyList<ReportAttempt> reports)
+    {
+        var sms = message.Sms;
+
+        return new(
+            message.Id,
+            message.JobId,
+            message.StateAt(now),
+            message.DuplicateOf,
+            message.To.Channel,
+            message.To.Address,
+            message.To.AsSent,
+            message.UserName,
+            message.ReceivedAt,
+            message.DueAt,
+            sms is null ? null : SenderResponse.From(sms.Sender),
+            message.Text,
+            sms is null ? null : [.. sms.Links.Select(LinkResponse.From)],
+            sms is null ? null : PartsResponse.From(sms.Parts, sms.MaxParts),
+            [.. message.Request.ReportTo.Select(AddressResponse.From)],
+            [.. message.Request.ReplyTo.Select(AddressResponse.From)],
+            message.Request.Fields,
+            [.. message.Warnings.Select(WarningResponse.From)],
+            [.. reports.Select(ReportAttemptResponse.From)],
+            message.RawRequest);
+    }
 }
 
 internal sealed record SenderResponse(string Shown, SenderKind Kind, string Source, bool FromAccount)

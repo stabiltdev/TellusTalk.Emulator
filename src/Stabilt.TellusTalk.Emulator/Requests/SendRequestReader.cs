@@ -20,15 +20,21 @@ internal static class SendRequestReader
         "TellusTalk Emulator: the emulator does not handle log: recipients, which TellusTalk answers with a log_href " +
         "the emulator cannot give. TellusTalk itself accepts them.";
 
-    private const string SmsPrefix = "sms:";
-
     private const string LogPrefix = "log:";
 
     /// <summary>
-    /// Channels whose recipients are counted and named but not caught. <c>log:</c> is not one: TellusTalk answers it with
-    /// a <c>log_href</c> that a client waits for.
+    /// Every channel caught, by its prefix. <c>log:</c> is not caught: TellusTalk answers it with a <c>log_href</c> that
+    /// a client waits for.
     /// </summary>
-    private static readonly string[] OtherChannels = ["email:", "fax:", "mms:", "voice:", "group:"];
+    private static readonly (string Prefix, MessageChannel Channel)[] Prefixes =
+    [
+        ("sms:", MessageChannel.Sms),
+        ("email:", MessageChannel.Email),
+        ("fax:", MessageChannel.Fax),
+        ("mms:", MessageChannel.Mms),
+        ("voice:", MessageChannel.Voice),
+        ("group:", MessageChannel.Group),
+    ];
 
     public static ReadResult Read(JsonElement root)
     {
@@ -59,22 +65,8 @@ internal static class SendRequestReader
             return new Refused(LogRecipient);
         }
 
-        var notCaught = addresses
-            .Where(address => OtherChannel(address) is not null)
-            .ToList();
-
-        var smsAddresses = addresses
-            .Where(address => OtherChannel(address) is null)
-            .ToList();
-
-        if (smsAddresses.Count == 0 && notCaught.Count > 0)
-        {
-            return new Refused(
-                $"TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only '{OtherChannel(notCaught[0])}'. TellusTalk itself accepts it.");
-        }
-
         var warnings = new List<Warning>();
-        var recipients = smsAddresses
+        var recipients = addresses
             .Select(address => ReadRecipient(address, warnings))
             .ToList();
 
@@ -86,24 +78,23 @@ internal static class SendRequestReader
 
         warnings.AddRange(FieldWarnings(fields));
 
-        var request = ReadRequest(recipients, notCaught, body, fields, warnings);
+        var request = ReadRequest(recipients, body, fields, warnings);
 
-        return new Accepted(request with { Warnings = [.. warnings, .. SpecificationRules.Check(request)] });
+        return new Accepted(request with
+        {
+            Warnings = [.. warnings, .. SpecificationRules.Check(request)],
+            SmsWarnings = SpecificationRules.CheckSms(request),
+        });
     }
-
-    private static string? OtherChannel(string address) =>
-        Array.Find(OtherChannels, channel => address.StartsWith(channel, StringComparison.Ordinal));
 
     private static SendRequest ReadRequest(
         List<Recipient> recipients,
-        List<string> notCaught,
         SendRequestBody body,
         Dictionary<string, JsonElement> fields,
         List<Warning> warnings) =>
         new()
         {
             Recipients = recipients,
-            NotCaught = notCaught,
             Text = ReadString(body.Text),
             Subject = ReadString(body.Subject),
             Header = ReadString(body.SmsHeader),
@@ -199,26 +190,41 @@ internal static class SendRequestReader
 
     private static Recipient ReadRecipient(string address, List<Warning> warnings)
     {
-        var number = address;
-        if (address.StartsWith(SmsPrefix, StringComparison.Ordinal))
+        foreach (var (prefix, channel) in Prefixes)
         {
-            number = address[SmsPrefix.Length..];
-        }
-        else
-        {
-            warnings.Add(new Warning(
-                WarningCodes.MissingPrefix,
-                "to",
-                $"'{address}' lacks the 'sms:' prefix the specification asks for; the emulator reads it as an SMS number."));
+            if (address.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                var rest = address[prefix.Length..];
+
+                return channel switch
+                {
+                    MessageChannel.Email => ReadEmail(rest, address, warnings),
+                    MessageChannel.Group => new Recipient(channel, rest, address),
+                    _ => ReadNumber(channel, rest, address, warnings),
+                };
+            }
         }
 
+        warnings.Add(new Warning(
+            WarningCodes.MissingPrefix,
+            "to",
+            $"'{address}' lacks the 'sms:' prefix the specification asks for; the emulator reads it as an SMS number."));
+
+        return ReadNumber(MessageChannel.Sms, address, address, warnings);
+    }
+
+    /// <summary>That TellusTalk removes spaces has been observed in an SMS number, not in another channel's.</summary>
+    private static Recipient ReadNumber(MessageChannel channel, string number, string address, List<Warning> warnings)
+    {
         if (number.Contains(' ', StringComparison.Ordinal))
         {
             number = number.Replace(" ", string.Empty, StringComparison.Ordinal);
             warnings.Add(new Warning(
                 WarningCodes.SpacesRemoved,
                 "to",
-                $"'{address}' contains spaces; TellusTalk removes them, and so does the emulator."));
+                channel == MessageChannel.Sms
+                    ? $"'{address}' contains spaces; TellusTalk removes them, and so does the emulator."
+                    : $"'{address}' contains spaces; the emulator removes them, as TellusTalk does in an SMS number."));
         }
 
         if (!PhoneNumbers.IsPlusDigits(number))
@@ -226,10 +232,33 @@ internal static class SendRequestReader
             warnings.Add(new Warning(
                 WarningCodes.NotDigits,
                 "to",
-                $"'{number}' is not '+' followed by digits, as the specification asks of an SMS number."));
+                $"'{number}' is not '+' followed by digits, as the specification asks of {NumberKind(channel)} number."));
         }
 
-        return new Recipient(MessageChannel.Sms, number, address);
+        return new Recipient(channel, number, address);
+    }
+
+    private static string NumberKind(MessageChannel channel) => channel switch
+    {
+        MessageChannel.Sms => "an SMS",
+        MessageChannel.Fax => "a fax",
+        MessageChannel.Mms => "an MMS",
+        MessageChannel.Voice => "a voice",
+        _ => throw new InvalidOperationException($"The channel '{channel}' has no numbers."),
+    };
+
+    /// <summary>The specification's pattern for an e-mail address is <c>.+@.+</c>: an '@' with a character each side.</summary>
+    private static Recipient ReadEmail(string emailAddress, string address, List<Warning> warnings)
+    {
+        if (emailAddress.Length < 3 || !emailAddress.AsSpan()[1..^1].Contains('@'))
+        {
+            warnings.Add(new Warning(
+                WarningCodes.EmailInvalid,
+                "to",
+                $"'{address}' is not an e-mail address with '@', as the specification asks."));
+        }
+
+        return new Recipient(MessageChannel.Email, emailAddress, address);
     }
 
     /// <summary>In the order the fields arrived, so the warnings read the way the request does.</summary>

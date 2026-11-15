@@ -41,12 +41,15 @@
 </html>
 
 @code {
-    /// <summary>Fields the detail shows in a place of their own, so they are left out of the other fields.</summary>
+    /// <summary>Fields an SMS's detail shows in a place of their own, so they are left out of the other fields.</summary>
     private static readonly HashSet<string> ShownFields = new(StringComparer.Ordinal)
     {
         "to", "text", "sms_header", "sms_originator_source", "sms_originator_text", "sms_originator_number",
         "sms_flash", "sms_validity_time", "billing_id", "echo", "report_to", "reply_to",
     };
+
+    /// <summary>Another channel's detail shows the subject and the HTML in places of their own, and the SMS's not at all.</summary>
+    private static readonly HashSet<string> PlainShownFields = new(ShownFields, StringComparer.Ordinal) { "subject", "html" };
 
     private IReadOnlyList<Message> _messages = [];
     private Message? _selected;
@@ -102,100 +105,149 @@
                         <text>Due </text>
                     }<time datetime="@PageTime.Iso(message.ShownAt)">@PageTime.Fallback(message.ShownAt)</time></span>
             </span>
-            <span class="from @(message.Sms!.Sender.Kind == SenderKind.Number ? "digits" : null)">@message.Sms.Sender.Display</span>
-            <span class="prev">@message.Text</span>
+            @if (message.Sms is { } sms)
+            {
+                <span class="from @(sms.Sender.Kind == SenderKind.Number ? "digits" : null)">@sms.Sender.Display</span>
+                <span class="prev">@message.Text</span>
+            }
+            else
+            {
+                <span class="from">@ChannelLabel(message.To.Channel)</span>
+                <span class="prev">@(message.Request.Subject is { Length: > 0 } subject ? subject : message.Text)</span>
+            }
             @if (message.Warnings.Count > 0)
             {
                 <span class="warn-mark" role="img" aria-label="@WarningCount(message)" title="@WarningCount(message)"></span>
             }
         </a>;
 
-    private RenderFragment Detail(Message message) =>
+    private RenderFragment Detail(Message message) => message.Sms is { } sms ? SmsDetail(message, sms) : PlainDetail(message);
+
+    private RenderFragment SmsDetail(Message message, SmsContent sms) =>
         @<div class="tt-message">
-            <PhonePreview Sender="@message.Sms!.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message)"
+            <PhonePreview Sender="@sms.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message.Text, sms.Parts)"
                           Note="@(message.DuplicateOf is null ? null : "Not sent")" />
             <div class="tt-info">
                 <h2 class="tt-title">To @message.To.Address</h2>
-                <p class="tt-sub">From @message.Sms.Sender.Display, shown as @(message.Sms.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
-                @if (SenderNote(message) is { } note)
+                <p class="tt-sub">From @sms.Sender.Display, shown as @(sms.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
+                @if (SenderNote(sms.Sender, message.Request.OriginatorSource) is { } note)
                 {
                     <p class="tt-sub">@note</p>
                 }
-                <p class="tt-sub">Received <time datetime="@PageTime.Iso(message.ReceivedAt)">@PageTime.Fallback(message.ReceivedAt)</time>.@if (message.DueAt is { } due)
-                    {
-                        <text> Due </text><time datetime="@PageTime.Iso(due)">@PageTime.Fallback(due)</time><text>.</text>
-                    }</p>
+                @Times(message)
                 @if (message.DuplicateOf is { } duplicateOf)
                 {
                     @DuplicateLine(duplicateOf)
                 }
-                @if (message.Warnings.Count > 0)
-                {
-                    <ul class="tt-warnings" aria-label="Warnings">
-                        @foreach (var warning in message.Warnings)
-                        {
-                            <li><code>@warning.Code</code> @warning.Text</li>
-                        }
-                    </ul>
-                }
-                <PartsBar Sizes="@Sizes(message.Sms.Parts)" Left="@message.Sms.Parts.LeftInLastPart" Length="@message.Sms.Parts.Length"
-                          MaxParts="@message.Sms.MaxParts" CharacterSet="@CharacterSetName(message.Sms.Parts.CharacterSet)" />
+                @WarningList(message)
+                <PartsBar Sizes="@Sizes(sms.Parts)" Left="@sms.Parts.LeftInLastPart" Length="@sms.Parts.Length"
+                          MaxParts="@sms.MaxParts" CharacterSet="@CharacterSetName(sms.Parts.CharacterSet)" />
                 <dl>
                     <dt>Job id</dt>
                     <dd>@message.JobId</dd>
-                    @if (message.Request.NotCaught.Count > 0)
-                    {
-                        <dt>Not caught</dt>
-                        <dd>@string.Join(", ", message.Request.NotCaught)</dd>
-                    }
-                    @if (message.Sms.Links.Count > 0)
+                    @if (sms.Links.Count > 0)
                     {
                         <dt>Links</dt>
-                        <dd>@Links(message.Sms.Links)</dd>
+                        <dd>@Links(sms.Links)</dd>
                     }
                     <dt>Flash</dt>
                     <dd>@(Shown(message.Request.Body.SmsFlash) ?? "No")</dd>
                     <dt>Valid for</dt>
                     <dd>@(Shown(message.Request.Body.SmsValidityTime) is { } validity ? $"{validity} seconds" : "Operator default")</dd>
-                    @if (Shown(message.Request.Body.BillingId) is { } billingId)
-                    {
-                        <dt>Billing id</dt>
-                        <dd>@billingId</dd>
-                    }
-                    @if (Shown(message.Request.Body.Echo) is { } echo)
-                    {
-                        <dt>Echo</dt>
-                        <dd><code>@echo</code></dd>
-                    }
-                    @if (message.Request.ReportTo.Count > 0)
-                    {
-                        <dt>Report to</dt>
-                        <dd>@Addresses(message.Request.ReportTo)</dd>
-                    }
-                    @if (message.Request.ReplyTo.Count > 0)
-                    {
-                        <dt>Reply to</dt>
-                        <dd>@Addresses(message.Request.ReplyTo)</dd>
-                    }
-                    @foreach (var field in OtherFields(message))
-                    {
-                        <dt>@field.Key</dt>
-                        <dd><code>@field.Value</code></dd>
-                    }
+                    @RequestRows(message, ShownFields)
                 </dl>
                 @if (message.Request.ReportTo.Count > 0)
                 {
                     @Reports(message)
                 }
-                <details class="tt-request">
-                    <summary>Show request</summary>
-                    <pre>@message.RawRequest</pre>
-                </details>
-                <div class="tt-actions">
-                    <button type="button" class="tt-btn" data-delete="@message.Id">Delete</button>
-                </div>
+                @RequestAndDelete(message)
             </div>
         </div>;
+
+    /// <summary>
+    /// Without a phone, parts or reports, since how another channel arrives and how K8 reports it are unobserved. The
+    /// HTML is shown as its source, never rendered.
+    /// </summary>
+    private static RenderFragment PlainDetail(Message message) =>
+        @<div class="tt-message plain">
+            <div class="tt-info">
+                <h2 class="tt-title">@($"{ChannelLabel(message.To.Channel)} to {message.To.Address}")</h2>
+                @Times(message)
+                @WarningList(message)
+                <dl>
+                    @if (message.Request.Subject is { Length: > 0 } subject)
+                    {
+                        <dt>Subject</dt>
+                        <dd>@subject</dd>
+                    }
+                    <dt>Text</dt>
+                    <dd class="tt-text">@message.Text</dd>
+                    @if (Shown(message.Request.Body.Html) is { } html)
+                    {
+                        <dt>HTML</dt>
+                        <dd class="tt-text"><code>@html</code></dd>
+                    }
+                    <dt>Job id</dt>
+                    <dd>@message.JobId</dd>
+                    @RequestRows(message, PlainShownFields)
+                </dl>
+                @RequestAndDelete(message)
+            </div>
+        </div>;
+
+    private static RenderFragment Times(Message message) =>
+        @<p class="tt-sub">Received <time datetime="@PageTime.Iso(message.ReceivedAt)">@PageTime.Fallback(message.ReceivedAt)</time>.@if (message.DueAt is { } due)
+            {
+                <text> Due </text><time datetime="@PageTime.Iso(due)">@PageTime.Fallback(due)</time><text>.</text>
+            }</p>;
+
+    private static RenderFragment WarningList(Message message) =>
+        @<text>@if (message.Warnings.Count > 0)
+            {
+                <ul class="tt-warnings" aria-label="Warnings">
+                    @foreach (var warning in message.Warnings)
+                    {
+                        <li><code>@warning.Code</code> @warning.Text</li>
+                    }
+                </ul>
+            }</text>;
+
+    /// <summary>What the request sent beside the message itself, every channel alike.</summary>
+    private static RenderFragment RequestRows(Message message, IReadOnlySet<string> shownFields) =>
+        @<text>@if (Shown(message.Request.Body.BillingId) is { } billingId)
+            {
+                <dt>Billing id</dt>
+                <dd>@billingId</dd>
+            }
+            @if (Shown(message.Request.Body.Echo) is { } echo)
+            {
+                <dt>Echo</dt>
+                <dd><code>@echo</code></dd>
+            }
+            @if (message.Request.ReportTo.Count > 0)
+            {
+                <dt>Report to</dt>
+                <dd>@Addresses(message.Request.ReportTo)</dd>
+            }
+            @if (message.Request.ReplyTo.Count > 0)
+            {
+                <dt>Reply to</dt>
+                <dd>@Addresses(message.Request.ReplyTo)</dd>
+            }
+            @foreach (var field in OtherFields(message, shownFields))
+            {
+                <dt>@field.Key</dt>
+                <dd><code>@field.Value</code></dd>
+            }</text>;
+
+    private static RenderFragment RequestAndDelete(Message message) =>
+        @<text><details class="tt-request">
+                <summary>Show request</summary>
+                <pre>@message.RawRequest</pre>
+            </details>
+            <div class="tt-actions">
+                <button type="button" class="tt-btn" data-delete="@message.Id">Delete</button>
+            </div></text>;
 
     /// <summary>The live refresh swaps this section by its id, so a report sent shows up without leaving the message.</summary>
     private RenderFragment Reports(Message message) =>
@@ -272,7 +324,7 @@
     private static string WarningCount(Message message) =>
         message.Warnings.Count == 1 ? "1 warning" : $"{message.Warnings.Count} warnings";
 
-    private static string? SenderNote(Message message) => (message.Sms!.Sender, message.Request.OriginatorSource) switch
+    private static string? SenderNote(ShownSender sender, string? originatorSource) => (sender, originatorSource) switch
     {
         ({ Source: "account" }, _) => "The request has no sender field, so the user's Sender setting decides.",
         ({ Source: "replysms" }, _) => "The request asked for replysms, so the reply number is shown.",
@@ -289,9 +341,8 @@
     };
 
     /// <summary>The text split where each part begins; binary content is no text a phone shows.</summary>
-    private static IReadOnlyList<string> Segments(Message message)
+    private static IReadOnlyList<string> Segments(string text, SmsParts parts)
     {
-        var parts = message.Sms!.Parts;
         if (parts.CharacterSet == SmsCharacterSet.Binary)
         {
             return [$"Binary message, {parts.Length} bytes"];
@@ -300,7 +351,7 @@
         var starts = parts.Starts;
 
         return starts
-            .Select((start, index) => message.Text[start..(index + 1 < starts.Count ? starts[index + 1] : message.Text.Length)])
+            .Select((start, index) => text[start..(index + 1 < starts.Count ? starts[index + 1] : text.Length)])
             .ToList();
     }
 
@@ -324,9 +375,21 @@
         _ => "binary",
     };
 
-    private static IEnumerable<KeyValuePair<string, string?>> OtherFields(Message message) => message.Request.Fields
-        .Where(field => !ShownFields.Contains(field.Key))
-        .Select(field => KeyValuePair.Create(field.Key, Shown(field.Value)));
+    private static IEnumerable<KeyValuePair<string, string?>> OtherFields(Message message, IReadOnlySet<string> shownFields) =>
+        message.Request.Fields
+            .Where(field => !shownFields.Contains(field.Key))
+            .Select(field => KeyValuePair.Create(field.Key, Shown(field.Value)));
+
+    /// <summary>An SMS is shown by its sender instead.</summary>
+    private static string ChannelLabel(MessageChannel channel) => channel switch
+    {
+        MessageChannel.Email => "E-mail",
+        MessageChannel.Fax => "Fax",
+        MessageChannel.Mms => "MMS",
+        MessageChannel.Voice => "Voice",
+        MessageChannel.Group => "Group",
+        _ => throw new InvalidOperationException($"The channel '{channel}' has no label."),
+    };
 
     private static string? Shown(JsonElement value) => value.ValueKind switch
     {

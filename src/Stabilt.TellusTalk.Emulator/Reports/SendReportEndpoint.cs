@@ -25,6 +25,12 @@ internal sealed class SendReportEndpoint : IEndpoint
             return TypedResults.NotFound();
         }
 
+        if (message.Sms is null)
+        {
+            return TypedResults.BadRequest(new ApiError(
+                "The emulator sends reports for SMS only, since TellusTalk's report for another channel has not been observed."));
+        }
+
         ReportStatus? status = order.Status switch
         {
             "delivered" => ReportStatus.Delivered,

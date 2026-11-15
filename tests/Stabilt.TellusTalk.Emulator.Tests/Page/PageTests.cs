@@ -385,18 +385,74 @@ public sealed class PageTests
     }
 
     [Fact]
-    public async Task The_detail_names_the_recipients_on_other_channels_the_emulator_did_not_catch()
+    public async Task A_row_for_another_channel_shows_its_address_channel_and_subject()
     {
         await using var emulator = new EmulatorFactory();
-        var smsOnly = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
-        emulator.Time.Advance(TimeSpan.FromMinutes(1));
-        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej igen"}""");
+        var email = await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""");
+        var fax = await Send(emulator, """{"to":"fax:+46701740606","text":"Invoice 1001 attached"}""");
 
-        using var smsOnlyPage = await Page(emulator, $"?id={smsOnly}");
-        using var mixedPage = await Page(emulator);
+        using var page = await Page(emulator);
 
-        Details(smsOnlyPage).Should().NotContainKey("Not caught");
-        Details(mixedPage).Should().Contain(KeyValuePair.Create("Not caught", "email:test.user@example.se, fax:+46701740606"));
+        var emailRow = page.QuerySelector($"#list a.tt-row[data-id='{email}']")!;
+        emailRow.QuerySelector(".num")!.TextContent.Should().Be("test.user@example.se");
+        emailRow.QuerySelector(".from")!.TextContent.Should().Be("E-mail");
+        emailRow.QuerySelector(".prev")!.TextContent.Should().Be("Your order");
+        var faxRow = page.QuerySelector($"#list a.tt-row[data-id='{fax}']")!;
+        faxRow.QuerySelector(".from")!.TextContent.Should().Be("Fax");
+        faxRow.QuerySelector(".prev")!.TextContent.Should().Be("Invoice 1001 attached");
+    }
+
+    [Fact]
+    public async Task The_detail_for_another_channel_is_plain()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped","report_to":"https://example.se/reports"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        var detail = page.QuerySelector("#detail")!;
+        detail.QuerySelector(".tt-title")!.TextContent.Should().Be("E-mail to test.user@example.se");
+        detail.QuerySelector(".tt-phone").Should().BeNull();
+        detail.QuerySelector(".tt-parts").Should().BeNull();
+        page.QuerySelector("#reports").Should().BeNull();
+        Details(page).Should().Contain(KeyValuePair.Create("Subject", "Your order")).And.Contain(KeyValuePair.Create("Text", "Shipped")).And.ContainKey("Job id");
+        detail.QuerySelector($"button[data-delete='{id}']").Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task The_html_of_a_message_on_another_channel_is_shown_as_text()
+    {
+        await using var emulator = new EmulatorFactory();
+        const string html = "<b>Bold</b><script>alert(1)</script>";
+        var id = await Send(emulator, Json(new { to = "email:test.user@example.se", text = "Bold", html }));
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelectorAll("#detail b, #detail script").Should().BeEmpty();
+        Details(page)["HTML"].Should().Be(html);
+    }
+
+    [Fact]
+    public async Task The_counts_count_every_channel()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se"],"text":"Hej"}""");
+
+        using var page = await Page(emulator);
+
+        page.QuerySelector("#tabs a[data-tab='sent'] .count")!.TextContent.Should().Be("2");
+    }
+
+    [Fact]
+    public async Task The_search_says_it_searches_addresses()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var page = await Page(emulator);
+
+        var search = page.QuerySelector("input[name='q']")!;
+        search.GetAttribute("placeholder").Should().Be("Search address or text");
+        search.GetAttribute("aria-label").Should().Be("Search address or text");
     }
 
     [Fact]

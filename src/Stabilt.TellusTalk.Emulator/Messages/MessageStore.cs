@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Stabilt.TellusTalk.Emulator.Reports;
+using Stabilt.TellusTalk.Emulator.Requests;
 
 namespace Stabilt.TellusTalk.Emulator.Messages;
 
@@ -27,7 +28,10 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         {
             foreach (var message in messages)
             {
-                var original = options.Value.BlockDuplicates ? FindOriginal(message) : null;
+                // K8's duplicate key on another channel is unobserved, so only an SMS is held back.
+                var original = options.Value.BlockDuplicates && message.To.Channel == MessageChannel.Sms
+                    ? FindOriginal(message)
+                    : null;
                 var added = original is null ? message : message with { DuplicateOf = original.Id };
                 _messages.Add(added);
                 stored.Add(added);
@@ -118,8 +122,8 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     }
 
     /// <summary>
-    /// The messages whose automatic report is due: they have a report address, were sent or fell due at least
-    /// <paramref name="delay"/> ago, and have not been taken before. Each is handed out once.
+    /// The messages whose automatic report is due: they are SMS with a report address, were sent or fell due at
+    /// least <paramref name="delay"/> ago, and have not been taken before. Each is handed out once.
     /// </summary>
     public IReadOnlyList<Message> TakeDueReports(TimeSpan delay)
     {
@@ -127,6 +131,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         lock (_lock)
         {
             var due = _messages
+                .Where(message => message.Sms is not null)
                 .Where(message => message.DuplicateOf is null)
                 .Where(message => message.Request.ReportTo.Count > 0)
                 .Where(message => message.ShownAt <= now - delay)
@@ -225,6 +230,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
 
     /// <summary>Called under the lock. Held-back messages are no original, so a held-back send does not extend the window.</summary>
     private Message? FindOriginal(Message message) => _messages
+        .Where(other => other.To.Channel == MessageChannel.Sms)
         .Where(other => other.DuplicateOf is null)
         .Where(other => (other.ReceivedAt - message.ReceivedAt).Duration() <= DuplicateWindow)
         .Where(other => string.Equals(other.UserName, message.UserName, StringComparison.Ordinal))

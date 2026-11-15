@@ -189,6 +189,23 @@ public sealed class SendFailuresTests
     }
 
     [Fact]
+    public async Task A_failure_armed_for_a_number_is_spent_by_a_voice_mms_or_fax_send_to_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740605", new { status = 503, count = 3 });
+
+        using var voice = await emulator.Send("""{"to":"voice:+46701740605","text":"Probe"}""");
+        using var mms = await emulator.Send("""{"to":"mms:+46701740605","text":"Probe"}""");
+        using var fax = await emulator.Send("""{"to":"fax:+46701740605","text":"Probe"}""");
+        using var next = await emulator.Send(To("+46701740605"));
+
+        voice.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        mms.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        fax.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        next.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Failures_for_any_send_are_spent_before_failures_for_a_number()
     {
         await using var emulator = new EmulatorFactory();

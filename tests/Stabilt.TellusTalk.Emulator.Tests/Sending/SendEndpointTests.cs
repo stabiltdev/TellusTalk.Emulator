@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Stabilt.TellusTalk.Emulator.Messages;
+using Stabilt.TellusTalk.Emulator.Requests;
 using Stabilt.TellusTalk.Emulator.Tests.Support;
 
 namespace Stabilt.TellusTalk.Emulator.Tests.Sending;
@@ -88,18 +89,22 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
-    public async Task A_send_without_an_sms_recipient_is_refused_with_the_readers_text()
+    public async Task A_send_to_other_channels_only_is_answered_and_each_recipient_stored()
     {
         await using var emulator = new EmulatorFactory();
 
-        using var response = await emulator.Send("""{"to":"email:a@b.se","text":"x"}""");
+        using var response = await emulator.Send("""{"to":["email:test.user@example.se","voice:+46701740606"],"text":"Hej"}""");
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Body(response)).Should().Be("TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only 'email:'. TellusTalk itself accepts it.");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var answer = JsonDocument.Parse(await Body(response));
+        answer.RootElement.GetProperty("job_size").GetInt32().Should().Be(2);
+        Store(emulator).List()
+            .Select(message => message.To.Channel)
+            .Should().BeEquivalentTo([MessageChannel.Email, MessageChannel.Voice]);
     }
 
     [Fact]
-    public async Task A_send_beside_another_channel_counts_every_recipient_and_stores_the_SMS_under_an_id_of_its_own()
+    public async Task A_send_beside_another_channel_counts_every_recipient_and_stores_each_under_an_id_of_its_own()
     {
         await using var emulator = new EmulatorFactory();
 
@@ -108,9 +113,11 @@ public sealed class SendEndpointTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var answer = JsonDocument.Parse(await Body(response));
         answer.RootElement.GetProperty("job_size").GetInt32().Should().Be(2);
-        var message = Store(emulator).List().Should().ContainSingle().Subject;
-        message.To.Address.Should().Be("+46701740605");
-        message.Id.Should().NotBe(message.JobId);
+        var messages = Store(emulator).List();
+        messages
+            .Select(message => message.To.Address)
+            .Should().BeEquivalentTo(["+46701740605", "test.user@example.se"]);
+        messages.Should().AllSatisfy(message => message.Id.Should().NotBe(message.JobId));
     }
 
     [Fact]

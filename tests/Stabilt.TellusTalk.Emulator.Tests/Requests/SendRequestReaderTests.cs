@@ -36,39 +36,89 @@ public sealed class SendRequestReaderTests
     }
 
     [Theory]
-    [InlineData("email:a@b.se", "email:")]
-    [InlineData("fax:+46701740605", "fax:")]
-    [InlineData("mms:+46701740605", "mms:")]
-    [InlineData("voice:+46701740605", "voice:")]
-    [InlineData("group:42", "group:")]
-    public void A_request_without_an_sms_recipient_is_refused_as_the_emulators_limit(string address, string channel)
+    [InlineData("sms:+46701740605", nameof(MessageChannel.Sms), "+46701740605")]
+    [InlineData("email:test.user@example.se", nameof(MessageChannel.Email), "test.user@example.se")]
+    [InlineData("fax:+46701740606", nameof(MessageChannel.Fax), "+46701740606")]
+    [InlineData("mms:+46701740606", nameof(MessageChannel.Mms), "+46701740606")]
+    [InlineData("voice:+46701740606", nameof(MessageChannel.Voice), "+46701740606")]
+    [InlineData("group:box.abc123", nameof(MessageChannel.Group), "box.abc123")]
+    public void Each_prefix_gives_its_channel_and_the_address_after_it(string address, string channel, string read)
     {
-        var json = JsonSerializer.Serialize(new { to = new[] { address, address }, text = "Hej" });
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
 
-        Read(json).Should().Be(new Refused($"TellusTalk Emulator: the emulator catches sms: recipients only, and the request has none, only '{channel}'. TellusTalk itself accepts it."));
-    }
-
-    [Theory]
-    [InlineData("email:a@b.se")]
-    [InlineData("fax:+46701740606")]
-    [InlineData("mms:+46701740606")]
-    [InlineData("voice:+46701740606")]
-    [InlineData("group:42")]
-    public void A_recipient_on_another_channel_beside_an_sms_recipient_is_named_as_not_caught(string address)
-    {
-        var json = JsonSerializer.Serialize(new { to = new[] { "sms:+46701740605", address }, text = "Hej" });
-
-        var request = Accepted(json);
-
-        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740605", "sms:+46701740605"));
-        request.NotCaught.Should().Equal(address);
+        request.Recipients.Should().Equal(new Recipient(Enum.Parse<MessageChannel>(channel), read, address));
         request.Warnings.Should().BeEmpty();
     }
 
     [Fact]
-    public void A_request_with_only_sms_recipients_names_none_as_not_caught()
+    public void A_request_with_recipients_on_other_channels_only_is_accepted()
     {
-        Accepted("""{"to":"sms:+46701740605","text":"Hej"}""").NotCaught.Should().BeEmpty();
+        var request = Accepted("""{"to":["email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+
+        request.Recipients
+            .Select(recipient => recipient.Channel)
+            .Should().Equal(MessageChannel.Email, MessageChannel.Fax);
+    }
+
+    [Theory]
+    [InlineData("fax:+46 70 174 06 06")]
+    [InlineData("mms:+46 70 174 06 06")]
+    [InlineData("voice:+46 70 174 06 06")]
+    public void Spaces_in_a_fax_mms_or_voice_number_are_removed_with_a_warning(string address)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Single().Address.Should().Be("+46701740606");
+        var warning = request.Warnings.Should().ContainSingle().Subject;
+        warning.Code.Should().Be(WarningCodes.SpacesRemoved);
+        warning.Field.Should().Be("to");
+        warning.Text.Should().NotContain("TellusTalk removes");
+    }
+
+    [Fact]
+    public void A_fax_mms_or_voice_number_of_other_characters_than_digits_is_kept_with_a_warning()
+    {
+        var request = Accepted("""{"to":"voice:+4670abc","text":"Hej"}""");
+
+        request.Recipients.Single().Address.Should().Be("+4670abc");
+        request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
+    }
+
+    [Theory]
+    [InlineData("email:test.user")]
+    [InlineData("email:@example.se")]
+    [InlineData("email:test.user@")]
+    public void An_e_mail_address_without_a_name_at_and_domain_is_kept_with_a_warning(string address)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Email, address["email:".Length..], address));
+        request.Warnings.Should().ContainSingle().Which.Should().Match<Warning>(warning =>
+            warning.Code == WarningCodes.EmailInvalid && warning.Field == "to");
+    }
+
+    [Fact]
+    public void A_bare_e_mail_address_is_read_as_an_sms_number_with_warnings()
+    {
+        var request = Accepted("""{"to":"test.user@example.se","text":"Hej"}""");
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "test.user@example.se", "test.user@example.se"));
+        request.Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.MissingPrefix, WarningCodes.NotDigits);
+    }
+
+    [Fact]
+    public void The_sender_and_encoding_rules_are_kept_apart_from_the_requests_warnings()
+    {
+        var request = Accepted("""{"to":"email:test.user@example.se","subject":"Your order has shipped","text":"Hej","sms_format":"unicode","billing_id":"team-1"}""");
+
+        request.Warnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.BillingIdInvalid);
+        request.SmsWarnings
+            .Select(warning => warning.Code)
+            .Should().Equal(WarningCodes.SubjectTooLong, WarningCodes.FormatDeprecated);
     }
 
     [Theory]
@@ -258,7 +308,7 @@ public sealed class SendRequestReaderTests
         var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_format":"unicode"}""");
 
         request.CharacterSet.Should().Be("unicode");
-        request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.FormatDeprecated);
+        request.SmsWarnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.FormatDeprecated);
     }
 
     private static ReadResult Read(string json)

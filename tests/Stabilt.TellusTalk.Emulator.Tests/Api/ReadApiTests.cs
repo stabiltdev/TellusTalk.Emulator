@@ -46,7 +46,7 @@ public sealed class ReadApiTests
         newest.GetProperty("state").GetString().Should().Be("sent");
         newest.GetProperty("to").GetString().Should().Be("+46701740605");
         newest.GetProperty("toAsSent").GetString().Should().Be("sms:+46 70 174 06 05");
-        newest.GetProperty("notCaught").GetArrayLength().Should().Be(0);
+        newest.GetProperty("channel").GetString().Should().Be("sms");
         newest.GetProperty("user").GetString().Should().Be("tester");
         newest.GetProperty("receivedAt").GetDateTimeOffset().Should().Be(new DateTimeOffset(2026, 11, 7, 22, 1, 0, TimeSpan.Zero));
         newest.GetProperty("dueAt").ValueKind.Should().Be(JsonValueKind.Null);
@@ -187,17 +187,40 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task A_message_names_its_requests_recipients_on_other_channels_as_sent()
+    public async Task A_message_on_another_channel_has_its_channel_and_address_and_no_sms_parts()
     {
         await using var emulator = new EmulatorFactory();
-        await Send(emulator, """{"to":["sms:+46701740605","email:test.user@example.se","fax:+46701740606"],"text":"Hej"}""");
+        var id = await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped","html":"<p>Shipped</p>"}""");
 
-        using var list = await Get(emulator, "/api/v1/messages");
+        using var message = await Get(emulator, $"/api/v1/messages/{id}");
 
-        list.RootElement.GetProperty("messages")[0].GetProperty("notCaught")
-            .EnumerateArray()
-            .Select(address => address.GetString())
-            .Should().Equal("email:test.user@example.se", "fax:+46701740606");
+        var root = message.RootElement;
+        root.GetProperty("channel").GetString().Should().Be("email");
+        root.GetProperty("to").GetString().Should().Be("test.user@example.se");
+        root.GetProperty("toAsSent").GetString().Should().Be("email:test.user@example.se");
+        root.GetProperty("text").GetString().Should().Be("Shipped");
+        root.GetProperty("sender").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("links").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("parts").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("reports").GetArrayLength().Should().Be(0);
+        root.GetProperty("fields").GetProperty("subject").GetString().Should().Be("Your order");
+        root.GetProperty("state").GetString().Should().Be("sent");
+    }
+
+    [Theory]
+    [InlineData("fax:+46701740606", "fax")]
+    [InlineData("mms:+46701740606", "mms")]
+    [InlineData("voice:+46701740606", "voice")]
+    [InlineData("group:box.abc123", "group")]
+    public async Task Each_channel_is_written_in_lower_case(string address, string channel)
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        using var message = await Get(emulator, $"/api/v1/messages/{id}");
+
+        message.RootElement.GetProperty("channel").GetString().Should().Be(channel);
     }
 
     [Fact]

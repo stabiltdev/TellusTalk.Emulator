@@ -17,6 +17,41 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     {
         var now = time.GetUtcNow();
         var jobId = Guid.CreateVersion1(now).ToString("N");
+        var (text, sms, smsWarnings) = CreateSms(request);
+
+        var dueAt = request.ScheduledSendTime is { } scheduled && ScheduledTime.TryParse(scheduled, out var due) && due > now
+            ? due.ToUniversalTime()
+            : (DateTimeOffset?)null;
+
+        var size = request.Recipients.Count;
+        var single = size == 1;
+        var messages = request.Recipients
+            .Select(recipient =>
+            {
+                var isSms = recipient.Channel == MessageChannel.Sms;
+
+                return new Message(
+                    single ? jobId : Guid.CreateVersion1(now).ToString("N"),
+                    jobId,
+                    recipient,
+                    userName,
+                    now,
+                    dueAt,
+                    // Neither sms_header nor a shortened tracking link was observed outside SMS.
+                    isSms ? text : request.Text ?? string.Empty,
+                    isSms ? sms : null,
+                    request,
+                    isSms ? smsWarnings : request.Warnings,
+                    rawRequest);
+            })
+            .ToList();
+
+        return new SendJob(jobId, size, messages);
+    }
+
+    /// <summary>What the request's SMS recipients share: the text as the phone shows it, the SMS part and the warnings.</summary>
+    private (string Text, SmsContent Sms, IReadOnlyList<Warning> Warnings) CreateSms(SendRequest request)
+    {
         var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
 
         var messageWarnings = new List<Warning>();
@@ -47,30 +82,9 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                 $"The text needs {parts.Count} parts but sms_max_parts allows {maxParts}; the emulator keeps it whole, and what TellusTalk does is unknown."));
         }
 
-        var dueAt = request.ScheduledSendTime is { } scheduled && ScheduledTime.TryParse(scheduled, out var due) && due > now
-            ? due.ToUniversalTime()
-            : (DateTimeOffset?)null;
+        IReadOnlyList<Warning> warnings = [.. request.Warnings, .. request.SmsWarnings, .. messageWarnings];
 
-        IReadOnlyList<Warning> warnings = [.. request.Warnings, .. messageWarnings];
-        var sms = new SmsContent(sender, links, parts, maxParts);
-        var size = request.Recipients.Count + request.NotCaught.Count;
-        var single = size == 1;
-        var messages = request.Recipients
-            .Select(recipient => new Message(
-                single ? jobId : Guid.CreateVersion1(now).ToString("N"),
-                jobId,
-                recipient,
-                userName,
-                now,
-                dueAt,
-                text,
-                sms,
-                request,
-                warnings,
-                rawRequest))
-            .ToList();
-
-        return new SendJob(jobId, size, messages);
+        return (text, new SmsContent(sender, links, parts, maxParts), warnings);
     }
 
     /// <summary>The source that decided the sender is the request's, or the user's Sender setting when the request holds none.</summary>

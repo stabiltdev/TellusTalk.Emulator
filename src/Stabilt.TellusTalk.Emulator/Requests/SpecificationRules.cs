@@ -15,8 +15,12 @@ internal static class SpecificationRules
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
 
-    public static IReadOnlyList<Warning> Check(SendRequest request) =>
-        [.. SenderWarnings(request), .. EncodingWarnings(request), .. OtherWarnings(request)];
+    /// <summary>The rules about the request as a whole, which every message of it carries.</summary>
+    public static IReadOnlyList<Warning> Check(SendRequest request) => [.. RequestWarnings(request)];
+
+    /// <summary>The rules about an SMS, which only the request's SMS messages carry.</summary>
+    public static IReadOnlyList<Warning> CheckSms(SendRequest request) =>
+        [.. SenderWarnings(request), .. EncodingWarnings(request), .. MaxPartsWarnings(request)];
 
     private static IEnumerable<Warning> SenderWarnings(SendRequest request)
     {
@@ -85,7 +89,7 @@ internal static class SpecificationRules
         }
     }
 
-    private static IEnumerable<Warning> OtherWarnings(SendRequest request)
+    private static IEnumerable<Warning> MaxPartsWarnings(SendRequest request)
     {
         if (request.MaxParts is < 1)
         {
@@ -94,7 +98,10 @@ internal static class SpecificationRules
                 "sms_max_parts",
                 $"sms_max_parts is {request.MaxParts}; the specification's minimum is 1, so the emulator uses the default of 8.");
         }
+    }
 
+    private static IEnumerable<Warning> RequestWarnings(SendRequest request)
+    {
         var billingId = request.Body.BillingId;
         if (billingId.ValueKind == JsonValueKind.String &&
             !billingId.GetString()!.All(char.IsAsciiLetterOrDigit))

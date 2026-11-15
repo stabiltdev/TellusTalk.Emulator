@@ -17,7 +17,7 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void A_sender_name_over_eleven_characters_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe12" })
+        SpecificationRules.CheckSms(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe12" })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.OriginatorTextTooLong && warning.Field == "sms_originator_text");
     }
@@ -25,13 +25,13 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void A_sender_name_of_eleven_characters_is_not_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe1" }).Should().BeEmpty();
+        SpecificationRules.CheckSms(Plain with { OriginatorSource = "text", OriginatorText = "ProbeProbe1" }).Should().BeEmpty();
     }
 
     [Fact]
     public void A_subject_as_sender_over_eleven_characters_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "subject", Subject = "AcmeMessages" })
+        SpecificationRules.CheckSms(Plain with { OriginatorSource = "subject", Subject = "AcmeMessages" })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.SubjectTooLong && warning.Field == "subject");
     }
@@ -39,7 +39,7 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void A_subject_over_eleven_characters_chosen_without_a_source_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { Subject = "AcmeMessages" })
+        SpecificationRules.CheckSms(Plain with { Subject = "AcmeMessages" })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.SubjectTooLong && warning.Field == "subject");
     }
@@ -47,28 +47,28 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void A_long_subject_beside_another_named_source_is_not_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "text", OriginatorText = "Probe", Subject = "AcmeMessages" })
+        SpecificationRules.CheckSms(Plain with { OriginatorSource = "text", OriginatorText = "Probe", Subject = "AcmeMessages" })
             .Should().BeEmpty();
     }
 
     [Fact]
     public void A_sender_number_that_is_not_plus_and_digits_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { OriginatorSource = "number", OriginatorNumber = "0701740605" })
+        SpecificationRules.CheckSms(Plain with { OriginatorSource = "number", OriginatorNumber = "0701740605" })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.OriginatorNumberInvalid);
     }
 
     [Fact]
     public void An_undocumented_character_set_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { CharacterSet = "latin1" })
+        SpecificationRules.CheckSms(Plain with { CharacterSet = "latin1" })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.CharacterSetInvalid);
     }
 
     [Fact]
     public void The_deprecated_sms_format_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { CharacterSet = "gsm", Body = BodyOf("""{"sms_format":"gsm"}""") })
+        SpecificationRules.CheckSms(Plain with { CharacterSet = "gsm", Body = BodyOf("""{"sms_format":"gsm"}""") })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.FormatDeprecated && warning.Field == "sms_format");
     }
@@ -76,14 +76,14 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void Binary_without_a_user_data_header_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { CharacterSet = "binary", Text = "48656C6C6F" })
+        SpecificationRules.CheckSms(Plain with { CharacterSet = "binary", Text = "48656C6C6F" })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.BinaryWithoutUdh);
     }
 
     [Fact]
     public void Binary_with_a_text_that_is_not_hex_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { CharacterSet = "binary", Udh = "050003CC0201", Text = "0x41" })
+        SpecificationRules.CheckSms(Plain with { CharacterSet = "binary", Udh = "050003CC0201", Text = "0x41" })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.BinaryNotHex && warning.Field == "text");
     }
@@ -91,7 +91,7 @@ public sealed class SpecificationRulesTests
     [Fact]
     public void Max_parts_below_one_is_warned_about()
     {
-        SpecificationRules.Check(Plain with { MaxParts = 0 })
+        SpecificationRules.CheckSms(Plain with { MaxParts = 0 })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsInvalid);
     }
 

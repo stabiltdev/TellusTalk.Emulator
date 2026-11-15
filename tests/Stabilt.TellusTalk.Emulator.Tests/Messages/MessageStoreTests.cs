@@ -411,6 +411,51 @@ public sealed class MessageStoreTests
         store.TakeDueReports(TimeSpan.FromSeconds(1)).Should().Equal(first);
     }
 
+    [Fact]
+    public void An_sms_and_an_mms_to_the_same_number_do_not_hold_each_other_back()
+    {
+        var store = Store();
+        var sms = Send(store, "Hej", to: "sms:+46701740605");
+        var mms = Send(store, "Hej", to: "mms:+46701740605");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var again = Send(store, "Hej", to: "sms:+46701740605");
+
+        mms.DuplicateOf.Should().BeNull();
+        again.DuplicateOf.Should().Be(sms.Id);
+    }
+
+    [Fact]
+    public void An_mms_holds_back_no_later_sms_to_the_same_number()
+    {
+        var store = Store();
+        Send(store, "Hej", to: "mms:+46701740605");
+
+        Send(store, "Hej", to: "sms:+46701740605").DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_message_on_another_channel_is_never_held_back()
+    {
+        var store = Store();
+        var first = Send(store, "Hej", to: "email:test.user@example.se");
+        _time.Advance(TimeSpan.FromMinutes(1));
+        var second = Send(store, "Hej", to: "email:test.user@example.se");
+
+        first.DuplicateOf.Should().BeNull();
+        second.DuplicateOf.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_message_on_another_channel_is_not_handed_out_for_an_automatic_report()
+    {
+        var store = Store();
+        Send(store, "Hej", to: "email:test.user@example.se", reportTo: "https://example.se/reports");
+        var sms = Send(store, "Hej", reportTo: "https://example.se/reports");
+        _time.Advance(TimeSpan.FromSeconds(2));
+
+        store.TakeDueReports(TimeSpan.FromSeconds(1)).Should().Equal(sms);
+    }
+
     private static ReportAttempt Attempt(DateTimeOffset at) =>
         new(at, ReportStatus.Delivered, "https://example.se/reports", Sent: true, "200 OK");
 
