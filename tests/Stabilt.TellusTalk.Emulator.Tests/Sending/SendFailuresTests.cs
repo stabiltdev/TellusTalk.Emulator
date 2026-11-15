@@ -43,7 +43,7 @@ public sealed class SendFailuresTests
         failed.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         failed.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
         (await failed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Internal Server Error");
-        failed.Headers.Contains("X-Request-Id").Should().BeTrue();
+        await failed.ShouldCarryTellusTalksHeadersAndAContentLength();
         next.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 

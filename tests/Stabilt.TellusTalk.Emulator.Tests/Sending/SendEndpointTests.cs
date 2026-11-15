@@ -103,6 +103,27 @@ public sealed class SendEndpointTests
         Store(emulator).List().Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, Probe, "application/json", null)]
+    [InlineData(HttpStatusCode.UnsupportedMediaType, Probe, "text/plain", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, "{", "application/json", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, """{"text":"Hej"}""", "application/json", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, """{"to":"sms:+46701740605","text":"Hej","subject":5}""", "application/json", "tester")]
+    [InlineData(HttpStatusCode.OK, Probe, "application/json", "tester")]
+    public async Task Every_answer_to_a_send_carries_TellusTalks_headers_and_a_content_length(
+        HttpStatusCode status,
+        string json,
+        string contentType,
+        string? user)
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(json, user, contentType);
+
+        response.StatusCode.Should().Be(status);
+        await response.ShouldCarryTellusTalksHeadersAndAContentLength();
+    }
+
     [Fact]
     public async Task A_send_to_other_channels_only_is_answered_and_each_recipient_stored()
     {
