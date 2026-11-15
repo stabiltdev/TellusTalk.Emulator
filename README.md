@@ -121,7 +121,7 @@ await emulatorApi.DeleteAsync("api/v1/messages");
 
 // … the code under test sends an SMS …
 
-var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&to=%2B46701740605");
+var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&channel=sms&to=%2B46701740605");
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
@@ -259,7 +259,7 @@ given an `http://host.docker.internal:<port>/…` address.
 | Request | Answer |
 |---|---|
 | `GET /api/v1/health` | `Healthy`, as `text/plain` |
-| `GET /api/v1/messages?state=sent\|scheduled\|blocked&to=<number>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` is answered `400` |
+| `GET /api/v1/messages?state=sent\|scheduled\|blocked&channel=sms\|email\|fax\|mms\|voice\|group&to=<address>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` or `channel` is answered `400` |
 | `GET /api/v1/messages/{id}` | `<message>`, or `404` |
 | `DELETE /api/v1/messages/{id}` | `204`, or `404` |
 | `DELETE /api/v1/messages` | `204`; every message is removed, the held-back ones too |
@@ -270,6 +270,9 @@ given an `http://host.docker.internal:<port>/…` address.
 | `GET /api/v1/send-failures` or `GET /api/v1/send-failures/{number}` | `[{"status":503,"remaining":1,"delaySeconds":0}, …]`, what is left in the order it will be spent; `[]` when nothing is armed |
 | `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
 | `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
+
+`to` matches a number on any channel, and an e-mail address or a group's id as given. `q` searches the address, the text,
+an SMS's sender and another channel's subject.
 
 A `400` or `415` from the read API carries `{"message": "…"}`, saying what is wrong; that includes a body that is
 missing, is not JSON, or is not the JSON the endpoint takes.

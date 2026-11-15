@@ -57,7 +57,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     /// Newest first by the time a message was shown: its due time if it was scheduled, else when it arrived. Messages
     /// at the same instant keep the order they arrived in, newest first.
     /// </summary>
-    public IReadOnlyList<Message> List(MessageState? state = null, string? to = null, string? search = null)
+    public IReadOnlyList<Message> List(MessageState? state = null, string? to = null, string? search = null, MessageChannel? channel = null)
     {
         var now = time.GetUtcNow();
         lock (_lock)
@@ -65,6 +65,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
             return _messages
                 .Select((message, order) => (Message: message, Order: order))
                 .Where(entry => state is null || entry.Message.StateAt(now) == state)
+                .Where(entry => channel is null || entry.Message.To.Channel == channel)
                 .Where(entry => to is null || string.Equals(entry.Message.To.Address, to, StringComparison.Ordinal))
                 .Where(entry => search is null || Matches(entry.Message, search))
                 .OrderByDescending(entry => entry.Message.ShownAt)
@@ -242,7 +243,9 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     private static bool Matches(Message message, string search) =>
         message.To.Address.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         message.Text.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-        message.Sms?.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase) == true;
+        (message.Sms is null
+            ? message.Request.Subject?.Contains(search, StringComparison.OrdinalIgnoreCase) == true
+            : message.Sms.Sender.Display.Contains(search, StringComparison.OrdinalIgnoreCase));
 
     private void Publish(StoreChange change)
     {

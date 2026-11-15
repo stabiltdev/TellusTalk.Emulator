@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Stabilt.TellusTalk.Emulator.Http;
+using Stabilt.TellusTalk.Emulator.Requests;
 
 namespace Stabilt.TellusTalk.Emulator.Messages;
 
@@ -11,6 +12,7 @@ internal sealed class ListMessagesEndpoint : IEndpoint
         MessageStore store,
         TimeProvider time,
         string? state,
+        string? channel,
         string? to,
         string? q)
     {
@@ -19,9 +21,14 @@ internal sealed class ListMessagesEndpoint : IEndpoint
             return TypedResults.BadRequest(new ApiError("state must be sent, scheduled or blocked."));
         }
 
+        if (!TryReadChannel(channel, out var wantedChannel))
+        {
+            return TypedResults.BadRequest(new ApiError("channel must be sms, email, fax, mms, voice or group."));
+        }
+
         var now = time.GetUtcNow();
         var messages = store
-            .List(wanted, Number(to), q)
+            .List(wanted, Address(to), q, wantedChannel)
             .Select(message => MessageResponse.From(message, now, store.Reports(message.Id)))
             .ToList();
 
@@ -42,11 +49,29 @@ internal sealed class ListMessagesEndpoint : IEndpoint
         return valid;
     }
 
+    private static bool TryReadChannel(string? channel, out MessageChannel? wanted)
+    {
+        (var valid, wanted) = channel switch
+        {
+            null => (true, (MessageChannel?)null),
+            "sms" => (true, MessageChannel.Sms),
+            "email" => (true, MessageChannel.Email),
+            "fax" => (true, MessageChannel.Fax),
+            "mms" => (true, MessageChannel.Mms),
+            "voice" => (true, MessageChannel.Voice),
+            "group" => (true, MessageChannel.Group),
+            _ => (false, null),
+        };
+
+        return valid;
+    }
+
     /// <summary>
-    /// A number's <c>+</c>, left unescaped in a query string, arrives as a space; so does a space a person typed. Both
-    /// read as the number in its <c>+</c> form.
+    /// A value of digits and spaces with at most a leading <c>+</c> is a number: a <c>+</c> left unescaped in a query
+    /// string arrives as a space, so spaces are removed and the number read in its <c>+</c> form. Any other value, such
+    /// as an e-mail address or a group's id, is compared as given.
     /// </summary>
-    private static string? Number(string? to)
+    private static string? Address(string? to)
     {
         if (to is null)
         {
@@ -54,8 +79,13 @@ internal sealed class ListMessagesEndpoint : IEndpoint
         }
 
         var digits = to.Replace(" ", string.Empty, StringComparison.Ordinal);
+        var body = digits.StartsWith('+', StringComparison.Ordinal) ? digits[1..] : digits;
+        if (body.Length == 0 || !body.All(char.IsAsciiDigit))
+        {
+            return to;
+        }
 
-        return digits.StartsWith('+', StringComparison.Ordinal) ? digits : "+" + digits;
+        return "+" + body;
     }
 
     private sealed record MessageList(int Total, IReadOnlyList<MessageResponse> Messages);

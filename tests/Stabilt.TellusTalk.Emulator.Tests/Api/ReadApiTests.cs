@@ -283,6 +283,75 @@ public sealed class ReadApiTests
     }
 
     [Fact]
+    public async Task Messages_filter_by_channel()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
+        await Send(emulator, """{"to":"mms:+46701740605","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?channel=email")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?channel=sms")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages")).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Another_channel_is_refused()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = emulator.CreateClient();
+
+        using var response = await client.GetAsync(new Uri("/api/v1/messages?channel=telegram", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.RootElement.GetProperty("message").GetString().Should().Be("channel must be sms, email, fax, mms, voice or group.");
+    }
+
+    [Fact]
+    public async Task A_number_filter_matches_every_channel_to_that_number_and_the_channel_narrows_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"mms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"voice:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"fax:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"sms:+46701740606","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=+46701740605")).Should().Be(4);
+        (await Total(emulator, "/api/v1/messages?channel=sms&to=%2B46701740605")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task An_e_mail_address_filter_is_compared_as_given()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Hello","text":"Hej"}""");
+        await Send(emulator, """{"to":"email:other.user@example.se","subject":"Hello","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=test.user%40example.se")).Should().Be(1);
+        (await Total(emulator, "/api/v1/messages?to=test.user@example.se")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_group_filter_is_compared_as_given()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"group:box.abc123","text":"Hej"}""");
+
+        (await Total(emulator, "/api/v1/messages?to=box.abc123")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task The_search_finds_a_message_on_another_channel_by_its_subject()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""");
+
+        (await Total(emulator, "/api/v1/messages?q=order")).Should().Be(1);
+    }
+
+    [Fact]
     public async Task A_held_back_message_is_blocked_and_names_the_message_it_duplicates()
     {
         await using var emulator = new EmulatorFactory();
