@@ -64,7 +64,8 @@ public sealed class SendEndpointTests
 
         response.StatusCode.Should().Be(HttpStatusCode.UnsupportedMediaType);
         response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
-        (await Body(response)).Should().StartWith("TellusTalk Emulator:");
+        (await Body(response)).Should().Be(
+            "TellusTalk Emulator: the emulator takes JSON bodies only. TellusTalk itself also takes XML and form bodies.");
     }
 
     [Fact]
@@ -85,7 +86,21 @@ public sealed class SendEndpointTests
         using var response = await emulator.Send("{");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Body(response)).Should().StartWith("TellusTalk Emulator:");
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
+        (await Body(response)).Should().Be("TellusTalk Emulator: the request body is not valid JSON.");
+    }
+
+    [Fact]
+    public async Task A_request_without_a_recipient_is_refused_as_the_emulators_limit()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"text":"Hej"}""");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
+        (await Body(response)).Should().Be("TellusTalk Emulator: a request needs 'to' for the emulator to record a message.");
+        Store(emulator).List().Should().BeEmpty();
     }
 
     [Fact]
