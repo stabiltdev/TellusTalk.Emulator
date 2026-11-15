@@ -13,7 +13,7 @@ internal static class SendRequestReader
     private const string NotAnAddress = "TellusTalk Emulator: 'to' must be an address or a list of addresses.";
 
     private const string RecipientObjects =
-        "TellusTalk Emulator: the emulator handles plain sms: recipients only, not recipient objects. " +
+        "TellusTalk Emulator: the emulator handles plain recipients only, not recipient objects. " +
         "TellusTalk itself accepts them.";
 
     private const string LogRecipient =

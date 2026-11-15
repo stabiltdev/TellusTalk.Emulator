@@ -133,7 +133,7 @@ public sealed class SendRequestReaderTests
     public void Recipient_objects_are_refused_as_the_emulators_limit()
     {
         Read("""{"to":[{"address":"sms:+46701740605","login_options":{"method":"bankid"}}],"text":"Hej"}""")
-            .Should().Be(new Refused("TellusTalk Emulator: the emulator handles plain sms: recipients only, not recipient objects. TellusTalk itself accepts them."));
+            .Should().Be(new Refused("TellusTalk Emulator: the emulator handles plain recipients only, not recipient objects. TellusTalk itself accepts them."));
     }
 
     [Fact]
