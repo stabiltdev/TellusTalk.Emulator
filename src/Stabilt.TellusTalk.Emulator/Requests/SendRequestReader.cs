@@ -255,7 +255,7 @@ internal static class SendRequestReader
             warnings.Add(new Warning(
                 WarningCodes.EmailInvalid,
                 "to",
-                $"'{address}' is not an e-mail address with '@', as the specification asks."));
+                $"'{address}' is not a name, '@' and a domain, as the specification asks of an e-mail address."));
         }
 
         return new Recipient(MessageChannel.Email, emailAddress, address);
