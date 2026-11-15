@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Tests.Support;
@@ -203,6 +204,21 @@ public sealed class SendFailuresTests
         mms.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         fax.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         next.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("group:+46701740605")]
+    [InlineData("email:+46701740605")]
+    public async Task A_failure_armed_for_a_number_is_not_spent_by_a_group_or_e_mail_address_that_reads_as_it(string address)
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740605", new { status = 503 });
+
+        using var other = await emulator.Send(JsonSerializer.Serialize(new { to = address, text = "Probe" }));
+        using var sms = await emulator.Send(To("+46701740605"));
+
+        other.StatusCode.Should().Be(HttpStatusCode.OK);
+        sms.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
     }
 
     [Fact]
