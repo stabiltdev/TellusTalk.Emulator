@@ -20,7 +20,7 @@ internal static class ReadApiBadRequests
     }
 
     private static bool IsReadApi(HttpContext context) =>
-        context.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase);
+        context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase);
 
     private static string Message(int statusCode) => statusCode == StatusCodes.Status415UnsupportedMediaType
         ? "The request body must be JSON."

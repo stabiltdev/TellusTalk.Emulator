@@ -76,7 +76,7 @@
 
     var deleteButton = event.target.closest("[data-delete]");
     if (deleteButton) {
-      remove("/api/v1/messages/" + encodeURIComponent(deleteButton.dataset.delete));
+      remove("/api/messages/" + encodeURIComponent(deleteButton.dataset.delete));
       return;
     }
 
@@ -87,7 +87,7 @@
     }
 
     if (event.target.closest("[data-clear]")) {
-      remove("/api/v1/messages");
+      remove("/api/messages");
     }
   });
 
@@ -115,7 +115,7 @@
 
   function report(button) {
     button.disabled = true;
-    fetch("/api/v1/messages/" + encodeURIComponent(button.dataset.id) + "/reports", {
+    fetch("/api/messages/" + encodeURIComponent(button.dataset.id) + "/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: button.dataset.report }),
@@ -371,7 +371,7 @@
 
   function listen() {
     if (window.EventSource && !events) {
-      events = new EventSource("/api/v1/events");
+      events = new EventSource("/api/events");
       events.addEventListener("change", refresh);
     }
   }

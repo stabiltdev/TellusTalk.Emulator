@@ -7,7 +7,7 @@ namespace Stabilt.TellusTalk.Emulator.Messages;
 
 internal sealed class StreamChangesEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapGet("api/v1/events", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapGet("api/events", Handle);
 
     private static ServerSentEventsResult<StoreChange> Handle(MessageStore store, CancellationToken cancellationToken) =>
         TypedResults.ServerSentEvents(Changes(store, cancellationToken));

@@ -14,7 +14,7 @@ Not affiliated with TellusTalk.
 - Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
 - Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, each
   SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
-- Serves what it caught to automated tests through a read API under `/api/v1/`.
+- Serves what it caught to automated tests through a read API under `/api/`.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed
   for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
 - Holds back an SMS that duplicates one the same user sent in the five minutes before, as TellusTalk does.
@@ -75,7 +75,7 @@ version. Without the package, the same container is:
 var tellusTalk = builder
     .AddContainer("tellustalk", "ghcr.io/stabiltdev/tellustalk-emulator", "<version>")
     .WithHttpEndpoint(targetPort: 8080, name: "http")
-    .WithHttpHealthCheck("/api/v1/health", endpointName: "http");
+    .WithHttpHealthCheck("/api/health", endpointName: "http");
 ```
 
 ### From Testcontainers
@@ -103,7 +103,7 @@ var emulator = new ContainerBuilder("ghcr.io/stabiltdev/tellustalk-emulator:<ver
         .ForUnixContainer()
         .UntilHttpRequestIsSucceeded(request => request
             .ForPort(8080)
-            .ForPath("/api/v1/health")))
+            .ForPath("/api/health")))
     .Build();
 
 await emulator.StartAsync();
@@ -117,11 +117,11 @@ var baseAddress = new Uri($"http://{emulator.Hostname}:{emulator.GetMappedPublic
 using var emulatorApi = new HttpClient { BaseAddress = baseAddress };
 
 // Before each test: start from empty lists.
-await emulatorApi.DeleteAsync("api/v1/messages");
+await emulatorApi.DeleteAsync("api/messages");
 
 // … the code under test sends an SMS …
 
-var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/v1/messages?state=sent&channel=sms&to=%2B46701740605");
+var list = await emulatorApi.GetFromJsonAsync<JsonElement>("api/messages?state=sent&channel=sms&to=%2B46701740605");
 var message = list.GetProperty("messages")[0];
 
 Assert.Equal("Your code is 482913", message.GetProperty("text").GetString());
@@ -203,7 +203,7 @@ there has not been observed.
 An SMS with a URL in `report_to` gets a report `Emulator__ReportDelaySeconds` after it is sent, or after it falls due
 if it was scheduled. The report says delivered, or failed when the recipient is one of `Emulator__FailingNumbers`, so
 an app's failure path can be tried with a number of its own. A report of either kind can also be sent at once, any
-number of times: from the buttons beside the message on the page, or with `POST /api/v1/messages/{id}/reports`. A
+number of times: from the buttons beside the message on the page, or with `POST /api/messages/{id}/reports`. A
 message on another channel is not reported, since TellusTalk's report for another channel has not been observed.
 
 Each report is a `POST` with the JSON TellusTalk was seen sending:
@@ -258,21 +258,21 @@ given an `http://host.docker.internal:<port>/…` address.
 
 | Request | Answer |
 |---|---|
-| `GET /api/v1/health` | `Healthy`, as `text/plain` |
-| `GET /api/v1/messages?state=sent\|scheduled\|blocked&channel=sms\|email\|fax\|mms\|voice\|group&to=<address>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` or `channel` is answered `400` |
-| `GET /api/v1/messages/{id}` | `<message>`, or `404` |
-| `DELETE /api/v1/messages/{id}` | `204`, or `404` |
-| `DELETE /api/v1/messages` | `204`; every message is removed, the held-back ones too |
-| `POST /api/v1/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | For an SMS, the attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for a message on another channel or another status |
-| `GET /api/v1/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
-| `PUT /api/v1/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
-| `PUT /api/v1/send-failures/{number}` with `[<failure>, …]` | The same, for sends to that number only |
-| `GET /api/v1/send-failures` or `GET /api/v1/send-failures/{number}` | `[{"status":503,"remaining":1,"delaySeconds":0}, …]`, what is left in the order it will be spent; `[]` when nothing is armed |
-| `DELETE /api/v1/send-failures/{number}` | `204`; sends to that number no longer fail |
-| `DELETE /api/v1/send-failures` | `204`; no send fails, to any number |
+| `GET /api/health` | `Healthy`, as `text/plain` |
+| `GET /api/messages?state=sent\|scheduled\|blocked&channel=sms\|email\|fax\|mms\|voice\|group&to=<address>&q=<text>` | `{"total": <n>, "messages": [<message>, …]}`, newest first; every filter is optional, and another `state` or `channel` is answered `400` |
+| `GET /api/messages/{id}` | `<message>`, or `404` |
+| `DELETE /api/messages/{id}` | `204`, or `404` |
+| `DELETE /api/messages` | `204`; every message is removed, the held-back ones too |
+| `POST /api/messages/{id}/reports` with `{"status":"delivered"}` or `"failed"` | For an SMS, the attempts, as in a message's `reports`, once the report has been sent; `404` for an unknown message, `400` for a message on another channel or another status |
+| `GET /api/events` | Server-sent events of type `change`, with `{"kind":"added"}`, `removed`, `cleared`, `due` or `reported` |
+| `PUT /api/send-failures` with `[<failure>, …]` | The failures armed for any send, as `GET` reads them; see [failing sends](#failing-sends) |
+| `PUT /api/send-failures/{number}` with `[<failure>, …]` | The same, for sends to that number only |
+| `GET /api/send-failures` or `GET /api/send-failures/{number}` | `[{"status":503,"remaining":1,"delaySeconds":0}, …]`, what is left in the order it will be spent; `[]` when nothing is armed |
+| `DELETE /api/send-failures/{number}` | `204`; sends to that number no longer fail |
+| `DELETE /api/send-failures` | `204`; no send fails, to any number |
 
-`to` matches a number on any channel, and an e-mail address or a group's id as given. `q` searches the address, the text,
-an SMS's sender and another channel's subject.
+`to` matches a message's `to` as given, on any channel. A `+` in it is sent as `%2B`: one left unescaped arrives as a
+space, and the query finds nothing. `q` searches the address, the text, an SMS's sender and another channel's subject.
 
 A `400` or `415` from the read API carries `{"message": "…"}`, saying what is wrong; that includes a body that is
 missing, is not JSON, or is not the JSON the endpoint takes.
@@ -319,7 +319,6 @@ A message:
   `target` is `null`.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
-- A number in `to` may be written with its `+` unescaped; it arrives as a space and is read as `+`.
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it
   answered; `outcome` is the receiver's status, or why the report was not sent or not delivered.
 
@@ -330,7 +329,7 @@ failures before the code under test sends; the sends spend them in order, and on
 again.
 
 ```http
-PUT /api/v1/send-failures/+46701740605
+PUT /api/send-failures/+46701740605
 Content-Type: application/json
 
 [{"status":503,"count":2},{"status":429,"delaySeconds":5}]
@@ -338,7 +337,7 @@ Content-Type: application/json
 
 The next two sends to `+46701740605` are answered `503`, the third `429` five seconds later, and the fourth goes
 through. Sends to other numbers are left alone, so tests that each send to a number of their own can share one
-emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any send, as when TellusTalk is down.
+emulator. Without a number, `PUT /api/send-failures` arms failures for any send, as when TellusTalk is down.
 
 - A failure has a `status` from 400 to 599, by default 500; a `count`, by default 1; and `delaySeconds`, how long the
   send waits before it is answered, by default 0. A `PUT` without a body arms one failure with 500. Another status, a
@@ -352,8 +351,8 @@ emulator. Without a number, `PUT /api/v1/send-failures` arms failures for any se
 - A delay longer than the client's own timeout tries that timeout, and a client that gives up spends the failure all
   the same.
 - Credentials are checked first, so a send without them is answered `401` and spends no failure.
-- `DELETE /api/v1/send-failures/{number}` clears a number, and `DELETE /api/v1/send-failures` clears everything, every
-  number included. `DELETE /api/v1/messages` leaves failures as they are.
+- `DELETE /api/send-failures/{number}` clears a number, and `DELETE /api/send-failures` clears everything, every
+  number included. `DELETE /api/messages` leaves failures as they are.
 
 ## Behaviour that follows the specification, not observation
 

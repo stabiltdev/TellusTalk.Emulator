@@ -5,7 +5,7 @@ namespace Stabilt.TellusTalk.Emulator.Messages;
 
 internal sealed class DeleteMessageEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapDelete("api/v1/messages/{id}", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapDelete("api/messages/{id}", Handle);
 
     private static Results<NoContent, NotFound> Handle(MessageStore store, string id) =>
         store.Remove(id) ? TypedResults.NoContent() : TypedResults.NotFound();

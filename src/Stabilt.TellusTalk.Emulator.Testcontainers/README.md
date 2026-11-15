@@ -18,7 +18,7 @@ builder.UseSetting("TellusTalk:BaseUrl", tellusTalk.GetBaseAddress());
 `StartAsync` returns once the emulator's health endpoint answers. `GetBaseAddress` is the address the app takes where it
 would have `https://k8api.tellustalk.com/`, such as `http://127.0.0.1:32768/`; the app's TellusTalk client still needs
 a user name and password, and the emulator takes any. The same address serves the emulator's page and the read API a
-test asserts with, `api/v1/messages`.
+test asserts with, `api/messages`.
 
 | Method | Sets |
 |---|---|

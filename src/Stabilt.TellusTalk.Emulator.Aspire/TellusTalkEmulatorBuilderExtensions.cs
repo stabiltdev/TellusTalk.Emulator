@@ -36,7 +36,7 @@ public static class TellusTalkEmulatorBuilderExtensions
             .WithImage(Image, ImageTag)
             .WithImageRegistry(Registry)
             .WithHttpEndpoint(port: port, targetPort: ContainerPort, name: TellusTalkEmulatorResource.HttpEndpointName)
-            .WithHttpHealthCheck("/api/v1/health", endpointName: TellusTalkEmulatorResource.HttpEndpointName);
+            .WithHttpHealthCheck("/api/health", endpointName: TellusTalkEmulatorResource.HttpEndpointName);
     }
 
     /// <summary>The user's Sender setting, shown as the sender when a request sets none.</summary>

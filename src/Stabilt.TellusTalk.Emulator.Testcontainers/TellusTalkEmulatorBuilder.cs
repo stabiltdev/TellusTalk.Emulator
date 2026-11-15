@@ -134,7 +134,7 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
             .ForUnixContainer()
             .UntilHttpRequestIsSucceeded(request => request
                 .ForPort(TellusTalkEmulatorPort)
-                .ForPath("/api/v1/health")));
+                .ForPath("/api/health")));
 
     /// <inheritdoc />
     protected override TellusTalkEmulatorBuilder Clone(IResourceConfiguration<CreateContainerParameters> resourceConfiguration) =>

@@ -159,7 +159,7 @@ public sealed class TellusTalkEmulatorBuilderTests
         await Send(client, """{"to": "sms:+46701740605", "text": "Your code is 482913"}""");
         await Send(client, """{"to": "sms:+46701740605", "text": "Your code is 482913"}""");
 
-        var sent = await client.GetFromJsonAsync<JsonElement>(new Uri("api/v1/messages?state=sent", UriKind.Relative), TestContext.Current.CancellationToken);
+        var sent = await client.GetFromJsonAsync<JsonElement>(new Uri("api/messages?state=sent", UriKind.Relative), TestContext.Current.CancellationToken);
         sent.GetProperty("total").GetInt32().Should().Be(2);
     }
 
@@ -181,7 +181,7 @@ public sealed class TellusTalkEmulatorBuilderTests
 
     private static async Task<JsonElement> OnlyMessage(HttpClient client)
     {
-        var list = await client.GetFromJsonAsync<JsonElement>(new Uri("api/v1/messages", UriKind.Relative), TestContext.Current.CancellationToken);
+        var list = await client.GetFromJsonAsync<JsonElement>(new Uri("api/messages", UriKind.Relative), TestContext.Current.CancellationToken);
 
         return list.GetProperty("messages").EnumerateArray().Should().ContainSingle().Subject;
     }
