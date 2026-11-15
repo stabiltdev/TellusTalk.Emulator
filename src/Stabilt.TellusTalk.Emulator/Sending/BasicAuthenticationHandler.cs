@@ -32,6 +32,6 @@ internal sealed class BasicAuthenticationHandler(
     {
         TellusTalkHeaders.Apply(Response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
 
-        return Refusals.Unauthorized(Response);
+        return Refusals.Unauthorized().ExecuteAsync(Context);
     }
 }
