@@ -16,6 +16,7 @@ disagree, the code is right and the page is a bug.
   `Aspire.Hosting.ApplicationModel`, as in Aspire's own integrations, so an AppHost finds it without a `using`.
 - The Testcontainers package is not: a test file needs a `using` for any module, so it keeps its own namespace,
   `Stabilt.TellusTalk.Emulator.Testcontainers`, and Testcontainers' names for its types, `…Builder` and `…Container`.
+- Nor is the client package, for the same reason: it keeps its own namespace, `Stabilt.TellusTalk.Emulator.Client`.
 - The container image is the repository's name in lower case with hyphens: `ghcr.io/stabiltdev/tellustalk-emulator`.
 
 ## Endpoints
@@ -74,13 +75,15 @@ code: `BannedSymbols.txt`, `src/Stabilt.TellusTalk.Emulator/Ids/GuidExtensions.c
 
 ## Tests
 
-**Source:** code: `tests/Stabilt.TellusTalk.Emulator.Tests/Support/`, `tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests/LocalImage.cs`
+**Source:** code: `tests/Shared/Support/`, `tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests/LocalImage.cs`
 
 - xUnit v3 on Microsoft Testing Platform, and FluentAssertions 8, used under its licence for non-commercial and
   open-source work. Run them with `dotnet test --solution Stabilt.TellusTalk.Emulator.slnx`, narrowed with `--filter-class`.
 - A test of behaviour over HTTP starts the whole host with `EmulatorFactory`, whose `FakeTimeProvider` starts at
   2026-11-07 22:00 UTC and whose `Reports` catches every delivery report instead of the network. `Settings` takes host
   settings before the first request.
+- `EmulatorFactory` and `ReportReceiver` live in `tests/Shared/Support` and are linked into each test project that runs
+  the host. The client package's tests run it in memory through them, so the package reads the server's real answers.
 - The Testcontainers package's tests are the only ones that need Docker: each starts a container of its own from
   `LocalImage.Builder()`, the image built from the repository that `TELLUSTALK_EMULATOR_TEST_IMAGE` names, and is
   skipped without it. CI builds and names the image before the tests.

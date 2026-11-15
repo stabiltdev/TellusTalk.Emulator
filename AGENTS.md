@@ -40,10 +40,13 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Ids` | `Guid.CreateVersion1` |
 | `src/Stabilt.TellusTalk.Emulator.Aspire` | The Aspire package: `AddTellusTalkEmulator`, its settings and `WithReference`, in Aspire's own namespaces |
 | `src/Stabilt.TellusTalk.Emulator.Testcontainers` | The Testcontainers package: `TellusTalkEmulatorBuilder`, its settings, and `TellusTalkEmulatorContainer.GetBaseAddress` |
-| `tests/Stabilt.TellusTalk.Emulator.Tests` | One folder per area; `Support` holds `EmulatorFactory` and `ReportReceiver` |
+| `src/Stabilt.TellusTalk.Emulator.Client` | The client package: `TellusTalkEmulatorClient`, `MessageQuery`, and the models of a caught message, `CaughtMessage` |
+| `tests/Stabilt.TellusTalk.Emulator.Tests` | One folder per area |
 | `tests/Stabilt.TellusTalk.Emulator.Aspire.Tests` | The Aspire package's app model, read without running it |
 | `tests/Stabilt.TellusTalk.Emulator.Testcontainers.Tests` | The Testcontainers package, started in Docker from a locally built image |
-| `.github/workflows/ci.yml` | Build, format check, the image for the tests, and the tests; a `v*` tag publishes the image, then both packages |
+| `tests/Stabilt.TellusTalk.Emulator.Client.Tests` | The client package against the emulator's host in memory |
+| `tests/Shared` | Files linked into the test projects: the licence acceptance, and in `Support`, `EmulatorFactory` and `ReportReceiver` |
+| `.github/workflows/ci.yml` | Build, format check, the image for the tests, and the tests; a `v*` tag publishes the image, then the packages |
 | `.github/dependabot.yml` | Weekly updates to the packages, the SDK and the actions; `Aspire.Hosting` takes security updates only |
 
 ## Commands
@@ -56,7 +59,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | Run | `dotnet run --project src/Stabilt.TellusTalk.Emulator` |
 | Build the image | `dotnet publish src/Stabilt.TellusTalk.Emulator -c Release -r linux-x64 -t:PublishContainer -p:LocalRegistry=Docker` |
 | Test the Testcontainers package | Build the image, then the tests with `TELLUSTALK_EMULATOR_TEST_IMAGE=stabiltdev/tellustalk-emulator:latest`; without it they are skipped |
-| Pack the packages | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release`, and the same for `src/Stabilt.TellusTalk.Emulator.Testcontainers` |
+| Pack the packages | `dotnet pack src/Stabilt.TellusTalk.Emulator.Aspire -c Release`, and the same for `src/Stabilt.TellusTalk.Emulator.Testcontainers` and `src/Stabilt.TellusTalk.Emulator.Client` |
 
 ## Traps
 
@@ -65,7 +68,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 - The report service's timer may start after a test has moved the fake clock. A test waiting for a report moves the
   clock a second at a time.
 - The read API's JSON is a contract other repositories test against. `ReadApiTests` pins every value; change it
-  deliberately and update the README with it.
+  deliberately and update the README with it. The client package's models read it, so a change to it changes them in
+  the same change.
 - The page must work without its script, as plain linked pages. The script swaps parts by their ids, so a part it swaps
   keeps its `id`.
 - Analyzers can misread C# 14 extension blocks; suppress what they report there with a reason.

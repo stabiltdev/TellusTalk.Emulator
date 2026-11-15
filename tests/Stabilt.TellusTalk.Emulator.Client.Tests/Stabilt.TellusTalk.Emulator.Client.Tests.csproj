@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Stabilt.TellusTalk.Emulator\Stabilt.TellusTalk.Emulator.csproj" />
+    <ProjectReference Include="..\..\src\Stabilt.TellusTalk.Emulator.Client\Stabilt.TellusTalk.Emulator.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Support\*.cs" Link="Support\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

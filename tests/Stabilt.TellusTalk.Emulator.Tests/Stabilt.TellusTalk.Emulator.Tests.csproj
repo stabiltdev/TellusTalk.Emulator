@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\Support\*.cs" Link="Support\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
