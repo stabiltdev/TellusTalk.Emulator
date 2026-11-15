@@ -55,6 +55,11 @@ public sealed class TellusTalkEmulatorClient : IDisposable
     {
         ArgumentException.ThrowIfNullOrEmpty(id);
 
+        if (id is "." or "..")
+        {
+            throw new ArgumentException("The id cannot be . or .., which a URL resolves as a step in the path rather than as an id.", nameof(id));
+        }
+
         using var response = await _http.GetAsync(new Uri($"api/messages/{Uri.EscapeDataString(id)}", UriKind.Relative), cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {

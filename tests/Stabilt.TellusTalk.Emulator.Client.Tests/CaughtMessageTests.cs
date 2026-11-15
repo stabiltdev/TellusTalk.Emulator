@@ -254,6 +254,20 @@ public sealed class CaughtMessageTests
         await read.Should().ThrowAsync<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    public async Task A_dot_segment_as_an_id_is_refused(string id)
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = new TellusTalkEmulatorClient(emulator.CreateClient());
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        var read = () => client.GetMessageAsync(id, TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<ArgumentException>();
+    }
+
     /// <summary>The message once a report has reached it: a held-back send's report is posted in the background.</summary>
     private static async Task<CaughtMessage> ReadOnceReported(TellusTalkEmulatorClient client, string id)
     {
