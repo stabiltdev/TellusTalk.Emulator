@@ -6,14 +6,19 @@ namespace Stabilt.TellusTalk.Emulator.Reports;
 
 internal sealed class SendReportEndpoint : IEndpoint
 {
-    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapPost("api/messages/{id}/reports", Handle);
+    public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) =>
+        builder.MapPost("api/messages/{id}/reports", Handle);
 
     /// <summary>
     /// Sends a delivery report now, with the status asked for, whatever reports the message had before. It runs under
     /// the host's lifetime rather than the request's: a caller that stops waiting, such as a page navigated away from,
     /// must not leave a report sent to its receiver but missing from the message.
     /// </summary>
-    private static async Task<Results<Ok<List<ReportAttemptResponse>>, NotFound, BadRequest<ApiError>>> Handle(
+    private static async Task<Results<
+        Ok<List<ReportAttemptResponse>>,
+        NotFound,
+        BadRequest<ApiError>
+    >> Handle(
         MessageStore store,
         ReportSender sender,
         IHostApplicationLifetime lifetime,

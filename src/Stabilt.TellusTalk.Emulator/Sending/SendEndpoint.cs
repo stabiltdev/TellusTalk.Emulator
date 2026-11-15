@@ -32,7 +32,13 @@ internal sealed class SendEndpoint : IEndpoint
     /// limit, and so the body is kept exactly as it arrived. Bound as a stream, the body is still unread when the
     /// filters run.
     /// </summary>
-    private static async Task<Results<SendAccepted, TellusTalkRefusal, EmulatorLimit, FailureAnswer, EmptyHttpResult>> Handle(
+    private static async Task<Results<
+        SendAccepted,
+        TellusTalkRefusal,
+        EmulatorLimit,
+        FailureAnswer,
+        EmptyHttpResult
+    >> Handle(
         [FromHeader(Name = "Content-Type")] string? contentType,
         Stream body,
         ClaimsPrincipal user,
