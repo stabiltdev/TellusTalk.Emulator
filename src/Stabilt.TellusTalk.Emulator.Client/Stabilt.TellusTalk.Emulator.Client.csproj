@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The oldest .NET still supported, whose framework reads the JSON without a package. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Reads what TellusTalk Emulator, a local stand-in for TellusTalk's K8 send API, caught, through the emulator's own API. Not affiliated with TellusTalk.</Description>
+    <Authors>Stabilt AB</Authors>
+    <Company>Stabilt AB</Company>
+    <PackageTags>tellustalk;sms;emulator;testing</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/stabiltdev/TellusTalk.Emulator</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+</Project>
