@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
@@ -18,8 +17,6 @@ internal sealed class SendEndpoint : IEndpoint
 {
     private const string NotJson =
         "TellusTalk Emulator: the emulator takes JSON bodies only. TellusTalk itself also takes XML and form bodies.";
-
-    private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
 
     // The headers' filter comes first, so the answer to a failure carries the headers too.
     public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder
@@ -59,12 +56,11 @@ internal sealed class SendEndpoint : IEndpoint
         using var reader = new StreamReader(body, Encoding.UTF8);
         var rawRequest = await reader.ReadToEndAsync(cancellationToken);
 
-        var read = Read(rawRequest);
+        var read = SendRequestReader.Read(rawRequest);
         if (read is not Accepted { Request: var request })
         {
             return read switch
             {
-                null => Refusals.EmulatorLimit(StatusCodes.Status400BadRequest, InvalidJson),
                 Refused refused => Refusals.EmulatorLimit(StatusCodes.Status400BadRequest, refused.Text),
                 RefusedByTellusTalk refusedByTellusTalk => Refusals.TellusTalk(refusedByTellusTalk.Text),
                 _ => throw new InvalidOperationException($"The read result '{read}' has no answer."),
@@ -86,28 +82,6 @@ internal sealed class SendEndpoint : IEndpoint
         }
 
         return Accept(request, user.Identity!.Name!, rawRequest, response, factory, store, heldBackReports);
-    }
-
-    /// <summary>
-    /// The request as <see cref="SendRequestReader"/> reads it, or null when the body is not JSON. The request keeps
-    /// copies of what it holds, so it outlives the parsed document.
-    /// </summary>
-    private static ReadResult? Read(string body)
-    {
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(body);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-
-        using (document)
-        {
-            return SendRequestReader.Read(document.RootElement);
-        }
     }
 
     private static SendAccepted Accept(

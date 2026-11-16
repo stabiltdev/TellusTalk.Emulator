@@ -6,6 +6,12 @@ namespace Stabilt.TellusTalk.Emulator.Tests.Requests;
 public sealed class SendRequestReaderTests
 {
     [Fact]
+    public void JSON_that_does_not_parse_is_refused()
+    {
+        Read("{").Should().Be(new Refused("TellusTalk Emulator: the request body is not valid JSON."));
+    }
+
+    [Fact]
     public void A_body_that_is_not_an_object_is_refused()
     {
         Read("""["sms:+46701740605"]""").Should().Be(new Refused("TellusTalk Emulator: the request body must be a JSON object."));
@@ -311,12 +317,7 @@ public sealed class SendRequestReaderTests
         request.SmsWarnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.FormatDeprecated);
     }
 
-    private static ReadResult Read(string json)
-    {
-        using var document = JsonDocument.Parse(json);
-
-        return SendRequestReader.Read(document.RootElement);
-    }
+    private static ReadResult Read(string json) => SendRequestReader.Read(json);
 
     private static SendRequest Accepted(string json) =>
         Read(json).Should().BeOfType<Accepted>().Subject.Request;

@@ -8,6 +8,7 @@ namespace Stabilt.TellusTalk.Emulator.Requests;
 /// </summary>
 internal static class SendRequestReader
 {
+    private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
     private const string NotAnObject = "TellusTalk Emulator: the request body must be a JSON object.";
     private const string NoRecipient = "TellusTalk Emulator: a request needs 'to' for the emulator to record a message.";
     private const string NotAnAddress = "TellusTalk Emulator: 'to' must be an address or a list of addresses.";
@@ -35,6 +36,28 @@ internal static class SendRequestReader
         ("voice:", MessageChannel.Voice),
         ("group:", MessageChannel.Group),
     ];
+
+    /// <summary>
+    /// Text that does not parse is refused as the emulator's limit. The document is disposed before the result returns,
+    /// which <see cref="Read(JsonElement)"/> allows for by keeping copies of what it takes from it.
+    /// </summary>
+    public static ReadResult Read(string json)
+    {
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(json);
+        }
+        catch (JsonException)
+        {
+            return new Refused(InvalidJson);
+        }
+
+        using (document)
+        {
+            return Read(document.RootElement);
+        }
+    }
 
     public static ReadResult Read(JsonElement root)
     {
