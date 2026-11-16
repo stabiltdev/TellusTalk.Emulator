@@ -99,19 +99,21 @@ internal sealed class SendEndpoint : IEndpoint
             .Where(message => message.Request.ReportTo.Count > 0)
             .ToList();
 
-        if (heldBack.Count > 0)
+        if (heldBack.Count == 0)
         {
-            // Once the answer has gone out, so a client has its job's id before the job's blocked report can arrive.
-            response.OnCompleted(() =>
-            {
-                foreach (var message in heldBack)
-                {
-                    heldBackReports.Enqueue(message);
-                }
-
-                return Task.CompletedTask;
-            });
+            return new SendAccepted(job);
         }
+
+        // Once the answer has gone out, so a client has its job's id before the job's blocked report can arrive.
+        response.OnCompleted(() =>
+        {
+            foreach (var message in heldBack)
+            {
+                heldBackReports.Enqueue(message);
+            }
+
+            return Task.CompletedTask;
+        });
 
         return new SendAccepted(job);
     }
