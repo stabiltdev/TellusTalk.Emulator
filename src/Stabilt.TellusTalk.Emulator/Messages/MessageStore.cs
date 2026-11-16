@@ -16,6 +16,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
     private readonly HashSet<string> _reportsTaken = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<ReportAttempt>> _reports = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, Channel<StoreChange>> _subscribers = new();
+    private readonly Channel<Message> _heldBack = Channel.CreateUnbounded<Message>();
 
     /// <summary>K8 holds a send back as a duplicate of one "sent within 5 minutes".</summary>
     private static readonly TimeSpan DuplicateWindow = TimeSpan.FromMinutes(5);
@@ -46,6 +47,11 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
                     .ToList());
                 _messages.RemoveRange(0, excess);
             }
+        }
+
+        foreach (var message in stored.Where(message => message.DuplicateOf is not null))
+        {
+            _heldBack.Writer.TryWrite(message);
         }
 
         Publish(StoreChange.Added);
@@ -217,6 +223,13 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
             _subscribers.TryRemove(id, out _);
         }
     }
+
+    /// <summary>
+    /// Each message as it is held back, handed out once. Unlike <see cref="Changes"/>, the queue is open from the store's
+    /// start and keeps what it holds until it is read, so a reader that starts late misses none.
+    /// </summary>
+    public IAsyncEnumerable<Message> HeldBack(CancellationToken cancellationToken) =>
+        _heldBack.Reader.ReadAllAsync(cancellationToken);
 
     /// <summary>Drops what the store kept beside messages that are gone. Called under the lock.</summary>
     private void Forget(IReadOnlyCollection<string> ids)

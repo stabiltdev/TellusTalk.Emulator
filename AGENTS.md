@@ -34,7 +34,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Requests` | Reading a send request: the typed body, the reader, the specification's rules, the warnings, and TellusTalk's sender refusals |
 | `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it, and the user's Sender setting and reply number |
 | `src/Stabilt.TellusTalk.Emulator/Parts` | GSM 03.38 and UCS-2 part counting |
-| `src/Stabilt.TellusTalk.Emulator/Messages` | The in-memory store with its duplicate rule, scheduled release, and the read API's message endpoints |
+| `src/Stabilt.TellusTalk.Emulator/Messages` | The in-memory store with its duplicate rule and the queue of what it holds back, scheduled release, and the read API's message endpoints |
 | `src/Stabilt.TellusTalk.Emulator/Reports` | Delivery reports: their form, sending them, sending them automatically or on request, and the blocked report of a held-back send, `HeldBackReports` |
 | `src/Stabilt.TellusTalk.Emulator/Page` | The page's Razor components and endpoint; `wwwroot` holds its CSS, script and fonts |
 | `src/Stabilt.TellusTalk.Emulator/Http` | `IEndpoint`, `MapEndpoints` and the read API's error body |

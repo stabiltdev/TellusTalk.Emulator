@@ -7,8 +7,7 @@ internal static class ReportsConfiguration
         services.AddHttpClient(ReportSender.ClientName, client => client.Timeout = TimeSpan.FromSeconds(10));
         services
             .AddSingleton<ReportSender>()
-            .AddSingleton<HeldBackReports>()
-            .AddHostedService(provider => provider.GetRequiredService<HeldBackReports>())
+            .AddHostedService<HeldBackReports>()
             .AddHostedService<AutomaticReports>();
 
         return services;

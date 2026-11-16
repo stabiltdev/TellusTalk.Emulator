@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
-using Stabilt.TellusTalk.Emulator.Reports;
 using Stabilt.TellusTalk.Emulator.Requests;
 using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 using Accepted = Stabilt.TellusTalk.Emulator.Requests.Accepted;
@@ -40,12 +39,10 @@ internal sealed class SendEndpoint : IEndpoint
         [FromHeader(Name = "Content-Type")] string? contentType,
         Stream body,
         ClaimsPrincipal user,
-        HttpResponse response,
         TimeProvider time,
         MessageFactory factory,
         MessageStore store,
         SendFailures failures,
-        HeldBackReports heldBackReports,
         CancellationToken cancellationToken)
     {
         if (!IsJson(contentType))
@@ -84,41 +81,10 @@ internal sealed class SendEndpoint : IEndpoint
                 : TypedResults.Empty;
         }
 
-        return Accept(request, user.Identity!.Name!, rawRequest, response, factory, store, heldBackReports);
-    }
+        var job = factory.Create(request, user.Identity!.Name!, rawRequest);
+        store.Add(job.Messages);
 
-    private static SendAccepted Accept(
-        SendRequest request,
-        string userName,
-        string body,
-        HttpResponse response,
-        MessageFactory factory,
-        MessageStore store,
-        HeldBackReports heldBackReports)
-    {
-        var job = factory.Create(request, userName, body);
-        var heldBack = store.Add(job.Messages)
-            .Where(message => message.DuplicateOf is not null)
-            .Where(message => message.Request.ReportTo.Count > 0)
-            .ToList();
-
-        if (heldBack.Count == 0)
-        {
-            return new SendAccepted(job);
-        }
-
-        // Once the answer has gone out, so a client has its job's id before the job's blocked report can arrive.
-        response.OnCompleted(() =>
-        {
-            foreach (var message in heldBack)
-            {
-                heldBackReports.Enqueue(message);
-            }
-
-            return Task.CompletedTask;
-        });
-
-        return new SendAccepted(job);
+        return new SendAccepted(SendResponse.From(job));
     }
 
     private static bool IsJson(string? contentType) =>

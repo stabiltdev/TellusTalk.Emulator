@@ -246,6 +246,24 @@ public sealed class MessageStoreTests
     }
 
     [Fact]
+    public async Task A_held_back_message_waits_for_a_reader_that_starts_later()
+    {
+        var store = Store();
+        var cancellation = TestContext.Current.CancellationToken;
+        Send(store, "Your code is 482913");
+        var second = Send(store, "Your code is 482913");
+
+        await using var heldBack = store
+            .HeldBack(cancellation)
+            .GetAsyncEnumerator(cancellation);
+        var next = heldBack.MoveNextAsync();
+
+        next.IsCompleted.Should().BeTrue();
+        (await next).Should().BeTrue();
+        heldBack.Current.Should().Be(second);
+    }
+
+    [Fact]
     public void A_send_identical_to_one_received_more_than_five_minutes_before_goes_out()
     {
         var store = Store();
