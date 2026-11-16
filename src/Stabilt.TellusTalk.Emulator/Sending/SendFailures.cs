@@ -117,4 +117,20 @@ internal sealed class SendFailures
 /// <summary>One entry of an order: a status for the next <see cref="Remaining"/> sends, each answered after a delay.</summary>
 internal sealed record ArmedFailure(int Status, int Remaining, int DelaySeconds);
 
-internal sealed record SendFailure(int Status, TimeSpan Delay);
+internal sealed record SendFailure(int Status, TimeSpan Delay)
+{
+    /// <summary>False when the client gave up waiting first, which is what a delay is armed to make it do.</summary>
+    public async Task<bool> WaitOutDelay(TimeProvider time, CancellationToken requestAborted)
+    {
+        try
+        {
+            await Task.Delay(Delay, time, requestAborted);
+
+            return true;
+        }
+        catch (OperationCanceledException) when (requestAborted.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+}

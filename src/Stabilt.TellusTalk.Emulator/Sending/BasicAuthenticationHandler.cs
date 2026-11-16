@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Stabilt.TellusTalk.Emulator.Ids;
+using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
 
@@ -32,6 +33,6 @@ internal sealed class BasicAuthenticationHandler(
     {
         TellusTalkHeaders.Apply(Response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
 
-        return Refusals.Unauthorized(Response);
+        return Refusals.Unauthorized().ExecuteAsync(Context);
     }
 }

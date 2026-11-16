@@ -1,13 +1,14 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
-using Stabilt.TellusTalk.Emulator.Ids;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;
 using Stabilt.TellusTalk.Emulator.Requests;
+using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
+using Accepted = Stabilt.TellusTalk.Emulator.Requests.Accepted;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
 
@@ -17,148 +18,110 @@ internal sealed class SendEndpoint : IEndpoint
     private const string NotJson =
         "TellusTalk Emulator: the emulator takes JSON bodies only. TellusTalk itself also takes XML and form bodies.";
 
-    private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
-
+    // The headers' filter comes first, so the answer to a failure carries the headers too.
     public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder
         .MapPost("send/v1", Handle)
-        .RequireAuthorization();
+        .RequireAuthorization()
+        .AddEndpointFilter<TellusTalkHeadersFilter>()
+        .AddEndpointFilter<AnySendFailureFilter>();
 
     /// <summary>
     /// Reads the body itself rather than binding it, so that every refusal is TellusTalk's or names the emulator's
-    /// limit, and so the body is kept exactly as it arrived.
+    /// limit, and so the body is kept exactly as it arrived. Bound as a stream, the body is still unread when the
+    /// filters run.
     /// </summary>
-    private static async Task Handle(
-        HttpContext context,
+    private static async Task<Results<
+        SendAccepted,
+        TellusTalkRefusal,
+        EmulatorLimit,
+        FailureResult,
+        EmptyHttpResult
+    >> Handle(
+        [FromHeader(Name = "Content-Type")] string? contentType,
+        Stream body,
         ClaimsPrincipal user,
+        HttpResponse response,
         TimeProvider time,
         MessageFactory factory,
         MessageStore store,
         SendFailures failures,
-        HeldBackReports heldBackReports)
+        HeldBackReports heldBackReports,
+        CancellationToken cancellationToken)
     {
-        var response = context.Response;
-        TellusTalkHeaders.Apply(response, Guid.CreateVersion1(time.GetUtcNow()).ToString("N"));
-
-        // Before the body is read: a TellusTalk that is down takes nothing, whatever the request holds.
-        if (failures.TrySpend() is { } failure)
+        if (!IsJson(contentType))
         {
-            await Fail(context, time, failure);
-
-            return;
+            return Refusals.EmulatorLimit(StatusCodes.Status415UnsupportedMediaType, NotJson);
         }
 
-        if (!IsJson(context.Request.ContentType))
+        using var reader = new StreamReader(body, Encoding.UTF8);
+        var rawRequest = await reader.ReadToEndAsync(cancellationToken);
+
+        var read = SendRequestReader.Read(rawRequest);
+        if (read is not Accepted { Request: var request })
         {
-            await Refusals.EmulatorLimit(response, StatusCodes.Status415UnsupportedMediaType, NotJson);
-
-            return;
-        }
-
-        using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
-        var body = await reader.ReadToEndAsync(context.RequestAborted);
-
-        JsonDocument document;
-        try
-        {
-            document = JsonDocument.Parse(body);
-        }
-        catch (JsonException)
-        {
-            await Refusals.EmulatorLimit(response, StatusCodes.Status400BadRequest, InvalidJson);
-
-            return;
-        }
-
-        using (document)
-        {
-            switch (SendRequestReader.Read(document.RootElement))
+            return read switch
             {
-                case Refused refused:
-                    await Refusals.EmulatorLimit(response, StatusCodes.Status400BadRequest, refused.Text);
-                    break;
-
-                case RefusedByTellusTalk refusedByTellusTalk:
-                    await Refusals.TellusTalk(response, refusedByTellusTalk.Text);
-                    break;
-
-                case Accepted accepted:
-                    await Accept(context, accepted.Request, user.Identity!.Name!, body, time, factory, store, failures, heldBackReports);
-                    break;
-            }
+                Refused refused => Refusals.EmulatorLimit(StatusCodes.Status400BadRequest, refused.Text),
+                RefusedByTellusTalk refusedByTellusTalk => Refusals.TellusTalk(refusedByTellusTalk.Text),
+                _ => throw new InvalidOperationException($"The read result '{read}' has no answer."),
+            };
         }
-    }
 
-    private static async Task Accept(
-        HttpContext context,
-        SendRequest request,
-        string userName,
-        string body,
-        TimeProvider time,
-        MessageFactory factory,
-        MessageStore store,
-        SendFailures failures,
-        HeldBackReports heldBackReports)
-    {
         // A number's failures need the recipients, so they are spent once the request is read. An e-mail address or a
         // group's id is no number, whatever it reads as.
         var numbers = request.Recipients
-            .Where(recipient => recipient.Channel is MessageChannel.Sms or MessageChannel.Mms
-                or MessageChannel.Voice or MessageChannel.Fax)
+            .Where(recipient => recipient.Channel
+                is MessageChannel.Sms
+                or MessageChannel.Mms
+                or MessageChannel.Voice
+                or MessageChannel.Fax)
             .Select(recipient => recipient.Address);
 
         if (failures.TrySpend(numbers) is { } numberFailure)
         {
-            await Fail(context, time, numberFailure);
-
-            return;
+            return await numberFailure.WaitOutDelay(time, cancellationToken)
+                ? Refusals.Failure(numberFailure.Status)
+                : TypedResults.Empty;
         }
 
-        var job = factory.Create(request, userName, body);
-        var stored = store.Add(job.Messages);
-        await Answer(context.Response, job);
-
-        var heldBack = stored
-            .Where(message => message.DuplicateOf is not null)
-            .Where(message => message.Request.ReportTo.Count > 0);
-
-        foreach (var message in heldBack)
-        {
-            heldBackReports.Enqueue(message);
-        }
+        return Accept(request, user.Identity!.Name!, rawRequest, response, factory, store, heldBackReports);
     }
 
-    private static async Task Fail(HttpContext context, TimeProvider time, SendFailure failure)
+    private static SendAccepted Accept(
+        SendRequest request,
+        string userName,
+        string body,
+        HttpResponse response,
+        MessageFactory factory,
+        MessageStore store,
+        HeldBackReports heldBackReports)
     {
-        try
+        var job = factory.Create(request, userName, body);
+        var heldBack = store.Add(job.Messages)
+            .Where(message => message.DuplicateOf is not null)
+            .Where(message => message.Request.ReportTo.Count > 0)
+            .ToList();
+
+        if (heldBack.Count == 0)
         {
-            await Task.Delay(failure.Delay, time, context.RequestAborted);
-        }
-        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
-        {
-            // The client gave up waiting, which is what a delay is armed to make it do.
-            return;
+            return new SendAccepted(job);
         }
 
-        await Refusals.Failure(context.Response, failure.Status);
+        // Once the answer has gone out, so a client has its job's id before the job's blocked report can arrive.
+        response.OnCompleted(() =>
+        {
+            foreach (var message in heldBack)
+            {
+                heldBackReports.Enqueue(message);
+            }
+
+            return Task.CompletedTask;
+        });
+
+        return new SendAccepted(job);
     }
 
     private static bool IsJson(string? contentType) =>
         MediaTypeHeaderValue.TryParse(contentType, out var mediaType) &&
         string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>TellusTalk answers with <c>application/json</c> and no charset, the job's id three times and the recipient count.</summary>
-    private static Task Answer(HttpResponse response, SendJob job)
-    {
-        var answer = JsonSerializer.Serialize(new SendAnswer(job.JobId, job.JobId, job.JobId, job.Size));
-        response.ContentType = "application/json";
-        response.ContentLength = Encoding.UTF8.GetByteCount(answer);
-
-        return response.WriteAsync(answer);
-    }
-
-    private sealed record SendAnswer(
-        [property: JsonPropertyName("job_id")] string JobId,
-        [property: JsonPropertyName("job_uuid")] string JobUuid,
-        [property: JsonPropertyName("log_uuid")] string LogUuid,
-        [property: JsonPropertyName("job_size")] int JobSize);
 }

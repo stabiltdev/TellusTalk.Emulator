@@ -8,7 +8,10 @@ internal sealed class ListMessagesEndpoint : IEndpoint
 {
     public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapGet("api/messages", Handle);
 
-    private static Results<Ok<MessageList>, BadRequest<ApiError>> Handle(
+    private static Results<
+        Ok<MessageList>,
+        BadRequest<ApiError>
+    > Handle(
         MessageStore store,
         TimeProvider time,
         string? state,

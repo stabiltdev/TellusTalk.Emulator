@@ -17,10 +17,20 @@ internal sealed class ReportSender(IHttpClientFactory clients, TimeProvider time
 
     private const string JsonMediaType = "application/json";
 
-    public async Task<IReadOnlyList<ReportAttempt>> Send(Message message, ReportStatus status, CancellationToken cancellationToken) =>
-        await Task.WhenAll(message.Request.ReportTo.Select(address => SendTo(address, message, status, cancellationToken)));
+    public async Task<IReadOnlyList<ReportAttempt>> Send(
+        Message message,
+        ReportStatus status,
+        CancellationToken cancellationToken)
+    {
+        return await Task.WhenAll(message.Request.ReportTo
+            .Select(address => SendTo(address, message, status, cancellationToken)));
+    }
 
-    private async Task<ReportAttempt> SendTo(ReportAddress address, Message message, ReportStatus status, CancellationToken cancellationToken)
+    private async Task<ReportAttempt> SendTo(
+        ReportAddress address,
+        Message message,
+        ReportStatus status,
+        CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
 
@@ -58,7 +68,12 @@ internal sealed class ReportSender(IHttpClientFactory clients, TimeProvider time
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new ReportAttempt(now, status, address.Target, Sent: false, "Not delivered: the receiver did not answer in time.");
+            return new ReportAttempt(
+                now,
+                status,
+                address.Target,
+                Sent: false,
+                "Not delivered: the receiver did not answer in time.");
         }
     }
 

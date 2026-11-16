@@ -25,14 +25,17 @@ disagree, the code is right and the page is a bug.
 code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulator.Tests/Http/EndpointConventionTests.cs`
 
 - An endpoint is an `internal sealed class` named with an `Endpoint` suffix that implements `IEndpoint`. Its `Map` only
-  wires the route to a `private static Handle`; `MapEndpoints` finds every one at startup, so `Program.cs` lists none.
-  `EndpointConventionTests` fails on an endpoint that is not sealed or lacks the suffix.
+  wires the route, and any filters, to a `private static Handle`; `MapEndpoints` finds every one at startup, so
+  `Program.cs` lists none. `EndpointConventionTests` fails on an endpoint that is not sealed or lacks the suffix.
 - One file per endpoint, in the folder of the resource it serves: `Messages/`, `Reports/`, `Sending/`, `Page/`. What only
   one endpoint uses, such as a small request or response record, stays in its file.
 - The read API lives under `api/`, without a version: the image's version is the API's. TellusTalk's own paths,
   `send/v1` alone for now, keep TellusTalk's names, versions, status codes and headers.
 - `send/v1` requires authentication; `BasicAuthenticationHandler` accepts any credentials and refuses a request without
   them with TellusTalk's own `401`. Nothing else requires it.
+- Each kind of answer `send/v1` gives is a type of its own in `Sending/HttpResults/` that writes it in TellusTalk's
+  form: a `TextResult` made by `Refusals`, or `SendAccepted`. Its `Handle` returns them as `Results<…>`, which so names
+  every answer it gives.
 
 ## The read API's answers
 

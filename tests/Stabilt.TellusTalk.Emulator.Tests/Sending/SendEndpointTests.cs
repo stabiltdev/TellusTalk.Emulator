@@ -64,7 +64,8 @@ public sealed class SendEndpointTests
 
         response.StatusCode.Should().Be(HttpStatusCode.UnsupportedMediaType);
         response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
-        (await Body(response)).Should().StartWith("TellusTalk Emulator:");
+        (await Body(response)).Should().Be(
+            "TellusTalk Emulator: the emulator takes JSON bodies only. TellusTalk itself also takes XML and form bodies.");
     }
 
     [Fact]
@@ -85,7 +86,42 @@ public sealed class SendEndpointTests
         using var response = await emulator.Send("{");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Body(response)).Should().StartWith("TellusTalk Emulator:");
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
+        (await Body(response)).Should().Be("TellusTalk Emulator: the request body is not valid JSON.");
+    }
+
+    [Fact]
+    public async Task A_request_without_a_recipient_is_refused_as_the_emulators_limit()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"text":"Hej"}""");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
+        (await Body(response)).Should().Be("TellusTalk Emulator: a request needs 'to' for the emulator to record a message.");
+        Store(emulator).List().Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, Probe, "application/json", null)]
+    [InlineData(HttpStatusCode.UnsupportedMediaType, Probe, "text/plain", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, "{", "application/json", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, """{"text":"Hej"}""", "application/json", "tester")]
+    [InlineData(HttpStatusCode.BadRequest, """{"to":"sms:+46701740605","text":"Hej","subject":5}""", "application/json", "tester")]
+    [InlineData(HttpStatusCode.OK, Probe, "application/json", "tester")]
+    public async Task Every_answer_to_a_send_carries_TellusTalks_headers_and_a_content_length(
+        HttpStatusCode status,
+        string json,
+        string contentType,
+        string? user)
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(json, user, contentType);
+
+        response.StatusCode.Should().Be(status);
+        await response.ShouldCarryTellusTalksHeadersAndAContentLength();
     }
 
     [Fact]

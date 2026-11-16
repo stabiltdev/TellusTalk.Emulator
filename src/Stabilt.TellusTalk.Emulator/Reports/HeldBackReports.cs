@@ -11,7 +11,10 @@ namespace Stabilt.TellusTalk.Emulator.Reports;
 /// </summary>
 internal sealed class HeldBackReports(MessageStore store, ReportSender sender) : BackgroundService
 {
-    private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Channel<Message> _queue = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
+    {
+        SingleReader = true,
+    });
 
     public void Enqueue(Message message) => _queue.Writer.TryWrite(message);
 

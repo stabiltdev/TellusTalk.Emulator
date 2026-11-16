@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,8 +42,22 @@ public sealed class SendFailuresTests
         failed.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         failed.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
         (await failed.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("Internal Server Error");
-        failed.Headers.Contains("X-Request-Id").Should().BeTrue();
+        await failed.ShouldCarryTellusTalksHeadersAndAContentLength();
         next.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("{", "application/json")]
+    [InlineData("<send/>", "application/xml")]
+    [InlineData("""{"text":"Hej"}""", "application/json")]
+    public async Task A_failure_for_any_send_answers_whatever_the_request_holds(string body, string contentType)
+    {
+        await using var emulator = new EmulatorFactory();
+        await Arm(emulator, new { status = 503 });
+
+        using var failed = await emulator.Send(body, contentType: contentType);
+
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
     }
 
     [Fact]
