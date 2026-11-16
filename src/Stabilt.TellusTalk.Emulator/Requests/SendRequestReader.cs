@@ -10,7 +10,8 @@ internal static class SendRequestReader
 {
     private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
     private const string NotAnObject = "TellusTalk Emulator: the request body must be a JSON object.";
-    private const string NoRecipient = "TellusTalk Emulator: a request needs 'to' for the emulator to record a message.";
+    private const string NoRecipient =
+        "TellusTalk Emulator: a request needs 'to' for the emulator to record a message.";
     private const string NotAnAddress = "TellusTalk Emulator: 'to' must be an address or a list of addresses.";
 
     private const string RecipientObjects =
@@ -313,9 +314,9 @@ internal static class SendRequestReader
         JsonShape.Boolean => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
         JsonShape.List => value.ValueKind == JsonValueKind.Array,
         _ => value.ValueKind == JsonValueKind.String ||
-             (value.ValueKind == JsonValueKind.Array && value
-                 .EnumerateArray()
-                 .All(item => item.ValueKind == JsonValueKind.String)),
+            (value.ValueKind == JsonValueKind.Array && value
+                .EnumerateArray()
+                .All(item => item.ValueKind == JsonValueKind.String)),
     };
 
     private static string Description(JsonShape shape) => shape switch
