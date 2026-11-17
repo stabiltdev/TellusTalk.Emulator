@@ -55,7 +55,7 @@ code: `src/Stabilt.TellusTalk.Emulator/Messages/MessageResponse.cs`, `tests/Stab
 
 **Source:** [ADR 20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest](decisions/20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest.md),
 [ADR 20261108-know-every-field-of-every-send-schema](decisions/20261108-know-every-field-of-every-send-schema.md);
-code: `src/Stabilt.TellusTalk.Emulator/Requests/`
+code: `src/Stabilt.TellusTalk.Emulator/Sending/Reading/`, and the request it reads in `src/Stabilt.TellusTalk.Emulator/Requests/`
 
 - Code reads a request's fields through `SendRequest.Body`, whose properties are `JsonElement`s: `Body.SmsFlash`, never
   a lookup by name. A field the request left out is `JsonValueKind.Undefined`, one sent as null is `Null`.

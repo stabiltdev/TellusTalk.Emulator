@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Requests;
+using Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 namespace Stabilt.TellusTalk.Emulator.Tests.Messages;
 

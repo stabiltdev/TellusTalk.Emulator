@@ -1,7 +1,8 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using Stabilt.TellusTalk.Emulator.Requests;
 
-namespace Stabilt.TellusTalk.Emulator.Requests;
+namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
 /// The sender rules K8 was seen to enforce, with its texts word for word. The order between the three rules is
