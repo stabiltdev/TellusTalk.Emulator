@@ -3,9 +3,10 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Stabilt.TellusTalk.Emulator.Ids;
+using Stabilt.TellusTalk.Emulator.Sending;
 using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
-namespace Stabilt.TellusTalk.Emulator.Sending;
+namespace Stabilt.TellusTalk.Emulator.Authentication;
 
 /// <summary>TellusTalk's HTTP Basic authentication as the emulator plays it: any user name and password, but sent up front.</summary>
 internal sealed class BasicAuthenticationHandler(

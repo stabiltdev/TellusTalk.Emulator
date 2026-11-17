@@ -4,7 +4,7 @@ namespace Stabilt.TellusTalk.Emulator.Sending;
 
 /// <summary>
 /// Puts K8's headers on every answer the send endpoint gives. A send without credentials is refused before the
-/// endpoint is reached, so <see cref="BasicAuthenticationHandler"/> puts them on its 401 itself.
+/// endpoint is reached, so <see cref="Authentication.BasicAuthenticationHandler"/> puts them on its 401 itself.
 /// </summary>
 internal sealed class TellusTalkHeadersFilter(TimeProvider time) : IEndpointFilter
 {

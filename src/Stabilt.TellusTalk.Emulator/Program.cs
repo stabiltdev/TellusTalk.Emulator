@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stabilt.TellusTalk.Emulator;
+using Stabilt.TellusTalk.Emulator.Authentication;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;

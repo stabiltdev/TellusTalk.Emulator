@@ -29,7 +29,8 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 
 | Path | What |
 |---|---|
-| `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint and its filters, Basic authentication, TellusTalk's headers, and the failures a test arms |
+| `src/Stabilt.TellusTalk.Emulator/Authentication` | TellusTalk's Basic authentication as `send/v1` takes it: `BasicAuthenticationHandler` and `BasicCredentials` |
+| `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint and its filters, TellusTalk's headers, and the failures a test arms |
 | `src/Stabilt.TellusTalk.Emulator/Sending/HttpResults` | Every answer to a send as a type of its own: `Refusals` and the `TextResult` kinds it makes, and `SendAccepted` |
 | `src/Stabilt.TellusTalk.Emulator/Sending/Reading` | Reading a send request: the reader, the specification's rules, TellusTalk's sender refusals, and Python's rendering of a value in K8's texts |
 | `src/Stabilt.TellusTalk.Emulator/Requests` | A caught send's request: the typed body, its recipients and their channels, report addresses, numbers, scheduled times and the warnings |
