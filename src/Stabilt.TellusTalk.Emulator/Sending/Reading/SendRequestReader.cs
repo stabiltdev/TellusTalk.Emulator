@@ -1,6 +1,7 @@
 using System.Text.Json;
+using Stabilt.TellusTalk.Emulator.Requests;
 
-namespace Stabilt.TellusTalk.Emulator.Requests;
+namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
 /// Reads a send request the way TellusTalk accepts one: what TellusTalk was seen to refuse and what the emulator cannot

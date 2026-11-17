@@ -1,7 +1,8 @@
 using System.Text.Json;
 using Stabilt.TellusTalk.Emulator.Requests;
+using Stabilt.TellusTalk.Emulator.Sending.Reading;
 
-namespace Stabilt.TellusTalk.Emulator.Tests.Requests;
+namespace Stabilt.TellusTalk.Emulator.Tests.Sending.Reading;
 
 public sealed class SpecificationRulesTests
 {

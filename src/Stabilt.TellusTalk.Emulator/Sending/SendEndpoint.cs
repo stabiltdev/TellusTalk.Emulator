@@ -7,7 +7,8 @@ using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Requests;
 using Stabilt.TellusTalk.Emulator.Sending.HttpResults;
-using Accepted = Stabilt.TellusTalk.Emulator.Requests.Accepted;
+using Stabilt.TellusTalk.Emulator.Sending.Reading;
+using Accepted = Stabilt.TellusTalk.Emulator.Sending.Reading.Accepted;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
 

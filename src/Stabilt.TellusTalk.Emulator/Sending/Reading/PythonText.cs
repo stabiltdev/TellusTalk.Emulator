@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Text;
 using System.Text.Json;
 
-namespace Stabilt.TellusTalk.Emulator.Requests;
+namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
 /// A parsed JSON value as Python's <c>str()</c> prints it. K8 runs on Python and puts such a value into its refusals, so

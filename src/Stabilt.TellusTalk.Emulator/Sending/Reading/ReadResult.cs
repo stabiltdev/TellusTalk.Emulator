@@ -1,4 +1,6 @@
-namespace Stabilt.TellusTalk.Emulator.Requests;
+using Stabilt.TellusTalk.Emulator.Requests;
+
+namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 internal abstract record ReadResult;
 

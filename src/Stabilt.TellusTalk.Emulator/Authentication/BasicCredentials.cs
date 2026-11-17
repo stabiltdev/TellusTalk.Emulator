@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Stabilt.TellusTalk.Emulator.Sending;
+namespace Stabilt.TellusTalk.Emulator.Authentication;
 
 internal static class BasicCredentials
 {

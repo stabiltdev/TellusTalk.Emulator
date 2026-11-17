@@ -1,8 +1,9 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using Stabilt.TellusTalk.Emulator.Requests;
 using Stabilt.TellusTalk.Emulator.Senders;
 
-namespace Stabilt.TellusTalk.Emulator.Requests;
+namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
 /// The rules TellusTalk's specification states, in its schema or in a field's description. TellusTalk accepted every
