@@ -8,11 +8,11 @@ deciders: [Peter Hedberg]
 
 ## Context and Problem Statement
 
-Probes on 2026-11-17 ([k8-behaviour.md](../k8-behaviour.md)) showed K8 refusing a dozen kinds of request that the
-emulator accepted with at most a warning: `to` or `text` missing, empty or of another type; `report_to` and `reply_to`,
-the counts and `sms_header` of the wrong type; a character set that is no string or none of the four; a binary SMS
-without `sms_udh`; a `billing_id` with a space and a hyphen. Two forms of `attachments` K8 answered with a `500`. A
-client that works against the emulator could fail against K8.
+Probes on 2026-11-17 ([k8-behaviour.md](../k8-behaviour.md)) showed K8 refusing, with texts of its own, a dozen kinds
+of request that the emulator accepted with at most a warning or refused as its own limit: `to` or `text` missing, empty
+or of another type; `report_to` and `reply_to`, the counts and `sms_header` of the wrong type; a character set that is
+no string or none of the four; a binary SMS without `sms_udh`; a `billing_id` with a space and a hyphen. Two forms of
+`attachments` K8 answered with a `500`. A client that works against the emulator could fail against K8.
 
 ## Considered Options
 
@@ -30,9 +30,13 @@ emulator's own limits on `to`. A refusal is a `RefusedByTellusTalk`, a server er
 `TellusTalkError`. Nothing is recorded either way.
 
 K8's texts name Python's checks, and the rules follow those checks rather than only the values sent: "missing or empty"
-is Python's truth test, so `0`, `false`, `[]` and `{}` are missing too, and `attachments` fails wherever iterating it and
-calling `pop` on each item would. Where two rules were not seen against each other, the order is the emulator's and
-keeps every order that was seen. Each such reading is listed under "Not observed" in k8-behaviour.md.
+is read as Python's truth test, so `0`, `false`, `[]` and `{}` are missing too, and `attachments` fails wherever
+iterating it and calling `pop` on each item would. So "what TellusTalk was seen to refuse", the rule of
+[ADR 20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest](20261108-accept-what-tellustalk-accepts-and-warn-about-the-rest.md),
+is read as the check K8's text names, as the sender's types were in
+[ADR 20261114-choose-and-refuse-the-sms-sender-as-k8-does](20261114-choose-and-refuse-the-sms-sender-as-k8-does.md).
+Where two rules were not seen against each other, the order is the emulator's and keeps every order that was seen.
+Each such reading is listed under "Not observed" in k8-behaviour.md.
 
 Warning lets a request pass that K8 refuses, so a client's mistake surfaces only in production, as
 [ADR 20261114-choose-and-refuse-the-sms-sender-as-k8-does](20261114-choose-and-refuse-the-sms-sender-as-k8-does.md)

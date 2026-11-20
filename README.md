@@ -178,17 +178,20 @@ The emulator refuses:
     another type than `to` takes (a string, a list or an object) or `text` takes (a string);
   - a `reply_to` or `report_to` that is null, a number or a boolean;
   - an `sms_validity_time` or `sms_max_parts` that is null;
-  - a character set, `sms_character_set` or else `sms_format`, that is not a string or not `optimize`, `gsm`, `unicode`
-    or `binary`, and a binary SMS without `sms_udh`;
-  - an `sms_header` that is not a string;
+  - a character set, `sms_character_set` or, when that is absent or null, `sms_format`, that is neither null nor a
+    string, or a string other than `optimize`, `gsm`, `unicode` or `binary`, matched exactly; and a binary SMS whose
+    `sms_udh` is absent, null or empty, `0` and `false` included;
+  - an `sms_header` that is not a string, null included;
   - a sender field (`subject`, `sms_originator_source`, `sms_originator_text` or `sms_originator_number`) that is null
     or not a string (`Invalid subject not a string: None`), an `sms_originator_source` other than `replysms`, `text`,
     `number` or `subject`, matched exactly, case included, and a source of `subject`, `text` or `number` without its
     value (`subject`, `sms_originator_text` or `sms_originator_number`, absent or empty);
-  - a `billing_id` of other characters than letters and digits.
+  - a `billing_id` string holding anything but ASCII letters and digits, `å` included; an empty one, or one that is no
+    string, passes.
 
-  Where TellusTalk was not seen to check two of them against each other, the order is the emulator's. All come before
-  the emulator's own limits;
+  Where TellusTalk was not seen to check two of them against each other, the order is the emulator's, and where a rule
+  rests on a reading of TellusTalk's text rather than on a value seen, [k8-behaviour.md](docs/k8-behaviour.md) says so.
+  All come before the emulator's own limits;
 - what TellusTalk answers with `500`, with its text as `text/html`: an `attachments` that Python cannot iterate, such as
   null (`'NoneType' object is not iterable`), or one holding an item without `pop`, such as a string's characters
   (`'str' object has no attribute 'pop'`). A list of objects, as the specification has it, passes. It comes before the
