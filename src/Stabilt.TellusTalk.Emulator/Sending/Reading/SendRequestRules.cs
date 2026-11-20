@@ -77,7 +77,10 @@ internal static class SendRequestRules
     public static IReadOnlyList<Warning> CheckSms(SendRequest request) =>
         [.. SenderWarnings(request), .. EncodingWarnings(request), .. MaxPartsWarnings(request)];
 
-    /// <summary>K8 tests for truth before it tests the type, so a <c>0</c> or <c>false</c> is missing or empty.</summary>
+    /// <summary>
+    /// K8's "missing or empty", here and for <c>text</c>, is read as Python's truth test run before the type, so
+    /// <c>0</c> and <c>false</c> are taken as missing; only null, absence and, in <c>text</c>, <c>""</c> were seen.
+    /// </summary>
     private static RefusedByTellusTalk? To(SendRequestBody body)
     {
         if (PythonText.IsFalse(body.To))
@@ -104,8 +107,9 @@ internal static class SendRequestRules
     }
 
     /// <summary>
-    /// K8 iterates <c>attachments</c> and calls <c>pop</c> on each item, so what it cannot iterate, or an item without
-    /// <c>pop</c>, fails with Python's own error: a string's items are its characters, an object's its keys.
+    /// K8's two texts, for <c>null</c> and <c>"file"</c>, are read as Python iterating <c>attachments</c> and calling
+    /// <c>pop</c> on each item, so what cannot be iterated, or an item without <c>pop</c>, is taken to fail with Python's
+    /// own error: a string's items are its characters, an object's its keys.
     /// </summary>
     private static FailedInTellusTalk? Attachments(SendRequestBody body)
     {
@@ -146,8 +150,9 @@ internal static class SendRequestRules
         value.ValueKind == JsonValueKind.Null ? new RefusedByTellusTalk($"Invalid {field} not an int: None") : null;
 
     /// <summary>
-    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, and K8 calls it
-    /// <c>sms_character_set</c> all the same. Under binary, <c>sms_udh</c> meets the truth test.
+    /// K8 was seen to check the deprecated <c>sms_format</c> in place of an absent <c>sms_character_set</c>, naming it
+    /// <c>sms_character_set</c> all the same. That it does so for a null one too, and that a binary SMS's <c>sms_udh</c>
+    /// meets the truth test, are readings.
     /// </summary>
     private static RefusedByTellusTalk? CharacterSet(SendRequestBody body)
     {

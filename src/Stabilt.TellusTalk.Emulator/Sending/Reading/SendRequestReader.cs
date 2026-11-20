@@ -132,8 +132,8 @@ internal static class SendRequestReader
         };
 
     /// <summary>
-    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null; K8's rules have
-    /// refused any value but the four character sets.
+    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, as
+    /// <see cref="SendRequestRules"/> reads it; the rules have refused any value but the four character sets.
     /// </summary>
     private static string? ReadCharacterSet(SendRequestBody body) =>
         ReadString(body.SmsCharacterSet) ?? ReadString(body.SmsFormat);

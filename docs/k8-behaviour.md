@@ -135,8 +135,8 @@ of the parsed JSON value.
 
 ### Fields K8 refuses
 
-Each refusal is a `400` and each server error a `500`, both with `Content-Type: text/html; charset=utf-8` and the same
-headers as every other answer, the text as the body. A value in a text is Python's `str()` of the parsed JSON value, as
+Each refusal is a `400` and each server error a `500`, both with `Content-Type: text/html; charset=utf-8` and the text
+as the body; the other headers were not recorded. A value in a text is Python's `str()` of the parsed JSON value, as
 for the sender fields.
 
 - **2026-11-17:** `to` that is `null`, or no `to` → `key: to is missing or empty`; `to: 46701740619` → `key: to is of
@@ -223,12 +223,20 @@ is settled when someone observes the real thing.
   `sms_header`, a decimal or a boolean in `report_to` and `reply_to`, and in the counts any value but `null`, `"2"` and
   `"60"`. The emulator refuses every type but a string in `text` and `sms_header`, every value but a string, a list or
   an object in `to`, `report_to` and `reply_to`, and only `null` in the counts.
+- Whether the refusals and server errors of 2026-11-17 carry the headers of every other answer; the emulator gives
+  them those headers, as K8's sender refusals were seen to carry them.
 - Whether `sms_format` stands in for an `sms_character_set` that is `null`, as it does for one that is absent; the
   emulator lets it.
+- What `sms_format` does beside an `sms_character_set` that is set; the emulator ignores it, whatever its value, apart
+  from the `format-deprecated` warning.
+- Whether a character set is matched exactly, as a sender source is; the emulator refuses `"GSM"` and `""`.
+- Whether the character sets in K8's refusal come in another order on another of K8's servers, as the sender sources
+  do; the emulator gives the order seen.
 - Whether a binary SMS whose `sms_udh` is `""` is refused as missing, and one whose `sms_udh` is `0`, `false`, `[]` or
   `{}`; the emulator refuses them all, by the truth test.
 - Whether `billing_id: ""` is accepted, and which characters besides a space and a hyphen K8 refuses; the emulator
-  accepts an empty id and refuses any character but ASCII letters and digits.
+  accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
+- Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
