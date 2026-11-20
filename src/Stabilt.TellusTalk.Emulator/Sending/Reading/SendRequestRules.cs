@@ -6,8 +6,9 @@ using Stabilt.TellusTalk.Emulator.Senders;
 namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
-/// Every rule about a send request: the shape the specification gives a field, K8's refusals in the order K8 checks
-/// them, and the warnings about what the specification forbids and TellusTalk accepts.
+/// Every rule about a send request: the shape the specification gives a field; K8's refusals and server errors, in the
+/// order K8 was seen to check them and elsewhere in one that keeps every order seen; and the warnings about what the
+/// specification forbids and TellusTalk accepts.
 /// </summary>
 internal static class SendRequestRules
 {

@@ -62,3 +62,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261115-catch-every-channel-as-a-message-of-its-own](20261115-catch-every-channel-as-a-message-of-its-own.md) | Catch a recipient on every channel as a message of its own | accepted |
 | [20261115-serve-the-emulators-own-api-without-a-version](20261115-serve-the-emulators-own-api-without-a-version.md) | Serve the emulator's own API without a version in its paths | accepted |
 | [20261115-ship-a-package-that-reads-what-the-emulator-caught](20261115-ship-a-package-that-reads-what-the-emulator-caught.md) | Ship a package that reads what the emulator caught, through the emulator's own API only | accepted |
+| [20261120-refuse-a-send-as-k8-was-seen-to](20261120-refuse-a-send-as-k8-was-seen-to.md) | Refuse a send as K8 was seen to, its server errors included | accepted |

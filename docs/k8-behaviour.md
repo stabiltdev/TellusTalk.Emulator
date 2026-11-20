@@ -33,6 +33,15 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-07:** a send to a number written with spaces → accepted, and the spaces are removed.
 - **2026-11-07:** a send with a bare e-mail address as `report_to` → accepted.
 - **2026-11-07:** a send with a twelve-character sender name → accepted, and the name is passed on whole.
+- **2026-11-17:** `null` in `html`, `echo`, `scheduled_send_time`, `billing_id`, `sms_flash`, `sms_single_thread`,
+  `sms_format`, `sms_character_set` and `sms_udh` → accepted.
+- **2026-11-17:** another type than the specification's in `html` (`123`), `scheduled_send_time` (`1763400000`, sent at
+  once), `billing_id` (`123`), `sms_max_parts` (`"2"`), `sms_flash` (`1`), `sms_validity_time` (`"60"`),
+  `sms_single_thread` (`"true"`) and `sms_udh` (`123`) → accepted.
+- **2026-11-17:** a 14-character `subject` as the sender (passed on whole), `sms_single_thread` beside a text sender,
+  `sms_format: "gsm"`, a binary SMS whose text is not hex, an emoji under `sms_character_set: gsm`, `sms_max_parts` of
+  `0` and `-1`, a text of three parts under `sms_max_parts: 1` (stored whole), and a `scheduled_send_time` that is a word
+  or not ISO 8601 (sent at once) → accepted.
 
 ### Delivery reports
 
@@ -124,6 +133,35 @@ of the parsed JSON value.
   'sms_originator_number'. Expected number, got 'None'` and `... got ''`.
 - **2026-11-14:** `sms_originator_number: ""` without a source, with the user's Sender at Reply SMS → accepted.
 
+### Fields K8 refuses
+
+Each refusal is a `400` and each server error a `500`, both with `Content-Type: text/html; charset=utf-8` and the same
+headers as every other answer, the text as the body. A value in a text is Python's `str()` of the parsed JSON value, as
+for the sender fields.
+
+- **2026-11-17:** `to` that is `null`, or no `to` → `key: to is missing or empty`; `to: 46701740619` → `key: to is of
+  type <class 'int'> expected (str,dict,list)`.
+- **2026-11-17:** `text` that is `null` or `""`, or no `text` → `key: text is missing or empty`; `text: 123` → `key:
+  text is of type int expected (str)`, without the `<class …>` of the text for `to`.
+- **2026-11-17:** `report_to` that is `null` or `123` → `400 Bad Request: report_to is of type <class 'NoneType'>.
+  Expected (list,dict,str)` and `... <class 'int'>. Expected (list,dict,str)`; `reply_to` alike, named `reply_to`.
+- **2026-11-17:** `sms_validity_time: null` and `sms_max_parts: null` → `Invalid sms_validity_time not an int: None` and
+  `Invalid sms_max_parts not an int: None`.
+- **2026-11-17:** `sms_header` that is `null` or `123` → `Invalid sms_header not a string: None` and `... 123`.
+- **2026-11-17:** `sms_character_set: 1`, and `sms_format: 1` without `sms_character_set` → `Invalid sms_character_set
+  not a string: 1` both times.
+- **2026-11-17:** `sms_character_set: "latin1"` → `Invalid sms_character_set: latin1; must be one of
+  frozenset({'optimize', 'unicode', 'binary', 'gsm'})`.
+- **2026-11-17:** `sms_character_set: "binary"` without `sms_udh` → `400 Bad Request: Binary sms_format missing
+  sms_udh`.
+- **2026-11-17:** `billing_id: "billing id-1"` → `Invalid billing_id billing id-1`.
+- **2026-11-17:** `attachments: null` → `500` with `'NoneType' object is not iterable`, and `attachments: "file"` →
+  `500` with `'str' object has no attribute 'pop'`. Neither was in the admin's log.
+- **2026-11-17:** a request that breaks two of these rules → the refusal of the first in these orders: `attachments`
+  before `sms_validity_time`, `sms_max_parts`, `sms_header`, `reply_to`, `report_to` and `sms_character_set`;
+  `reply_to` before `report_to` before `sms_character_set` before `sms_header`; `sms_validity_time` before
+  `sms_max_parts` before `sms_header`.
+
 ### Duplicates
 
 Observed with fresh test users sending to numbers from PTS's range for fiction, each with `report_to` on a local
@@ -157,7 +195,8 @@ receiver. A send that went out reported `txtDELIVERY_FAILED` within about three 
 Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
 is settled when someone observes the real thing.
 
-- What TellusTalk does when the text needs more parts than `sms_max_parts`: refuse, truncate or send.
+- What TellusTalk sends when the text needs more parts than `sms_max_parts`: it accepted such a text on 2026-11-17 and
+  stored it whole.
 - What `sms_character_set: gsm` does with a character outside the GSM alphabet.
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.
@@ -169,8 +208,27 @@ is settled when someone observes the real thing.
 - The types not yet tried in a given sender field, such as a decimal in `sms_originator_text` or a list in
   `sms_originator_source`; each field was seen refusing several types that are not strings, with the same text, so the
   emulator refuses every such type in all four.
-- `null` or another type in any field other than the four sender fields; not every field is type-checked, since
-  `"sms_flash": "true"` was accepted on 2026-11-07.
+- Which refusal K8 gives when a request breaks two field rules not seen against each other, such as `to` against
+  `attachments` or `report_to` against `sms_validity_time`, and how the field rules rank against the sender fields and
+  `billing_id`; the emulator checks `to`, `text`, `attachments`, `reply_to`, `report_to`, `sms_validity_time`,
+  `sms_max_parts`, the character set, `sms_header`, the sender fields and `billing_id` in that order, which keeps every
+  order seen.
+- Whether `0`, `false`, `[]` and `{}` are missing or empty in `to` and `text`; K8's text reads as Python's truth test,
+  so the emulator refuses them as missing or empty, and gives the type text only to a value that is true.
+- What `attachments` does beyond `null` and `"file"`. The emulator reads K8's two texts as Python iterating the value
+  and calling `pop` on each item: a number or a boolean fails as not iterable; a non-empty string or object fails on its
+  first character or key, and a list on its first item that is a string, number, boolean or `null`; `[]`, `{}`, `""`
+  and a list of objects or lists pass.
+- The types not tried in the fields above: a decimal or a boolean in `to`, a list or an object in `text` or
+  `sms_header`, a decimal or a boolean in `report_to` and `reply_to`, and in the counts any value but `null`, `"2"` and
+  `"60"`. The emulator refuses every type but a string in `text` and `sms_header`, every value but a string, a list or
+  an object in `to`, `report_to` and `reply_to`, and only `null` in the counts.
+- Whether `sms_format` stands in for an `sms_character_set` that is `null`, as it does for one that is absent; the
+  emulator lets it.
+- Whether a binary SMS whose `sms_udh` is `""` is refused as missing, and one whose `sms_udh` is `0`, `false`, `[]` or
+  `{}`; the emulator refuses them all, by the truth test.
+- Whether `billing_id: ""` is accepted, and which characters besides a space and a hyphen K8 refuses; the emulator
+  accepts an empty id and refuses any character but ASCII letters and digits.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
   one or as each of its members; the emulator counts it as one.
@@ -178,8 +236,9 @@ is settled when someone observes the real thing.
 - What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
   passes the request's on.
 - What a report's `text` is for an empty `subject`; the emulator takes it as no subject.
-- What else TellusTalk refuses, apart from a missing `Authorization` and the sender fields above, and with what text.
-- What K8 answers when it fails: the emulator's `4xx` and `5xx`, apart from `401`, are plain text with the reason
+- What else TellusTalk refuses, apart from a missing `Authorization`, the sender fields and the fields above, and with
+  what text.
+- What K8 answers when it fails for a reason of its own: the `4xx` and `5xx` a test arms are plain text with the reason
   phrase, as the specification shows them.
 - What the phone shows for a sender name over 11 characters, and whether `"sms_flash": "true"` sends a flash SMS.
 - How TellusTalk treats the other rules the warnings cover.
@@ -198,7 +257,8 @@ is settled when someone observes the real thing.
 - Whether K8 removes spaces in a `fax:`, `mms:` or `voice:` number; the emulator does, as for an SMS.
 - How K8 reads a `to` address without a prefix, such as a bare e-mail address; the emulator reads it as an SMS number.
 - Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
-- Whether K8 refuses the sender fields as it does for an SMS when a request has no SMS recipient; the emulator does.
+- Whether K8 refuses the sender fields and the fields above as it does for an SMS when a request has no SMS recipient,
+  such as an e-mail with `html` and no `text`; the emulator does.
 - When a held-back send that was itself scheduled reports: at once, or when it would have fallen due; the emulator
   reports it at once, as blocked, and never releases it.
 - Whether `sms_character_set`, `sms_format`, `sms_udh`, `sms_originator_source` or `sms_originator_number` are part of
