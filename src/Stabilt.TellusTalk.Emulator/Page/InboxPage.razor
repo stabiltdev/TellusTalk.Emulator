@@ -78,7 +78,7 @@
     private string EmptyText =>
         SearchText is not null ? "No message matches the search."
         : CurrentTab == "scheduled" ? "Nothing is scheduled."
-        : CurrentTab == "blocked" ? "Nothing is held back."
+        : CurrentTab == "blocked" ? "Nothing is blocked."
         : "No messages yet. Send one to POST /send/v1 and it shows up here.";
 
     protected override void OnParametersSet()
@@ -126,7 +126,7 @@
     private RenderFragment SmsDetail(Message message, SmsContent sms) =>
         @<div class="tt-message">
             <PhonePreview Sender="@sms.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message.Text, sms.Parts)"
-                          Note="@(message.DuplicateOf is null ? null : "Not sent")" />
+                          Note="@(message.BlockedReason is null ? null : "Not sent")" />
             <div class="tt-info">
                 <h2 class="tt-title">To @message.To.Address</h2>
                 <p class="tt-sub">From @sms.Sender.Display, shown as @(sms.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>
@@ -138,6 +138,10 @@
                 @if (message.DuplicateOf is { } duplicateOf)
                 {
                     @DuplicateLine(duplicateOf)
+                }
+                else if (message.BlockedReason == BlockedReason.NumberNotNumeric)
+                {
+                    <p class="tt-sub">Not sent: the number is not numeric (<code>txtNUMBER_NOT_NUMERIC</code>).</p>
                 }
                 @WarningList(message)
                 <PartsBar Sizes="@Sizes(sms.Parts)" Left="@sms.Parts.LeftInLastPart" Length="@sms.Parts.Length"

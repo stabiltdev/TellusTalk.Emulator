@@ -247,6 +247,87 @@ public sealed class MessageStoreTests
     }
 
     [Fact]
+    public void A_held_back_message_is_blocked_as_a_duplicate()
+    {
+        var store = Store();
+        var first = Send(store, "Your code is 482913");
+        var second = Send(store, "Your code is 482913");
+
+        second.BlockedReason.Should().Be(BlockedReason.Duplicate);
+        second.DuplicateOf.Should().Be(first.Id);
+        first.BlockedReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_not_numeric_number_is_no_original_and_never_held_back()
+    {
+        var store = Store();
+        var first = Send(store, "Your code is 482913", to: "sms:+4670174062X");
+        var second = Send(store, "Your code is 482913", to: "sms:+4670174062X");
+
+        first.BlockedReason.Should().Be(BlockedReason.NumberNotNumeric);
+        second.BlockedReason.Should().Be(BlockedReason.NumberNotNumeric);
+        second.DuplicateOf.Should().BeNull();
+        store.List(MessageState.Blocked).Should().Equal(second, first);
+    }
+
+    [Fact]
+    public async Task A_not_numeric_number_is_not_queued_for_a_blocked_report()
+    {
+        var store = Store();
+        Send(store, "Your code is 482913", to: "sms:+4670174062X");
+        Send(store, "Your code is 482913");
+        var held = Send(store, "Your code is 482913");
+        using var listening = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var heldBack = store
+            .HeldBack(listening.Token)
+            .GetAsyncEnumerator(listening.Token);
+
+        (await heldBack.MoveNextAsync()).Should().BeTrue();
+        heldBack.Current.Should().Be(held);
+        var next = heldBack.MoveNextAsync();
+
+        next.IsCompleted.Should().BeFalse();
+
+        await listening.CancelAsync();
+        await FluentActions
+            .Awaiting(async () => await next)
+            .Should().ThrowAsync<OperationCanceledException>();
+        await heldBack.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task A_scheduled_not_numeric_number_never_falls_due()
+    {
+        var store = Store();
+        var scheduled = Send(
+            store,
+            "Later",
+            to: "sms:+4670174062X",
+            scheduledSendTime: "2026-11-07T22:10:00Z",
+            reportTo: "https://example.se/reports");
+        using var listening = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var changes = store
+            .Changes(listening.Token)
+            .GetAsyncEnumerator(listening.Token);
+        var next = changes.MoveNextAsync();
+        _time.Advance(TimeSpan.FromMinutes(20));
+
+        store.ReleaseDue();
+
+        scheduled.StateAt(_time.GetUtcNow()).Should().Be(MessageState.Blocked);
+        scheduled.ShownAt.Should().Be(scheduled.ReceivedAt);
+        store.TakeDueReports(TimeSpan.Zero).Should().BeEmpty();
+        next.IsCompleted.Should().BeFalse();
+
+        await listening.CancelAsync();
+        await FluentActions
+            .Awaiting(async () => await next)
+            .Should().ThrowAsync<OperationCanceledException>();
+        await changes.DisposeAsync();
+    }
+
+    [Fact]
     public async Task A_held_back_message_waits_for_a_reader_that_starts_later()
     {
         var store = Store();

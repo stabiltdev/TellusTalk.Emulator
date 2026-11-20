@@ -13,6 +13,9 @@ public sealed record CaughtMessage
 
     public string? DuplicateOf { get; init; }
 
+    /// <summary>Why the message was not sent; <c>null</c> for a message that went out.</summary>
+    public BlockedReason? BlockedReason { get; init; }
+
     public MessageChannel Channel { get; init; }
 
     public string To { get; init; } = string.Empty;

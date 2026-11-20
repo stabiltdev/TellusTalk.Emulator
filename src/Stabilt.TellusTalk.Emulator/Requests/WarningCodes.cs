@@ -7,6 +7,7 @@ internal static class WarningCodes
     public const string WrongJsonType = "wrong-json-type";
     public const string MissingPrefix = "to-missing-prefix";
     public const string SpacesRemoved = "to-spaces-removed";
+    public const string HyphensRemoved = "to-hyphens-removed";
     public const string NotDigits = "to-not-digits";
     public const string EmailInvalid = "to-email-invalid";
     public const string OriginatorTextTooLong = "originator-text-too-long";

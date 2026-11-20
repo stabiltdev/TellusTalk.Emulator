@@ -29,11 +29,16 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         {
             foreach (var message in messages)
             {
-                // K8's duplicate key on another channel is unobserved, so only an SMS is held back.
-                var original = options.Value.BlockDuplicates && message.To.Channel == MessageChannel.Sms
-                    ? FindOriginal(message)
-                    : null;
-                var added = original is null ? message : message with { DuplicateOf = original.Id };
+                // K8's duplicate key on another channel is unobserved, so only an SMS is held back. A message already
+                // blocked for another reason is not also a duplicate.
+                var original = options.Value.BlockDuplicates &&
+                    message.To.Channel == MessageChannel.Sms &&
+                    message.BlockedReason is null
+                        ? FindOriginal(message)
+                        : null;
+                var added = original is null
+                    ? message
+                    : message with { DuplicateOf = original.Id, BlockedReason = BlockedReason.Duplicate };
                 _messages.Add(added);
                 stored.Add(added);
             }
@@ -139,7 +144,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         {
             var due = _messages
                 .Where(message => message.Sms is not null)
-                .Where(message => message.DuplicateOf is null)
+                .Where(message => message.BlockedReason is null)
                 .Where(message => message.Request.ReportTo.Count > 0)
                 .Where(message => message.ShownAt <= now - delay)
                 .Where(message => !_reportsTaken.Contains(message.Id))
@@ -186,7 +191,7 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         lock (_lock)
         {
             var due = _messages
-                .Where(message => message.DuplicateOf is null)
+                .Where(message => message.BlockedReason is null)
                 .Where(message => message.DueAt <= now)
                 .Where(message => !_released.Contains(message.Id))
                 .ToList();
@@ -242,10 +247,12 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         }
     }
 
-    /// <summary>Called under the lock. Held-back messages are no original, so a held-back send does not extend the window.</summary>
+    /// <summary>
+    /// Called under the lock. Blocked messages are no original, so a held-back send does not extend the window.
+    /// </summary>
     private Message? FindOriginal(Message message) => _messages
         .Where(other => other.To.Channel == MessageChannel.Sms)
-        .Where(other => other.DuplicateOf is null)
+        .Where(other => other.BlockedReason is null)
         .Where(other => (other.ReceivedAt - message.ReceivedAt).Duration() <= DuplicateWindow)
         .Where(other => string.Equals(other.UserName, message.UserName, StringComparison.Ordinal))
         .Where(other => string.Equals(other.To.Address, message.To.Address, StringComparison.Ordinal))

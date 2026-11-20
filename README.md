@@ -12,13 +12,14 @@ Not affiliated with TellusTalk.
   with only the base address changed.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
 - Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
-- Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, each
+- Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the blocked, each
   SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
 - Serves what it caught to automated tests through a read API under `/api/`, which the package
   [`Stabilt.TellusTalk.Emulator.Client`](src/Stabilt.TellusTalk.Emulator.Client/README.md) reads as typed models.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed
   for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
-- Holds back an SMS that duplicates one the same user sent in the five minutes before, as TellusTalk does.
+- Holds back an SMS that duplicates one the same user sent in the five minutes before, and blocks an SMS number that is
+  not numeric, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
 - Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
@@ -161,7 +162,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | Environment variable | Default | Meaning |
 |---|---|---|
 | `Emulator__SmsSender` | `replysms` | The user's Sender in TellusTalk: `replysms`, `text:<name>`, `number:<number>` or `subject`. Shown when a request has no sender field. |
-| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, and when the sender field K8 chose is empty. |
+| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, when the sender field K8 chose is empty, and for an `sms_originator_number` that is not `+` and digits. |
 | `Emulator__AccountSender` | none | Obsolete. Honoured only when `Emulator__SmsSender` is not set: a value of `+` and digits means `replysms` with that number as `ReplyNumber` (unless `ReplyNumber` is set); anything else means `text:<value>`. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
@@ -210,11 +211,12 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `wrong-json-type` | A field of another JSON type than the schema's, such as `"sms_flash": "true"`. |
 | `to-missing-prefix` | A recipient without any channel's prefix; the emulator reads it as an SMS number. |
 | `to-spaces-removed` | Spaces in a number; the emulator removes them, as TellusTalk does in an SMS number. |
+| `to-hyphens-removed` | Hyphens in a number; the emulator removes them after the spaces, as TellusTalk does in an SMS number. |
 | `to-not-digits` | A number that is not `+` followed by digits. |
 | `to-email-invalid` | An `email:` address without a name, `@` and a domain. |
 | `originator-text-too-long` | On an SMS, `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
 | `subject-too-long` | On an SMS, `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
-| `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits. |
+| `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits; the reply number is shown instead, as TellusTalk sends it. |
 | `single-thread-without-replysms` | On an SMS, `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
 | `format-deprecated` | On an SMS, `sms_format`, which `sms_character_set` replaces. |
 | `binary-not-hex` | A binary SMS whose text is not hex. |
@@ -228,6 +230,21 @@ A warning about the request, or about any of its recipients, is on every message
 on its SMS messages only. A test can assert that a message carries no warnings, and so catch what TellusTalk would let
 through.
 
+## The answer
+
+A send the emulator takes is answered `200` with `application/json`, as TellusTalk answers it: `job_id` and
+`job_uuid`, the same id; `log_uuid`, that id again, only when the request has one recipient, since each of several gets
+a log id of its own; and `job_size`, the number of recipients, blocked ones included. Between them, each only when it
+has an entry, come the lists of what TellusTalk could not use, every entry `{"address": <as sent>, "error": <text>}`:
+
+- `invalid_report_to` and `invalid_reply_to`, before `log_uuid`: a `report_to` or `reply_to` that is no e-mail address,
+  `sms:` number or http(s) URL, with `Unknown Address Type`. The rest of the request goes out.
+- `invalid_recipients`, after `log_uuid`: an `sms:` number that is not numeric, with `Number Not Numeric`.
+
+```json
+{"job_id":"5d656a5cdafd11f1ba39a2551b38e481","job_uuid":"5d656a5cdafd11f1ba39a2551b38e481","log_uuid":"5d656a5cdafd11f1ba39a2551b38e481","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}
+```
+
 ## Duplicates
 
 An SMS is held back when the same user sent an SMS with the same `subject` and `text` to the same number in the five
@@ -237,6 +254,17 @@ phone, and is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it of
 
 A message on another channel is never held back and holds back no SMS, since what TellusTalk counts as a duplicate
 there has not been observed.
+
+## Numbers that are not numeric
+
+An `sms:` number that, without its spaces and hyphens, holds anything but digits after an optional leading `+` is
+blocked, as TellusTalk blocks it: the send is answered with the number in `invalid_recipients`, and the number's
+message is listed as `blocked`, with `blockedReason` `numberNotNumeric`, and reaches no phone. It is no original for a
+duplicate and is never held back as one, never falls due, and gets no delivery report. The request's other recipients
+go out.
+
+An address without a prefix is never blocked this way, since it may be an e-mail address, and nor is a number of
+digits without `+`, such as a local number; both keep the `to-not-digits` warning.
 
 ## Delivery reports
 
@@ -325,6 +353,7 @@ A message:
   "jobId": "5d656a5cdafd11f1ba39a2551b38e481",
   "state": "sent",
   "duplicateOf": null,
+  "blockedReason": null,
   "channel": "sms",
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
@@ -344,8 +373,10 @@ A message:
 }
 ```
 
-- A held-back message has `state` `blocked`, and `duplicateOf` names the message it duplicates; every other message has
-  `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
+- A blocked message has `state` `blocked` and says why in `blockedReason`: `duplicate` for a held-back message, whose
+  `duplicateOf` names the message it duplicates, or `numberNotNumeric` for an SMS number that is not numeric. Any other
+  message has both `null`, and a message blocked for its number has `duplicateOf` `null`. A report attempt's `status`
+  may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
   after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.

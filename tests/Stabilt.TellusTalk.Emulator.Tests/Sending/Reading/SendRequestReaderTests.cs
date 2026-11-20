@@ -379,6 +379,33 @@ public sealed class SendRequestReaderTests
     }
 
     [Fact]
+    public void Hyphens_in_a_number_are_removed_with_a_warning()
+    {
+        var request = Accepted("""{"to":"sms:+46-70-174-06-21","text":"Hej"}""");
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740621", "sms:+46-70-174-06-21"));
+        request.Warnings.Should().Equal(new Warning(
+            WarningCodes.HyphensRemoved,
+            "to",
+            "'sms:+46-70-174-06-21' contains hyphens; TellusTalk removes them, and so does the emulator."));
+    }
+
+    [Theory]
+    [InlineData("fax:+46-70-174-06-21")]
+    [InlineData("mms:+46-70-174-06-21")]
+    [InlineData("voice:+46-70-174-06-21")]
+    public void Hyphens_in_a_fax_mms_or_voice_number_are_removed_with_a_warning(string address)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Single().Address.Should().Be("+46701740621");
+        request.Warnings.Should().Equal(new Warning(
+            WarningCodes.HyphensRemoved,
+            "to",
+            $"'{address}' contains hyphens; the emulator removes them, as TellusTalk does in an SMS number."));
+    }
+
+    [Fact]
     public void A_number_without_the_sms_prefix_is_read_as_an_sms_recipient_with_a_warning()
     {
         var request = Accepted("""{"to":"+46701740605","text":"Hej"}""");
@@ -388,12 +415,37 @@ public sealed class SendRequestReaderTests
     }
 
     [Fact]
-    public void A_number_with_other_characters_than_digits_is_kept_with_a_warning()
+    public void An_sms_number_with_other_characters_than_digits_is_not_numeric_with_a_warning()
     {
         var request = Accepted("""{"to":"sms:+4670abc","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { NotNumeric = true });
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
+    }
+
+    [Fact]
+    public void An_sms_number_is_not_numeric_once_its_spaces_and_hyphens_are_removed()
+    {
+        var request = Accepted("""{"to":"sms:+46 70-174 06 2X","text":"Hej"}""");
+
+        request.Recipients.Single().Should().Be(new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X") { NotNumeric = true });
+    }
+
+    [Fact]
+    public void A_local_number_of_digits_is_numeric()
+    {
+        var request = Accepted("""{"to":"sms:0701740605","text":"Hej"}""");
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "0701740605", "sms:0701740605") { NotNumeric = false });
+        request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
+    }
+
+    [Fact]
+    public void A_bare_address_is_never_not_numeric()
+    {
+        var request = Accepted("""{"to":"test.user@example.se","text":"Hej"}""");
+
+        request.Recipients.Single().NotNumeric.Should().BeFalse();
     }
 
     [Fact]

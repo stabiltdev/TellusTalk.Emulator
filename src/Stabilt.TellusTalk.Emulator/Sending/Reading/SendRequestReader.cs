@@ -109,8 +109,12 @@ internal static class SendRequestReader
         List<Recipient> recipients,
         SendRequestBody body,
         Dictionary<string, JsonElement> fields,
-        List<Warning> warnings) =>
-        new()
+        List<Warning> warnings)
+    {
+        var (reportTo, invalidReportTo) = ReadReportAddresses(body.ReportTo, "report_to", warnings);
+        var (replyTo, invalidReplyTo) = ReadReportAddresses(body.ReplyTo, "reply_to", warnings);
+
+        return new()
         {
             Recipients = recipients,
             Text = ReadString(body.Text),
@@ -124,12 +128,15 @@ internal static class SendRequestReader
             Udh = ReadString(body.SmsUdh),
             SingleThread = body.SmsSingleThread.ValueKind == JsonValueKind.True,
             ScheduledSendTime = ReadString(body.ScheduledSendTime),
-            ReportTo = ReadReportAddresses(body.ReportTo, "report_to", warnings),
-            ReplyTo = ReadReportAddresses(body.ReplyTo, "reply_to", warnings),
+            ReportTo = reportTo,
+            InvalidReportTo = invalidReportTo,
+            ReplyTo = replyTo,
+            InvalidReplyTo = invalidReplyTo,
             Body = body,
             Fields = fields,
             Warnings = warnings,
         };
+    }
 
     /// <summary>
     /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, as
@@ -138,7 +145,11 @@ internal static class SendRequestReader
     private static string? ReadCharacterSet(SendRequestBody body) =>
         ReadString(body.SmsCharacterSet) ?? ReadString(body.SmsFormat);
 
-    private static List<ReportAddress> ReadReportAddresses(JsonElement value, string name, List<Warning> warnings)
+    /// <summary>The addresses read, and those that could not be, as sent, for the answer to list.</summary>
+    private static (List<ReportAddress> Addresses, List<string> Invalid) ReadReportAddresses(
+        JsonElement value,
+        string name,
+        List<Warning> warnings)
     {
         IEnumerable<JsonElement> values = value.ValueKind switch
         {
@@ -148,6 +159,7 @@ internal static class SendRequestReader
         };
 
         var addresses = new List<ReportAddress>();
+        var invalid = new List<string>();
         foreach (var item in values.Where(item => item.ValueKind == JsonValueKind.String))
         {
             var text = item.GetString()!;
@@ -157,6 +169,7 @@ internal static class SendRequestReader
             }
             else
             {
+                invalid.Add(text);
                 warnings.Add(new Warning(
                     WarningCodes.ReportAddressInvalid,
                     name,
@@ -164,7 +177,7 @@ internal static class SendRequestReader
             }
         }
 
-        return addresses;
+        return (addresses, invalid);
     }
 
     /// <summary>K8's rules have refused every other <c>to</c>: it is a string, a list or an object here.</summary>
@@ -213,6 +226,7 @@ internal static class SendRequestReader
                 {
                     MessageChannel.Email => ReadEmail(rest, address, warnings),
                     MessageChannel.Group => new Recipient(channel, rest, address),
+                    MessageChannel.Sms => ReadSmsNumber(rest, address, warnings),
                     _ => ReadNumber(channel, rest, address, warnings),
                 };
             }
@@ -226,7 +240,20 @@ internal static class SendRequestReader
         return ReadNumber(MessageChannel.Sms, address, address, warnings);
     }
 
-    /// <summary>That TellusTalk removes spaces has been observed in an SMS number, not in another channel's.</summary>
+    /// <summary>
+    /// K8 was seen blocking an <c>sms:</c> number with a letter. An address without a prefix is read as an SMS number
+    /// on a guess, since it could be an e-mail address, so it is never blocked as one.
+    /// </summary>
+    private static Recipient ReadSmsNumber(string number, string address, List<Warning> warnings)
+    {
+        var recipient = ReadNumber(MessageChannel.Sms, number, address, warnings);
+
+        return recipient with { NotNumeric = !PhoneNumbers.IsNumeric(recipient.Address) };
+    }
+
+    /// <summary>
+    /// That TellusTalk removes spaces and hyphens has been observed in an SMS number, not in another channel's.
+    /// </summary>
     private static Recipient ReadNumber(MessageChannel channel, string number, string address, List<Warning> warnings)
     {
         if (number.Contains(' ', StringComparison.Ordinal))
@@ -238,6 +265,18 @@ internal static class SendRequestReader
                 channel == MessageChannel.Sms
                     ? $"'{address}' contains spaces; TellusTalk removes them, and so does the emulator."
                     : $"'{address}' contains spaces; the emulator removes them, as TellusTalk does in an SMS number."));
+        }
+
+        if (number.Contains('-', StringComparison.Ordinal))
+        {
+            number = number.Replace("-", string.Empty, StringComparison.Ordinal);
+            warnings.Add(new Warning(
+                WarningCodes.HyphensRemoved,
+                "to",
+                channel == MessageChannel.Sms
+                    ? $"'{address}' contains hyphens; TellusTalk removes them, and so does the emulator."
+                    : $"'{address}' contains hyphens; the emulator removes them, as TellusTalk does in an SMS " +
+                      "number."));
         }
 
         if (!PhoneNumbers.IsPlusDigits(number))
