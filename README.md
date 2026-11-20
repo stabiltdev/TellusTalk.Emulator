@@ -12,13 +12,14 @@ Not affiliated with TellusTalk.
   with only the base address changed.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
 - Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
-- Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the held back, each
+- Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the blocked, each
   SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
 - Serves what it caught to automated tests through a read API under `/api/`, which the package
   [`Stabilt.TellusTalk.Emulator.Client`](src/Stabilt.TellusTalk.Emulator.Client/README.md) reads as typed models.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed
   for a number set to fail, blocked at once for a send it held back, and on request from the page or the read API.
-- Holds back an SMS that duplicates one the same user sent in the five minutes before, as TellusTalk does.
+- Holds back an SMS that duplicates one the same user sent in the five minutes before, and blocks an SMS number that is
+  not numeric, as TellusTalk does.
 - Refuses only what TellusTalk refuses and what it cannot record; everything TellusTalk's specification forbids but
   TellusTalk accepts becomes a warning on the message.
 - Answers the next sends, to any number or to one, with the `4xx` and `5xx` a test arms, late if asked, so a client's
@@ -229,6 +230,21 @@ A warning about the request, or about any of its recipients, is on every message
 on its SMS messages only. A test can assert that a message carries no warnings, and so catch what TellusTalk would let
 through.
 
+## The answer
+
+A send the emulator takes is answered `200` with `application/json`, as TellusTalk answers it: `job_id` and
+`job_uuid`, the same id; `log_uuid`, that id again, only when the request has one recipient, since each of several gets
+a log id of its own; and `job_size`, the number of recipients, blocked ones included. Between them, each only when it
+has an entry, come the lists of what TellusTalk could not use, every entry `{"address": <as sent>, "error": <text>}`:
+
+- `invalid_report_to` and `invalid_reply_to`, before `log_uuid`: a `report_to` or `reply_to` that is no e-mail address,
+  `sms:` number or http(s) URL, with `Unknown Address Type`. The rest of the request goes out.
+- `invalid_recipients`, after `log_uuid`: an `sms:` number that is not numeric, with `Number Not Numeric`.
+
+```json
+{"job_id":"5d656a5cdafd11f1ba39a2551b38e481","job_uuid":"5d656a5cdafd11f1ba39a2551b38e481","log_uuid":"5d656a5cdafd11f1ba39a2551b38e481","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}
+```
+
 ## Duplicates
 
 An SMS is held back when the same user sent an SMS with the same `subject` and `text` to the same number in the five
@@ -238,6 +254,17 @@ phone, and is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it of
 
 A message on another channel is never held back and holds back no SMS, since what TellusTalk counts as a duplicate
 there has not been observed.
+
+## Numbers that are not numeric
+
+An `sms:` number that, without its spaces and hyphens, holds anything but digits after an optional leading `+` is
+blocked, as TellusTalk blocks it: the send is answered with the number in `invalid_recipients`, and the number's
+message is listed as `blocked`, with `blockedReason` `numberNotNumeric`, and reaches no phone. It is no original for a
+duplicate and is never held back as one, never falls due, and gets no delivery report. The request's other recipients
+go out.
+
+An address without a prefix is never blocked this way, since it may be an e-mail address, and nor is a number of
+digits without `+`, such as a local number; both keep the `to-not-digits` warning.
 
 ## Delivery reports
 
