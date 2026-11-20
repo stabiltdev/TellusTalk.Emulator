@@ -206,6 +206,36 @@ public sealed class SendRequestReaderTests
             .Should().Be(new RefusedByTellusTalk("Invalid sms_character_set not a string: 1"));
     }
 
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740615","text":"Probe R-T0: every other field null.","html":null,"echo":null,"scheduled_send_time":null,"billing_id":null,"report_to":null,"reply_to":null,"sms_max_parts":null,"sms_header":null,"sms_flash":null,"sms_validity_time":null,"sms_single_thread":null,"sms_format":null,"sms_character_set":null,"sms_udh":null,"attachments":null}""", "'NoneType' object is not iterable")]
+    [InlineData("""{"to":"sms:+46701740618","text":"Probe R-T3: every other field of another type.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"report_to":123,"reply_to":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_format":1,"sms_character_set":1,"sms_udh":123,"attachments":"file"}""", "'str' object has no attribute 'pop'")]
+    public void A_request_breaking_several_rules_fails_on_attachments_as_k8_did(string json, string text)
+    {
+        Read(json).Should().Be(new FailedInTellusTalk(text));
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740639","text":"Probe R-T0a: every other field null but the lists.","html":null,"echo":null,"scheduled_send_time":null,"billing_id":null,"sms_max_parts":null,"sms_header":null,"sms_flash":null,"sms_validity_time":null,"sms_single_thread":null,"sms_format":null,"sms_character_set":null,"sms_udh":null}""", "Invalid sms_validity_time not an int: None")]
+    [InlineData("""{"to":"sms:+46701740643","text":"Probe R-T0e: every other field null but the lists and the validity time.","html":null,"echo":null,"scheduled_send_time":null,"billing_id":null,"sms_max_parts":null,"sms_header":null,"sms_flash":null,"sms_single_thread":null,"sms_format":null,"sms_character_set":null,"sms_udh":null}""", "Invalid sms_max_parts not an int: None")]
+    [InlineData("""{"to":"sms:+46701740644","text":"Probe R-T0f: every other field null but the lists, the validity time and the max parts.","html":null,"echo":null,"scheduled_send_time":null,"billing_id":null,"sms_header":null,"sms_flash":null,"sms_single_thread":null,"sms_format":null,"sms_character_set":null,"sms_udh":null}""", "Invalid sms_header not a string: None")]
+    [InlineData("""{"to":"sms:+46701740646","text":"Probe R-T3a: every other field of another type but attachments.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"report_to":123,"reply_to":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_format":1,"sms_character_set":1,"sms_udh":123}""", "400 Bad Request: reply_to is of type <class 'int'>. Expected (list,dict,str)")]
+    [InlineData("""{"to":"sms:+46701740648","text":"Probe R-T3c: other types, without attachments and reply_to.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"report_to":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_format":1,"sms_character_set":1,"sms_udh":123}""", "400 Bad Request: report_to is of type <class 'int'>. Expected (list,dict,str)")]
+    [InlineData("""{"to":"sms:+46701740649","text":"Probe R-T3d: other types, without the lists.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_format":1,"sms_character_set":1,"sms_udh":123}""", "Invalid sms_character_set not a string: 1")]
+    [InlineData("""{"to":"sms:+46701740650","text":"Probe R-T3e: other types, without the lists and the character set.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_format":1,"sms_udh":123}""", "Invalid sms_character_set not a string: 1")]
+    [InlineData("""{"to":"sms:+46701740651","text":"Probe R-T3f: other types, without the lists and the character sets.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"sms_max_parts":"2","sms_header":123,"sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_udh":123}""", "Invalid sms_header not a string: 123")]
+    public void A_request_breaking_several_rules_meets_the_refusal_k8_gave_it(string json, string text)
+    {
+        Read(json).Should().Be(new RefusedByTellusTalk(text));
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740645","text":"Probe R-T0g: the remaining fields null.","html":null,"echo":null,"scheduled_send_time":null,"billing_id":null,"sms_flash":null,"sms_single_thread":null,"sms_format":null,"sms_character_set":null,"sms_udh":null}""")]
+    [InlineData("""{"to":"sms:+46701740652","text":"Probe R-T3g: other types, without the lists, the character sets and the header.","html":123,"scheduled_send_time":1763400000,"billing_id":123,"sms_max_parts":"2","sms_flash":1,"sms_validity_time":"60","sms_single_thread":"true","sms_udh":123}""")]
+    public void Fields_k8_took_as_null_or_of_another_type_are_accepted(string json)
+    {
+        Read(json).Should().BeOfType<Accepted>();
+    }
+
     [Fact]
     public void To_as_a_string_gives_one_recipient()
     {
