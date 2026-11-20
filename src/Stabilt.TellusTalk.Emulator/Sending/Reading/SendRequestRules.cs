@@ -15,8 +15,14 @@ internal static class SendRequestRules
 
     private const string UnknownSourceSuffix = "; must be one of frozenset({'replysms', 'number', 'text', 'subject'})";
 
+    private const string UnknownCharacterSetSuffix =
+        "; must be one of frozenset({'optimize', 'unicode', 'binary', 'gsm'})";
+
     private static readonly FrozenSet<string> Sources =
         new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
+
+    private static readonly FrozenSet<string> CharacterSets =
+        new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
 
     private static readonly Func<SendRequestBody, ReadResult?>[] InOrder =
     [
@@ -27,12 +33,11 @@ internal static class SendRequestRules
         ReportTo,
         ValidityTime,
         MaxParts,
+        CharacterSet,
         Header,
         Sender,
+        BillingId,
     ];
-
-    public static FrozenSet<string> CharacterSets { get; } =
-        new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>Every field whose shape the schemas fix, by its JSON name.</summary>
     public static FrozenDictionary<string, JsonShape> Shapes { get; } =
@@ -139,6 +144,37 @@ internal static class SendRequestRules
     private static RefusedByTellusTalk? NullCount(JsonElement value, string field) =>
         value.ValueKind == JsonValueKind.Null ? new RefusedByTellusTalk($"Invalid {field} not an int: None") : null;
 
+    /// <summary>
+    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, and K8 calls it
+    /// <c>sms_character_set</c> all the same. Under binary, <c>sms_udh</c> meets the truth test.
+    /// </summary>
+    private static RefusedByTellusTalk? CharacterSet(SendRequestBody body)
+    {
+        var value = body.SmsCharacterSet.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            ? body.SmsFormat
+            : body.SmsCharacterSet;
+
+        if (value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            return new RefusedByTellusTalk($"Invalid sms_character_set not a string: {PythonText.Of(value)}");
+        }
+
+        var characterSet = value.GetString()!;
+        if (!CharacterSets.Contains(characterSet))
+        {
+            return new RefusedByTellusTalk($"Invalid sms_character_set: {characterSet}{UnknownCharacterSetSuffix}");
+        }
+
+        return string.Equals(characterSet, "binary", StringComparison.Ordinal) && PythonText.IsFalse(body.SmsUdh)
+            ? new RefusedByTellusTalk("400 Bad Request: Binary sms_format missing sms_udh")
+            : null;
+    }
+
     private static RefusedByTellusTalk? Header(SendRequestBody body) =>
         body.SmsHeader.ValueKind is JsonValueKind.Undefined or JsonValueKind.String
             ? null
@@ -186,6 +222,15 @@ internal static class SendRequestRules
         };
     }
 
+    /// <summary>
+    /// K8 was seen to refuse a space and a hyphen; the specification's "alphanumeric" is read as ASCII letters and
+    /// digits, and an empty id passes.
+    /// </summary>
+    private static RefusedByTellusTalk? BillingId(SendRequestBody body) =>
+        body.BillingId.ValueKind == JsonValueKind.String && !body.BillingId.GetString()!.All(char.IsAsciiLetterOrDigit)
+            ? new RefusedByTellusTalk($"Invalid billing_id {body.BillingId.GetString()}")
+            : null;
+
     private static string? Missing(JsonElement value, string field, string expected, string ending) =>
         value.ValueKind == JsonValueKind.Undefined
             ? $"400 Bad Request: Missing/invalid '{field}'. Expected {expected}, got 'None'{ending}"
@@ -230,28 +275,7 @@ internal static class SendRequestRules
                 "sms_format is deprecated; the specification asks for sms_character_set instead.");
         }
 
-        if (request.CharacterSet is { } characterSet && !CharacterSets.Contains(characterSet))
-        {
-            yield return new Warning(
-                WarningCodes.CharacterSetInvalid,
-                request.Body.SmsCharacterSet.ValueKind != JsonValueKind.Undefined ? "sms_character_set" : "sms_format",
-                $"'{characterSet}' is not a documented character set; the emulator counts the text as optimize.");
-        }
-
-        if (!string.Equals(request.CharacterSet, "binary", StringComparison.Ordinal))
-        {
-            yield break;
-        }
-
-        if (request.Udh is null)
-        {
-            yield return new Warning(
-                WarningCodes.BinaryWithoutUdh,
-                "sms_udh",
-                "A binary SMS must be paired with sms_udh, the specification says.");
-        }
-
-        if (!IsHex(request.Text ?? string.Empty))
+        if (string.Equals(request.CharacterSet, "binary", StringComparison.Ordinal) && !IsHex(request.Text ?? string.Empty))
         {
             yield return new Warning(
                 WarningCodes.BinaryNotHex,
@@ -273,16 +297,6 @@ internal static class SendRequestRules
 
     private static IEnumerable<Warning> RequestWarnings(SendRequest request)
     {
-        var billingId = request.Body.BillingId;
-        if (billingId.ValueKind == JsonValueKind.String &&
-            !billingId.GetString()!.All(char.IsAsciiLetterOrDigit))
-        {
-            yield return new Warning(
-                WarningCodes.BillingIdInvalid,
-                "billing_id",
-                $"The billing id '{billingId.GetString()}' is not alphanumeric, as the specification asks.");
-        }
-
         if (request.ScheduledSendTime is { } scheduled && !ScheduledTime.TryParse(scheduled, out _))
         {
             yield return new Warning(

@@ -60,25 +60,11 @@ public sealed class SendRequestRulesTests
     }
 
     [Fact]
-    public void An_undocumented_character_set_is_warned_about()
-    {
-        SendRequestRules.CheckSms(Plain with { CharacterSet = "latin1" })
-            .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.CharacterSetInvalid);
-    }
-
-    [Fact]
     public void The_deprecated_sms_format_is_warned_about()
     {
         SendRequestRules.CheckSms(Plain with { CharacterSet = "gsm", Body = BodyOf("""{"sms_format":"gsm"}""") })
             .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
                 warning.Code == WarningCodes.FormatDeprecated && warning.Field == "sms_format");
-    }
-
-    [Fact]
-    public void Binary_without_a_user_data_header_is_warned_about()
-    {
-        SendRequestRules.CheckSms(Plain with { CharacterSet = "binary", Text = "48656C6C6F" })
-            .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.BinaryWithoutUdh);
     }
 
     [Fact]
@@ -94,14 +80,6 @@ public sealed class SendRequestRulesTests
     {
         SendRequestRules.CheckSms(Plain with { MaxParts = 0 })
             .Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsInvalid);
-    }
-
-    [Fact]
-    public void A_billing_id_that_is_not_alphanumeric_is_warned_about()
-    {
-        SendRequestRules.Check(Plain with { Body = BodyOf("""{"billing_id":"team-1"}""") })
-            .Should().ContainSingle().Which.Should().Match<Warning>(warning =>
-                warning.Code == WarningCodes.BillingIdInvalid && warning.Field == "billing_id");
     }
 
     [Fact]

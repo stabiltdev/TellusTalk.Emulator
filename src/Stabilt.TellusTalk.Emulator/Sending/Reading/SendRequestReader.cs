@@ -131,18 +131,12 @@ internal static class SendRequestReader
             Warnings = warnings,
         };
 
-    /// <summary>The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent and its value is a documented one.</summary>
-    private static string? ReadCharacterSet(SendRequestBody body)
-    {
-        if (ReadString(body.SmsCharacterSet) is { } characterSet)
-        {
-            return characterSet;
-        }
-
-        return ReadString(body.SmsFormat) is { } format && SendRequestRules.CharacterSets.Contains(format)
-            ? format
-            : null;
-    }
+    /// <summary>
+    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null; K8's rules have
+    /// refused any value but the four character sets.
+    /// </summary>
+    private static string? ReadCharacterSet(SendRequestBody body) =>
+        ReadString(body.SmsCharacterSet) ?? ReadString(body.SmsFormat);
 
     private static List<ReportAddress> ReadReportAddresses(JsonElement value, string name, List<Warning> warnings)
     {

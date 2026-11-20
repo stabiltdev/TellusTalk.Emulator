@@ -171,6 +171,41 @@ public sealed class SendRequestReaderTests
             .Should().Be(new RefusedByTellusTalk("400 Bad Request: report_to is of type <class 'int'>. Expected (list,dict,str)"));
     }
 
+    [Theory]
+    [InlineData("""{"sms_character_set":1}""", "Invalid sms_character_set not a string: 1")]
+    [InlineData("""{"sms_format":1}""", "Invalid sms_character_set not a string: 1")]
+    [InlineData("""{"sms_character_set":"latin1"}""", "Invalid sms_character_set: latin1; must be one of frozenset({'optimize', 'unicode', 'binary', 'gsm'})")]
+    [InlineData("""{"sms_character_set":null,"sms_format":"latin1"}""", "Invalid sms_character_set: latin1; must be one of frozenset({'optimize', 'unicode', 'binary', 'gsm'})")]
+    [InlineData("""{"sms_character_set":"binary"}""", "400 Bad Request: Binary sms_format missing sms_udh")]
+    [InlineData("""{"sms_character_set":"binary","sms_udh":""}""", "400 Bad Request: Binary sms_format missing sms_udh")]
+    [InlineData("""{"billing_id":"billing id-1"}""", "Invalid billing_id billing id-1")]
+    public void Character_sets_binary_headers_and_billing_ids_k8_refuses_are_refused_with_its_text(string fields, string text)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"48656C6C6F",{{fields[1..]}}""")
+            .Should().Be(new RefusedByTellusTalk(text));
+    }
+
+    [Fact]
+    public void The_character_set_decides_over_an_invalid_sms_format()
+    {
+        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_character_set":"gsm","sms_format":"latin1"}""");
+
+        request.CharacterSet.Should().Be("gsm");
+    }
+
+    [Fact]
+    public void An_empty_billing_id_is_accepted()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","billing_id":""}""").Should().BeOfType<Accepted>();
+    }
+
+    [Fact]
+    public void The_character_set_is_refused_before_the_header()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","sms_header":123,"sms_character_set":1}""")
+            .Should().Be(new RefusedByTellusTalk("Invalid sms_character_set not a string: 1"));
+    }
+
     [Fact]
     public void To_as_a_string_gives_one_recipient()
     {
@@ -265,11 +300,11 @@ public sealed class SendRequestReaderTests
     [Fact]
     public void The_sender_and_encoding_rules_are_kept_apart_from_the_requests_warnings()
     {
-        var request = Accepted("""{"to":"email:test.user@example.se","subject":"Your order has shipped","text":"Hej","sms_format":"unicode","billing_id":"team-1"}""");
+        var request = Accepted("""{"to":"email:test.user@example.se","subject":"Your order has shipped","text":"Hej","sms_format":"unicode","scheduled_send_time":"tomorrow"}""");
 
         request.Warnings
             .Select(warning => warning.Code)
-            .Should().Equal(WarningCodes.BillingIdInvalid);
+            .Should().Equal(WarningCodes.ScheduledTimeInvalid);
         request.SmsWarnings
             .Select(warning => warning.Code)
             .Should().Equal(WarningCodes.SubjectTooLong, WarningCodes.FormatDeprecated);
