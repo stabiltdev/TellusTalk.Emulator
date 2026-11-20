@@ -247,6 +247,18 @@ public sealed class MessageStoreTests
     }
 
     [Fact]
+    public void A_held_back_message_is_blocked_as_a_duplicate()
+    {
+        var store = Store();
+        var first = Send(store, "Your code is 482913");
+        var second = Send(store, "Your code is 482913");
+
+        second.BlockedReason.Should().Be(BlockedReason.Duplicate);
+        second.DuplicateOf.Should().Be(first.Id);
+        first.BlockedReason.Should().BeNull();
+    }
+
+    [Fact]
     public async Task A_held_back_message_waits_for_a_reader_that_starts_later()
     {
         var store = Store();

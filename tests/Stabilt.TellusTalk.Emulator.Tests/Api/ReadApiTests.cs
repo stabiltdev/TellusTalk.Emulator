@@ -203,6 +203,7 @@ public sealed class ReadApiTests
         root.GetProperty("links").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("parts").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        root.GetProperty("blockedReason").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("reports").GetArrayLength().Should().Be(0);
         root.GetProperty("fields").GetProperty("subject").GetString().Should().Be("Your order");
         root.GetProperty("state").GetString().Should().Be("sent");
@@ -383,13 +384,15 @@ public sealed class ReadApiTests
 
         held.RootElement.GetProperty("state").GetString().Should().Be("blocked");
         held.RootElement.GetProperty("duplicateOf").GetString().Should().Be(first);
+        held.RootElement.GetProperty("blockedReason").GetString().Should().Be("duplicate");
         original.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        original.RootElement.GetProperty("blockedReason").ValueKind.Should().Be(JsonValueKind.Null);
         original.RootElement
             .EnumerateObject()
             .Select(property => property.Name)
             .SkipWhile(name => !string.Equals(name, "state", StringComparison.Ordinal))
-            .Take(3)
-            .Should().Equal("state", "duplicateOf", "channel");
+            .Take(4)
+            .Should().Equal("state", "duplicateOf", "blockedReason", "channel");
     }
 
     [Fact]

@@ -325,6 +325,7 @@ A message:
   "jobId": "5d656a5cdafd11f1ba39a2551b38e481",
   "state": "sent",
   "duplicateOf": null,
+  "blockedReason": null,
   "channel": "sms",
   "to": "+46701740605",
   "toAsSent": "sms:+46 70 174 06 05",
@@ -344,8 +345,8 @@ A message:
 }
 ```
 
-- A held-back message has `state` `blocked`, and `duplicateOf` names the message it duplicates; every other message has
-  `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
+- A held-back message has `state` `blocked`, `blockedReason` `duplicate`, and `duplicateOf` naming the message it
+  duplicates; every other message has both `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
   after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.

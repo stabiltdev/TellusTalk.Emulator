@@ -126,7 +126,7 @@
     private RenderFragment SmsDetail(Message message, SmsContent sms) =>
         @<div class="tt-message">
             <PhonePreview Sender="@sms.Sender.Display" Time="@message.ShownAt" Parts="@Segments(message.Text, sms.Parts)"
-                          Note="@(message.DuplicateOf is null ? null : "Not sent")" />
+                          Note="@(message.BlockedReason is null ? null : "Not sent")" />
             <div class="tt-info">
                 <h2 class="tt-title">To @message.To.Address</h2>
                 <p class="tt-sub">From @sms.Sender.Display, shown as @(sms.Sender.Kind == SenderKind.Number ? "a number" : "a name").</p>

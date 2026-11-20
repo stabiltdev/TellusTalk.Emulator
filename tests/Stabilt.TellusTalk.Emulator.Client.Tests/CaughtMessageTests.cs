@@ -85,6 +85,22 @@ public sealed class CaughtMessageTests
     }
 
     [Fact]
+    public async Task A_held_back_message_reads_its_reason()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = new TellusTalkEmulatorClient(emulator.CreateClient());
+        var cancellation = TestContext.Current.CancellationToken;
+        var first = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        var second = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        var original = await client.GetMessageAsync(first, cancellation);
+        var held = await client.GetMessageAsync(second, cancellation);
+
+        held!.BlockedReason.Should().Be(BlockedReason.Duplicate);
+        original!.BlockedReason.Should().BeNull();
+    }
+
+    [Fact]
     public async Task A_message_on_another_channel_is_read_without_sender_links_or_parts()
     {
         await using var emulator = new EmulatorFactory();

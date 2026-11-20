@@ -56,10 +56,11 @@ Assert.Equal("order-1001", message.Fields["echo"].GetString());
 | `MessageQuery.To` | A message's `To` as given, on any channel: a number with its `+`, an e-mail address, a group |
 | `MessageQuery.Search` | Searches the address, the text, an SMS's sender and another channel's subject |
 
-A message is a `CaughtMessage` with every property the read API serves: its state, the sender as the phone shows it,
-the parts, the report and reply addresses, the warnings, the reports sent, and the request as it arrived, with its
-fields as JSON values. A status other than success, and other than `404` for one message, throws
-`HttpRequestException`. A base address with a path of its own needs a trailing `/`.
+A message is a `CaughtMessage` with every property the read API serves: its state and, for a blocked message, its
+`BlockedReason`, `Duplicate` or `NumberNotNumeric`, the sender as the phone shows it, the parts, the report and reply
+addresses, the warnings, the reports sent, and the request as it arrived, with its fields as JSON values. A status
+other than success, and other than `404` for one message, throws `HttpRequestException`. A base address with a path of
+its own needs a trailing `/`.
 
 The package's version should match the emulator image's: a value it does not know, such as a channel added by a newer
 image, fails the read.
