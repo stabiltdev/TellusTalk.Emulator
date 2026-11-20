@@ -33,6 +33,7 @@ internal sealed class SendEndpoint : IEndpoint
     private static async Task<Results<
         SendAccepted,
         TellusTalkRefusal,
+        TellusTalkError,
         EmulatorLimit,
         FailureResult,
         EmptyHttpResult
@@ -61,6 +62,7 @@ internal sealed class SendEndpoint : IEndpoint
             {
                 Refused refused => Refusals.EmulatorLimit(StatusCodes.Status400BadRequest, refused.Text),
                 RefusedByTellusTalk refusedByTellusTalk => Refusals.TellusTalk(refusedByTellusTalk.Text),
+                FailedInTellusTalk failed => Refusals.TellusTalkError(failed.Text),
                 _ => throw new InvalidOperationException($"The read result '{read}' has no answer."),
             };
         }

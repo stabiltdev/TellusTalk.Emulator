@@ -67,7 +67,8 @@ code: `src/Stabilt.TellusTalk.Emulator/Sending/Reading/`, and the request it rea
   other fields and the read API's `fields`.
 - What the specification forbids becomes a `Warning` with a code from `WarningCodes`, never a refusal. A refusal of the
   emulator's own begins `TellusTalk Emulator:` and says it is the emulator's limit.
-- A refusal TellusTalk was seen to give is a `RefusedByTellusTalk`, answered with K8's text as `text/html`.
+- A refusal TellusTalk was seen to give is a `RefusedByTellusTalk`, answered with K8's text as `text/html`; a server
+  error it was seen to give is a `FailedInTellusTalk`, answered `500` the same way.
 
 ## Time and ids
 

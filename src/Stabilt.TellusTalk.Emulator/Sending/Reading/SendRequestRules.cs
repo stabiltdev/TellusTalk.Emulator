@@ -18,7 +18,7 @@ internal static class SendRequestRules
     private static readonly FrozenSet<string> Sources =
         new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
 
-    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [To, Text, Sender];
+    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [To, Text, Attachments, Sender];
 
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
@@ -85,6 +85,29 @@ internal static class SendRequestRules
             ? null
             : new RefusedByTellusTalk($"key: text is of type {PythonText.TypeName(body.Text)} expected (str)");
     }
+
+    /// <summary>
+    /// K8 iterates <c>attachments</c> and calls <c>pop</c> on each item, so what it cannot iterate, or an item without
+    /// <c>pop</c>, fails with Python's own error: a string's items are its characters, an object's its keys.
+    /// </summary>
+    private static FailedInTellusTalk? Attachments(SendRequestBody body)
+    {
+        var attachments = body.Attachments;
+
+        return attachments.ValueKind switch
+        {
+            JsonValueKind.Undefined => null,
+            JsonValueKind.String or JsonValueKind.Object => PythonText.IsFalse(attachments) ? null : NoPop("str"),
+            JsonValueKind.Array => attachments
+                .EnumerateArray()
+                .Where(item => item.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array))
+                .Select(item => NoPop(PythonText.TypeName(item)))
+                .FirstOrDefault(),
+            _ => new FailedInTellusTalk($"'{PythonText.TypeName(attachments)}' object is not iterable"),
+        };
+    }
+
+    private static FailedInTellusTalk NoPop(string type) => new($"'{type}' object has no attribute 'pop'");
 
     private static RefusedByTellusTalk? Sender(SendRequestBody body) =>
         SenderRefusal(body) is { } text ? new RefusedByTellusTalk(text) : null;

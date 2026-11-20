@@ -8,5 +8,7 @@ internal static class Refusals
 
     public static TellusTalkRefusal TellusTalk(string text) => new(text);
 
+    public static TellusTalkError TellusTalkError(string text) => new(text);
+
     public static EmulatorLimit EmulatorLimit(int statusCode, string text) => new(statusCode, text);
 }

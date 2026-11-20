@@ -68,6 +68,38 @@ public sealed class SendRequestReaderTests
         Read("""{"subject":null,"text":"Hej"}""").Should().Be(new RefusedByTellusTalk("key: to is missing or empty"));
     }
 
+    [Theory]
+    [InlineData("null", "'NoneType' object is not iterable")]
+    [InlineData("12", "'int' object is not iterable")]
+    [InlineData("true", "'bool' object is not iterable")]
+    [InlineData("\"file\"", "'str' object has no attribute 'pop'")]
+    [InlineData("[\"file\"]", "'str' object has no attribute 'pop'")]
+    [InlineData("[{\"name\":\"a.txt\"},3]", "'int' object has no attribute 'pop'")]
+    [InlineData("{\"name\":\"a.txt\"}", "'str' object has no attribute 'pop'")]
+    public void Attachments_k8_cannot_take_fail_as_k8_does(string attachments, string text)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"Hej","attachments":{{attachments}}}""")
+            .Should().Be(new FailedInTellusTalk(text));
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("\"\"")]
+    [InlineData("[{\"name\":\"a.txt\"}]")]
+    public void Attachments_k8_takes_are_accepted(string attachments)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"Hej","attachments":{{attachments}}}""")
+            .Should().BeOfType<Accepted>();
+    }
+
+    [Fact]
+    public void Attachments_fail_before_k8s_refusals_of_the_other_fields()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","attachments":null,"sms_header":null}""")
+            .Should().Be(new FailedInTellusTalk("'NoneType' object is not iterable"));
+    }
+
     [Fact]
     public void To_as_a_string_gives_one_recipient()
     {
