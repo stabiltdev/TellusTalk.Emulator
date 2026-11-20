@@ -61,8 +61,8 @@ code: `src/Stabilt.TellusTalk.Emulator/Sending/Reading/`, and the request it rea
 
 - Code reads a request's fields through `SendRequest.Body`, whose properties are `JsonElement`s: `Body.SmsFlash`, never
   a lookup by name. A field the request left out is `JsonValueKind.Undefined`, one sent as null is `Null`.
-- A new field goes on `SendRequestBody` with its `[JsonPropertyName]`, and with `[Expects]` when the schemas fix its
-  shape.
+- A new field goes on `SendRequestBody` with its `[JsonPropertyName]`, and its shape in `SendRequestRules.Shapes` when
+  the schemas fix one; what K8 refuses or the specification forbids goes in `SendRequestRules`.
 - `SendRequest.Fields` holds the fields as they arrived, unknown ones included, for what is shown as sent: the page's
   other fields and the read API's `fields`.
 - What the specification forbids becomes a `Warning` with a code from `WarningCodes`, never a refusal. A refusal of the

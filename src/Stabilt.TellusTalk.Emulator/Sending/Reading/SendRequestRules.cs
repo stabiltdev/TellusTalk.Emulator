@@ -6,15 +6,52 @@ using Stabilt.TellusTalk.Emulator.Senders;
 namespace Stabilt.TellusTalk.Emulator.Sending.Reading;
 
 /// <summary>
-/// The rules TellusTalk's specification states, in its schema or in a field's description. TellusTalk accepted every
-/// request that broke one when probed, so each becomes a warning, never a refusal.
+/// Every rule about a send request: the shape the specification gives a field, K8's refusals in the order K8 checks
+/// them, and the warnings about what the specification forbids and TellusTalk accepts.
 /// </summary>
-internal static class SpecificationRules
+internal static class SendRequestRules
 {
     public const int MaxSenderNameLength = 11;
 
+    private const string UnknownSourceSuffix = "; must be one of frozenset({'replysms', 'number', 'text', 'subject'})";
+
+    private static readonly FrozenSet<string> Sources =
+        new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
+
+    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [Sender];
+
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <summary>Every field whose shape the schemas fix, by its JSON name.</summary>
+    public static FrozenDictionary<string, JsonShape> Shapes { get; } =
+        new Dictionary<string, JsonShape>(StringComparer.Ordinal)
+        {
+            ["text"] = JsonShape.String,
+            ["html"] = JsonShape.String,
+            ["subject"] = JsonShape.String,
+            ["attachments"] = JsonShape.List,
+            ["scheduled_send_time"] = JsonShape.String,
+            ["billing_id"] = JsonShape.String,
+            ["report_to"] = JsonShape.Addresses,
+            ["reply_to"] = JsonShape.Addresses,
+            ["sms_max_parts"] = JsonShape.Number,
+            ["sms_header"] = JsonShape.String,
+            ["sms_flash"] = JsonShape.Boolean,
+            ["sms_validity_time"] = JsonShape.Number,
+            ["sms_originator_text"] = JsonShape.String,
+            ["sms_originator_number"] = JsonShape.String,
+            ["sms_originator_source"] = JsonShape.String,
+            ["sms_single_thread"] = JsonShape.Boolean,
+            ["sms_format"] = JsonShape.String,
+            ["sms_character_set"] = JsonShape.String,
+            ["sms_udh"] = JsonShape.String,
+        }.ToFrozenDictionary(StringComparer.Ordinal);
+
+    /// <summary>The first rule the body breaks, as K8 answers it, or null.</summary>
+    public static ReadResult? Refusal(SendRequestBody body) => InOrder
+        .Select(rule => rule(body))
+        .FirstOrDefault(result => result is not null);
 
     /// <summary>The rules about the request as a whole, which every message of it carries.</summary>
     public static IReadOnlyList<Warning> Check(SendRequest request) => [.. RequestWarnings(request)];
@@ -22,6 +59,55 @@ internal static class SpecificationRules
     /// <summary>The rules about an SMS, which only the request's SMS messages carry.</summary>
     public static IReadOnlyList<Warning> CheckSms(SendRequest request) =>
         [.. SenderWarnings(request), .. EncodingWarnings(request), .. MaxPartsWarnings(request)];
+
+    private static RefusedByTellusTalk? Sender(SendRequestBody body) =>
+        SenderRefusal(body) is { } text ? new RefusedByTellusTalk(text) : null;
+
+    /// <summary>The order between the three sender rules is unobserved.</summary>
+    private static string? SenderRefusal(SendRequestBody body)
+    {
+        var typed = new (string Name, JsonElement Value)[]
+        {
+            ("subject", body.Subject),
+            ("sms_originator_source", body.SmsOriginatorSource),
+            ("sms_originator_text", body.SmsOriginatorText),
+            ("sms_originator_number", body.SmsOriginatorNumber),
+        };
+
+        foreach (var (name, value) in typed)
+        {
+            if (value.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.String))
+            {
+                return $"Invalid {name} not a string: {PythonText.Of(value)}";
+            }
+        }
+
+        if (body.SmsOriginatorSource.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var source = body.SmsOriginatorSource.GetString()!;
+        if (!Sources.Contains(source))
+        {
+            return $"Invalid sms_originator_source: {source}{UnknownSourceSuffix}";
+        }
+
+        return source switch
+        {
+            "subject" => Missing(body.Subject, "subject", "non-empty string", "."),
+            "text" => Missing(body.SmsOriginatorText, "sms_originator_text", "string", string.Empty),
+            "number" => Missing(body.SmsOriginatorNumber, "sms_originator_number", "number", string.Empty),
+            _ => null,
+        };
+    }
+
+    private static string? Missing(JsonElement value, string field, string expected, string ending) =>
+        value.ValueKind == JsonValueKind.Undefined
+            ? $"400 Bad Request: Missing/invalid '{field}'. Expected {expected}, got 'None'{ending}"
+            : value.GetString()!.Length == 0
+                ? $"400 Bad Request: Missing/invalid '{field}'. Expected {expected}, got ''{ending}"
+                : null;
 
     private static IEnumerable<Warning> SenderWarnings(SendRequest request)
     {
@@ -124,4 +210,13 @@ internal static class SpecificationRules
 
     private static bool IsHex(string text) =>
         text.Length % 2 == 0 && text.All(char.IsAsciiHexDigit);
+}
+
+internal enum JsonShape
+{
+    String,
+    Number,
+    Boolean,
+    List,
+    Addresses,
 }

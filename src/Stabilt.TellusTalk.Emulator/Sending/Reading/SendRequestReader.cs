@@ -69,9 +69,9 @@ internal static class SendRequestReader
         }
 
         var body = root.Deserialize<SendRequestBody>()!;
-        if (SenderRefusals.Find(body) is { } senderRefusal)
+        if (SendRequestRules.Refusal(body) is { } refusedByTellusTalk)
         {
-            return new RefusedByTellusTalk(senderRefusal);
+            return refusedByTellusTalk;
         }
 
         if (body.To.ValueKind == JsonValueKind.Undefined)
@@ -107,8 +107,8 @@ internal static class SendRequestReader
 
         return new Accepted(request with
         {
-            Warnings = [.. warnings, .. SpecificationRules.Check(request)],
-            SmsWarnings = SpecificationRules.CheckSms(request),
+            Warnings = [.. warnings, .. SendRequestRules.Check(request)],
+            SmsWarnings = SendRequestRules.CheckSms(request),
         });
     }
 
@@ -146,7 +146,7 @@ internal static class SendRequestReader
             return characterSet;
         }
 
-        return ReadString(body.SmsFormat) is { } format && SpecificationRules.CharacterSets.Contains(format)
+        return ReadString(body.SmsFormat) is { } format && SendRequestRules.CharacterSets.Contains(format)
             ? format
             : null;
     }
@@ -291,14 +291,16 @@ internal static class SendRequestReader
     {
         foreach (var (name, value) in fields)
         {
-            if (!SendRequestBody.Known.TryGetValue(name, out var shape))
+            if (!SendRequestBody.Names.Contains(name))
             {
                 yield return new Warning(
                     WarningCodes.UnknownField,
                     name,
                     $"'{name}' is not a field TellusTalk's specification defines; TellusTalk accepts it and ignores it.");
             }
-            else if (shape is { } expected && value.ValueKind != JsonValueKind.Null && !Matches(expected, value))
+            else if (SendRequestRules.Shapes.TryGetValue(name, out var expected) &&
+                value.ValueKind != JsonValueKind.Null &&
+                !Matches(expected, value))
             {
                 yield return new Warning(
                     WarningCodes.WrongJsonType,
