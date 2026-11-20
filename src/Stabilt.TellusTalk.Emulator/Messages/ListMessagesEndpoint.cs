@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Requests;
 
@@ -12,8 +13,8 @@ internal sealed class ListMessagesEndpoint : IEndpoint
         Ok<MessageList>,
         BadRequest<ApiError>
     > Handle(
-        MessageStore store,
-        TimeProvider time,
+        [FromServices] MessageStore store,
+        [FromServices] TimeProvider time,
         string? state,
         string? channel,
         string? to,

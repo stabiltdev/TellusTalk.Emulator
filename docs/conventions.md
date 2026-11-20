@@ -36,6 +36,8 @@ code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulato
 - Each kind of answer `send/v1` gives is a type of its own in `Sending/HttpResults/` that writes it in TellusTalk's
   form: a `TextResult` made by `Refusals`, or `SendAccepted`. Its `Handle` returns them as `Results<…>`, which so names
   every answer it gives.
+- A handler marks each service it takes `[FromServices]`, though minimal APIs would infer it, so a reader tells the
+  services from what the request carries.
 
 ## The read API's answers
 

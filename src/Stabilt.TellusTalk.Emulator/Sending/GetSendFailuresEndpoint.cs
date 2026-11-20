@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
@@ -12,7 +13,7 @@ internal sealed class GetSendFailuresEndpoint : IEndpoint
     private static Results<
         Ok<List<SendFailureResponse>>,
         BadRequest<ApiError>
-    > Handle(SendFailures failures, string? number)
+    > Handle([FromServices] SendFailures failures, string? number)
     {
         if (FailureNumber.Refusal(number) is { } refusal)
         {

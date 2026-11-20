@@ -38,12 +38,12 @@ internal sealed class SendEndpoint : IEndpoint
         EmptyHttpResult
     >> Handle(
         [FromHeader(Name = "Content-Type")] string? contentType,
+        [FromServices] TimeProvider time,
+        [FromServices] MessageFactory factory,
+        [FromServices] MessageStore store,
+        [FromServices] SendFailures failures,
         Stream body,
         ClaimsPrincipal user,
-        TimeProvider time,
-        MessageFactory factory,
-        MessageStore store,
-        SendFailures failures,
         CancellationToken cancellationToken)
     {
         if (!IsJson(contentType))
