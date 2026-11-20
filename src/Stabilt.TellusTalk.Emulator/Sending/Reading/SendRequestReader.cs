@@ -109,8 +109,12 @@ internal static class SendRequestReader
         List<Recipient> recipients,
         SendRequestBody body,
         Dictionary<string, JsonElement> fields,
-        List<Warning> warnings) =>
-        new()
+        List<Warning> warnings)
+    {
+        var (reportTo, invalidReportTo) = ReadReportAddresses(body.ReportTo, "report_to", warnings);
+        var (replyTo, invalidReplyTo) = ReadReportAddresses(body.ReplyTo, "reply_to", warnings);
+
+        return new()
         {
             Recipients = recipients,
             Text = ReadString(body.Text),
@@ -124,12 +128,15 @@ internal static class SendRequestReader
             Udh = ReadString(body.SmsUdh),
             SingleThread = body.SmsSingleThread.ValueKind == JsonValueKind.True,
             ScheduledSendTime = ReadString(body.ScheduledSendTime),
-            ReportTo = ReadReportAddresses(body.ReportTo, "report_to", warnings),
-            ReplyTo = ReadReportAddresses(body.ReplyTo, "reply_to", warnings),
+            ReportTo = reportTo,
+            InvalidReportTo = invalidReportTo,
+            ReplyTo = replyTo,
+            InvalidReplyTo = invalidReplyTo,
             Body = body,
             Fields = fields,
             Warnings = warnings,
         };
+    }
 
     /// <summary>
     /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, as
@@ -138,7 +145,11 @@ internal static class SendRequestReader
     private static string? ReadCharacterSet(SendRequestBody body) =>
         ReadString(body.SmsCharacterSet) ?? ReadString(body.SmsFormat);
 
-    private static List<ReportAddress> ReadReportAddresses(JsonElement value, string name, List<Warning> warnings)
+    /// <summary>The addresses read, and those that could not be, as sent, for the answer to list.</summary>
+    private static (List<ReportAddress> Addresses, List<string> Invalid) ReadReportAddresses(
+        JsonElement value,
+        string name,
+        List<Warning> warnings)
     {
         IEnumerable<JsonElement> values = value.ValueKind switch
         {
@@ -148,6 +159,7 @@ internal static class SendRequestReader
         };
 
         var addresses = new List<ReportAddress>();
+        var invalid = new List<string>();
         foreach (var item in values.Where(item => item.ValueKind == JsonValueKind.String))
         {
             var text = item.GetString()!;
@@ -157,6 +169,7 @@ internal static class SendRequestReader
             }
             else
             {
+                invalid.Add(text);
                 warnings.Add(new Warning(
                     WarningCodes.ReportAddressInvalid,
                     name,
@@ -164,7 +177,7 @@ internal static class SendRequestReader
             }
         }
 
-        return addresses;
+        return (addresses, invalid);
     }
 
     /// <summary>K8's rules have refused every other <c>to</c>: it is a string, a list or an object here.</summary>

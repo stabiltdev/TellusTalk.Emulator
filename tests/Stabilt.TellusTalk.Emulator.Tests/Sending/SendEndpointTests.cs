@@ -247,6 +247,40 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task An_answer_to_several_recipients_has_no_log_uuid()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":["sms:+46701740605","sms:+46701740606"],"text":"Hej"}""");
+
+        (await Answer(response)).Should().Be("""{"job_id":"<id>","job_uuid":"<id>","job_size":2}""");
+    }
+
+    [Fact]
+    public async Task An_answer_lists_a_report_address_k8_cannot_use_before_the_log_uuid()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","report_to":"not an address"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
+        Store(emulator).List(MessageState.Sent).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task An_answer_lists_a_reply_address_k8_cannot_use_before_the_log_uuid()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","reply_to":"not an address"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","invalid_reply_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
+        Store(emulator).List(MessageState.Sent).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task An_unset_DateTime_as_scheduled_time_is_sent_at_once()
     {
         await using var emulator = new EmulatorFactory();
@@ -342,6 +376,16 @@ public sealed class SendEndpointTests
 
     private static Task<string> Body(HttpResponseMessage response) =>
         response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>The answer as written, with the job's id, which K8 gives for each of its ids, as <c>&lt;id&gt;</c>.</summary>
+    private static async Task<string> Answer(HttpResponseMessage response)
+    {
+        var body = await Body(response);
+        using var answer = JsonDocument.Parse(body);
+        var jobId = answer.RootElement.GetProperty("job_id").GetString()!;
+
+        return body.Replace(jobId, "<id>", StringComparison.Ordinal);
+    }
 
     private static string Header(HttpResponseMessage response, string name) => response.Headers.GetValues(name).Single();
 }

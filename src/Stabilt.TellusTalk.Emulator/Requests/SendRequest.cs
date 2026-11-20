@@ -30,7 +30,13 @@ internal sealed record SendRequest
 
     public IReadOnlyList<ReportAddress> ReportTo { get; init; } = [];
 
+    /// <summary>Each <c>report_to</c> as sent that is none of the kinds <see cref="ReportAddress"/> reads.</summary>
+    public IReadOnlyList<string> InvalidReportTo { get; init; } = [];
+
     public IReadOnlyList<ReportAddress> ReplyTo { get; init; } = [];
+
+    /// <summary>Each <c>reply_to</c> as sent that is none of the kinds <see cref="ReportAddress"/> reads.</summary>
+    public IReadOnlyList<string> InvalidReplyTo { get; init; } = [];
 
     public required SendRequestBody Body { get; init; }
 

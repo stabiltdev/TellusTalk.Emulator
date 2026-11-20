@@ -87,7 +87,7 @@ internal sealed class SendEndpoint : IEndpoint
         var job = factory.Create(request, user.Identity!.Name!, rawRequest);
         store.Add(job.Messages);
 
-        return new SendAccepted(SendResponse.From(job));
+        return new SendAccepted(SendResponse.From(job, request));
     }
 
     private static bool IsJson(string? contentType) =>

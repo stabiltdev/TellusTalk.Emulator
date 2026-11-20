@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Stabilt.TellusTalk.Emulator.Messages;
+using Stabilt.TellusTalk.Emulator.Requests;
 
 namespace Stabilt.TellusTalk.Emulator.Sending.HttpResults;
 
@@ -29,12 +30,38 @@ internal sealed class SendAccepted(SendResponse response) :
         TypedResults.Text(JsonSerializer.Serialize(Value), ContentType, statusCode: StatusCode).ExecuteAsync(httpContext);
 }
 
+/// <summary>K8's members in K8's order, each optional one written only when it has something.</summary>
 internal sealed record SendResponse(
     [property: JsonPropertyName("job_id")] string JobId,
     [property: JsonPropertyName("job_uuid")] string JobUuid,
-    [property: JsonPropertyName("log_uuid")] string LogUuid,
+    [property: JsonPropertyName("invalid_report_to"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<InvalidAddress>? InvalidReportTo,
+    [property: JsonPropertyName("invalid_reply_to"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<InvalidAddress>? InvalidReplyTo,
+    [property: JsonPropertyName("log_uuid"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? LogUuid,
     [property: JsonPropertyName("job_size")] int JobSize)
 {
-    /// <summary>K8 gives the job's id as all three ids, and the number of recipients as the size.</summary>
-    public static SendResponse From(SendJob job) => new(job.JobId, job.JobId, job.JobId, job.Size);
+    private const string UnknownAddressType = "Unknown Address Type";
+
+    /// <summary>
+    /// K8 gives the job's id as each of its ids, and the number of recipients as the size. With several recipients each
+    /// message has a log id of its own, and K8 answers with none.
+    /// </summary>
+    public static SendResponse From(SendJob job, SendRequest request) => new(
+        job.JobId,
+        job.JobId,
+        Invalid(request.InvalidReportTo, UnknownAddressType),
+        Invalid(request.InvalidReplyTo, UnknownAddressType),
+        job.Size == 1 ? job.JobId : null,
+        job.Size);
+
+    private static List<InvalidAddress>? Invalid(IReadOnlyList<string> addresses, string error) =>
+        addresses.Count == 0
+            ? null
+            : [.. addresses.Select(address => new InvalidAddress(address, error))];
 }
+
+internal sealed record InvalidAddress(
+    [property: JsonPropertyName("address")] string Address,
+    [property: JsonPropertyName("error")] string Error);
