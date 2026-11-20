@@ -25,6 +25,18 @@ from PTS's range for fiction, and no account is named.
   camera=(), microphone=()`, on refusals too.
 - **2026-11-07:** a send → ids (`job_id`, `job_uuid`, `log_uuid`, `X-Request-Id` and a report's request id) that are
   version 1 UUIDs written as 32 lowercase hexadecimal characters without hyphens.
+- **2026-11-17:** a send to two SMS numbers, and to three → `job_id`, `job_uuid` and `job_size` (`2`, `3`), without
+  `log_uuid`. The admin's log had a row per recipient, each with a log id of its own other than the job's; with one
+  recipient the log id was the job's.
+- **2026-11-17:** `sms:+4670174062X` → `{"job_id":…,"job_uuid":…,"log_uuid":…,"invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}`,
+  the address as sent, its `+` unescaped. The admin's log showed it Blocked (1) with `failed_reason`
+  `txtNUMBER_NOT_NUMERIC`, and nothing was sent.
+- **2026-11-17:** `report_to: "not an address"` →
+  `{"job_id":…,"job_uuid":…,"invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":…,"job_size":1}`,
+  and the message went out; `reply_to: "not an address"` alike, with `invalid_reply_to`.
+- **2026-11-17:** a `group:` recipient in seven forms (`box.` and an address book's id, a label, the id alone, the
+  address book's alias, its name, `template.` and a template's id, and the template's whole address) → each `200` with
+  `job_size` `1` and `log_uuid` the job's id, logged once as Awaiting Send (10); nothing reached a member.
 
 ### Requests K8 accepts that the specification forbids
 
@@ -38,6 +50,8 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-17:** another type than the specification's in `html` (`123`), `scheduled_send_time` (`1763400000`, sent at
   once), `billing_id` (`123`), `sms_max_parts` (`"2"`), `sms_flash` (`1`), `sms_validity_time` (`"60"`),
   `sms_single_thread` (`"true"`) and `sms_udh` (`123`) → accepted.
+- **2026-11-17:** a number without a prefix, `+46701740620` → accepted and stored as `sms:+46701740620`; a number
+  written with hyphens, `sms:+46-70-174-06-21` → accepted and stored without them.
 - **2026-11-17:** a 14-character `subject` as the sender (passed on whole), `sms_single_thread` beside a text sender,
   `sms_format: "gsm"`, a binary SMS whose text is not hex, an emoji under `sms_character_set: gsm`, `sms_max_parts` of
   `0` and `-1`, a text of three parts under `sms_max_parts: 1` (stored whole), and a `scheduled_send_time` that is a word
@@ -104,6 +118,8 @@ Observed with the user's Sender at Reply SMS unless it says otherwise.
   `sms_originator_text: ""` beside `sms_originator_number` and for `subject: ""` beside `sms_originator_text`, with the
   Sender probably at Text, and for `sms_originator_number: ""` alone with the Sender at Reply SMS. The empty field takes
   its place in the order and then shows the reply number.
+- **2026-11-17:** `sms_originator_number: "Acme"` alone → accepted; the admin's log showed the source `number` and the
+  account's reply number as the sender.
 
 ### Sender fields K8 refuses
 
@@ -161,6 +177,8 @@ for the sender fields.
   before `sms_validity_time`, `sms_max_parts`, `sms_header`, `reply_to`, `report_to` and `sms_character_set`;
   `reply_to` before `report_to` before `sms_character_set` before `sms_header`; `sms_validity_time` before
   `sms_max_parts` before `sms_header`.
+- **2026-11-17:** each refusal of these fields but `billing_id`'s → a row in the admin's log, Blocked (1), with the
+  refusal's text as `failed_reason`. The refusal of `billing_id` and the `500`s had no row.
 
 ### Duplicates
 
@@ -238,8 +256,6 @@ is settled when someone observes the real thing.
   accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
 - Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
 - How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
-- What `log_uuid` holds when a request has several recipients, and whether `job_size` counts a `group:` recipient as
-  one or as each of its members; the emulator counts it as one.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
 - What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
   passes the request's on.
@@ -262,8 +278,25 @@ is settled when someone observes the real thing.
   been observed.
 - What K8 answers a request whose recipients are all on channels other than SMS; the emulator answers as for an SMS.
 - Whether K8 sends delivery reports for channels other than SMS, and in what form; the emulator reports SMS only.
-- Whether K8 removes spaces in a `fax:`, `mms:` or `voice:` number; the emulator does, as for an SMS.
-- How K8 reads a `to` address without a prefix, such as a bare e-mail address; the emulator reads it as an SMS number.
+- Whether K8 removes spaces and hyphens in a `fax:`, `mms:` or `voice:` number, and whether it blocks one with a
+  letter; the emulator removes them as from an SMS number, and keeps a letter with the `to-not-digits` warning.
+- How K8 reads a `to` address without a prefix that is no number, such as a bare e-mail address, and whether it blocks
+  one; the emulator reads it as an SMS number and never blocks it, though it blocks the same address after `sms:`.
+- Which `sms:` numbers K8 blocks besides one with a letter: digits without `+`, such as a local number (issue #32), an
+  empty number, or `+` alone; the emulator sends them with the `to-not-digits` warning, and blocks a number holding any
+  other character than digits after an optional `+`.
+- Where `invalid_recipients`, `invalid_report_to` and `invalid_reply_to` sit in an answer to several recipients, and
+  in which order the two address lists come when a request has both; the emulator keeps the places seen with one
+  recipient and writes `invalid_report_to` first.
+- Which `report_to` and `reply_to` addresses K8 lists besides one that is no address at all, such as an `sms:` number
+  with a letter or a URL without a host, and with what error; the emulator lists every one that is no e-mail address,
+  `sms:` number or http(s) URL, with `Unknown Address Type`.
+- How K8 writes characters outside ASCII in an answer's addresses; the emulator writes them as they are, as K8 was seen
+  to write a `+`.
+- Whether a number K8 blocks counts for the duplicate rule, as an original or as a duplicate; the emulator does neither.
+- Whether a number K8 blocks gets a delivery report, and in what form; the emulator sends none (issue #31).
+- What a local number such as `0701740698` as `sms_originator_number` shows as the sender, and what `"Acme"` shows
+  beside a named source `number`; the emulator shows the reply number for every `number` that is not `+` and digits.
 - Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
 - Whether K8 refuses the sender fields and the fields above as it does for an SMS when a request has no SMS recipient,
   such as an e-mail with `html` and no `text`; the emulator does.
