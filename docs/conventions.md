@@ -36,6 +36,8 @@ code: `src/Stabilt.TellusTalk.Emulator/Http/`, `tests/Stabilt.TellusTalk.Emulato
 - Each kind of answer `send/v1` gives is a type of its own in `Sending/HttpResults/` that writes it in TellusTalk's
   form: a `TextResult` made by `Refusals`, or `SendAccepted`. Its `Handle` returns them as `Results<…>`, which so names
   every answer it gives.
+- A handler marks each service it takes `[FromServices]`, though minimal APIs would infer it, so a reader tells the
+  services from what the request carries.
 
 ## The read API's answers
 
@@ -59,13 +61,14 @@ code: `src/Stabilt.TellusTalk.Emulator/Sending/Reading/`, and the request it rea
 
 - Code reads a request's fields through `SendRequest.Body`, whose properties are `JsonElement`s: `Body.SmsFlash`, never
   a lookup by name. A field the request left out is `JsonValueKind.Undefined`, one sent as null is `Null`.
-- A new field goes on `SendRequestBody` with its `[JsonPropertyName]`, and with `[Expects]` when the schemas fix its
-  shape.
+- A new field goes on `SendRequestBody` with its `[JsonPropertyName]`, and its shape in `SendRequestRules.Shapes` when
+  the schemas fix one; what K8 refuses or the specification forbids goes in `SendRequestRules`.
 - `SendRequest.Fields` holds the fields as they arrived, unknown ones included, for what is shown as sent: the page's
   other fields and the read API's `fields`.
 - What the specification forbids becomes a `Warning` with a code from `WarningCodes`, never a refusal. A refusal of the
   emulator's own begins `TellusTalk Emulator:` and says it is the emulator's limit.
-- A refusal TellusTalk was seen to give is a `RefusedByTellusTalk`, answered with K8's text as `text/html`.
+- A refusal TellusTalk was seen to give is a `RefusedByTellusTalk`, answered with K8's text as `text/html`; a server
+  error it was seen to give is a `FailedInTellusTalk`, answered `500` the same way.
 
 ## Time and ids
 

@@ -35,14 +35,6 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
-    public void A_recipient_on_another_channel_without_a_text_has_an_empty_text()
-    {
-        var message = Create("""{"to":"email:test.user@example.se","html":"<p>Shipped</p>"}""").Messages.Single();
-
-        message.Text.Should().BeEmpty();
-    }
-
-    [Fact]
     public void The_job_counts_every_recipient_whatever_its_channel()
     {
         var job = Create("""{"to":["sms:+46701740605","email:test.user@example.se","group:box.abc123"],"text":"Hej"}""");

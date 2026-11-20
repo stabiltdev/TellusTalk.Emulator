@@ -29,4 +29,35 @@ public sealed class PythonTextTests
 
         PythonText.Of(document.RootElement).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("null", "NoneType")]
+    [InlineData("true", "bool")]
+    [InlineData("12", "int")]
+    [InlineData("1.5", "float")]
+    [InlineData("1e3", "float")]
+    [InlineData("\"a\"", "str")]
+    [InlineData("[]", "list")]
+    [InlineData("{}", "dict")]
+    public void A_value_is_named_by_its_python_type(string json, string name)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        PythonText.TypeName(document.RootElement).Should().Be(name);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("false")]
+    [InlineData("\"\"")]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("0")]
+    [InlineData("0.0")]
+    public void Python_reads_these_values_as_false(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        PythonText.IsFalse(document.RootElement).Should().BeTrue();
+    }
 }

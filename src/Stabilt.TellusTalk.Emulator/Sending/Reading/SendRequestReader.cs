@@ -11,8 +11,6 @@ internal static class SendRequestReader
 {
     private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
     private const string NotAnObject = "TellusTalk Emulator: the request body must be a JSON object.";
-    private const string NoRecipient =
-        "TellusTalk Emulator: a request needs 'to' for the emulator to record a message.";
     private const string NotAnAddress = "TellusTalk Emulator: 'to' must be an address or a list of addresses.";
 
     private const string RecipientObjects =
@@ -69,14 +67,9 @@ internal static class SendRequestReader
         }
 
         var body = root.Deserialize<SendRequestBody>()!;
-        if (SenderRefusals.Find(body) is { } senderRefusal)
+        if (SendRequestRules.Refusal(body) is { } refusedByTellusTalk)
         {
-            return new RefusedByTellusTalk(senderRefusal);
-        }
-
-        if (body.To.ValueKind == JsonValueKind.Undefined)
-        {
-            return new Refused(NoRecipient);
+            return refusedByTellusTalk;
         }
 
         var (addresses, refusal) = ReadAddresses(body.To);
@@ -107,8 +100,8 @@ internal static class SendRequestReader
 
         return new Accepted(request with
         {
-            Warnings = [.. warnings, .. SpecificationRules.Check(request)],
-            SmsWarnings = SpecificationRules.CheckSms(request),
+            Warnings = [.. warnings, .. SendRequestRules.Check(request)],
+            SmsWarnings = SendRequestRules.CheckSms(request),
         });
     }
 
@@ -138,18 +131,12 @@ internal static class SendRequestReader
             Warnings = warnings,
         };
 
-    /// <summary>The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent and its value is a documented one.</summary>
-    private static string? ReadCharacterSet(SendRequestBody body)
-    {
-        if (ReadString(body.SmsCharacterSet) is { } characterSet)
-        {
-            return characterSet;
-        }
-
-        return ReadString(body.SmsFormat) is { } format && SpecificationRules.CharacterSets.Contains(format)
-            ? format
-            : null;
-    }
+    /// <summary>
+    /// The deprecated <c>sms_format</c> stands in when <c>sms_character_set</c> is absent or null, as
+    /// <see cref="SendRequestRules"/> reads it; the rules have refused any value but the four character sets.
+    /// </summary>
+    private static string? ReadCharacterSet(SendRequestBody body) =>
+        ReadString(body.SmsCharacterSet) ?? ReadString(body.SmsFormat);
 
     private static List<ReportAddress> ReadReportAddresses(JsonElement value, string name, List<Warning> warnings)
     {
@@ -180,6 +167,7 @@ internal static class SendRequestReader
         return addresses;
     }
 
+    /// <summary>K8's rules have refused every other <c>to</c>: it is a string, a list or an object here.</summary>
     private static (IReadOnlyList<string> Addresses, string? Refusal) ReadAddresses(JsonElement to)
     {
         if (to.ValueKind == JsonValueKind.String)
@@ -187,9 +175,9 @@ internal static class SendRequestReader
             return ([to.GetString()!], null);
         }
 
-        if (to.ValueKind != JsonValueKind.Array)
+        if (to.ValueKind == JsonValueKind.Object)
         {
-            return ([], NotAnAddress);
+            return ([], RecipientObjects);
         }
 
         var items = to
@@ -291,14 +279,16 @@ internal static class SendRequestReader
     {
         foreach (var (name, value) in fields)
         {
-            if (!SendRequestBody.Known.TryGetValue(name, out var shape))
+            if (!SendRequestBody.Names.Contains(name))
             {
                 yield return new Warning(
                     WarningCodes.UnknownField,
                     name,
                     $"'{name}' is not a field TellusTalk's specification defines; TellusTalk accepts it and ignores it.");
             }
-            else if (shape is { } expected && value.ValueKind != JsonValueKind.Null && !Matches(expected, value))
+            else if (SendRequestRules.Shapes.TryGetValue(name, out var expected) &&
+                value.ValueKind != JsonValueKind.Null &&
+                !Matches(expected, value))
             {
                 yield return new Warning(
                     WarningCodes.WrongJsonType,

@@ -32,7 +32,7 @@ ASP.NET Core minimal APIs, Razor components rendered on the server, one containe
 | `src/Stabilt.TellusTalk.Emulator/Authentication` | TellusTalk's Basic authentication as `send/v1` takes it: `BasicAuthenticationHandler` and `BasicCredentials` |
 | `src/Stabilt.TellusTalk.Emulator/Sending` | TellusTalk's send API: the endpoint and its filters, TellusTalk's headers, and the failures a test arms |
 | `src/Stabilt.TellusTalk.Emulator/Sending/HttpResults` | Every answer to a send as a type of its own: `Refusals` and the `TextResult` kinds it makes, and `SendAccepted` |
-| `src/Stabilt.TellusTalk.Emulator/Sending/Reading` | Reading a send request: the reader, the specification's rules, TellusTalk's sender refusals, and Python's rendering of a value in K8's texts |
+| `src/Stabilt.TellusTalk.Emulator/Sending/Reading` | Reading a send request: the reader; `SendRequestRules`, with the fields' shapes, K8's refusals and server errors in K8's order, and the specification's warnings; and Python's rendering of a value in K8's texts |
 | `src/Stabilt.TellusTalk.Emulator/Requests` | A caught send's request: the typed body, its recipients and their channels, report addresses, numbers, scheduled times and the warnings |
 | `src/Stabilt.TellusTalk.Emulator/Senders` | The sender as the recipient's phone shows it, and the user's Sender setting and reply number |
 | `src/Stabilt.TellusTalk.Emulator/Parts` | GSM 03.38 and UCS-2 part counting |

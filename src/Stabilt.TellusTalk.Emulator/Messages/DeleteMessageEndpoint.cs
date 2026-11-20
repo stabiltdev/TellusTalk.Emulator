@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 
 namespace Stabilt.TellusTalk.Emulator.Messages;
@@ -7,6 +8,6 @@ internal sealed class DeleteMessageEndpoint : IEndpoint
 {
     public RouteHandlerBuilder Map(IEndpointRouteBuilder builder) => builder.MapDelete("api/messages/{id}", Handle);
 
-    private static Results<NoContent, NotFound> Handle(MessageStore store, string id) =>
+    private static Results<NoContent, NotFound> Handle([FromServices] MessageStore store, string id) =>
         store.Remove(id) ? TypedResults.NoContent() : TypedResults.NotFound();
 }

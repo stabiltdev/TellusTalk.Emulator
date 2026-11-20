@@ -91,15 +91,28 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
-    public async Task A_request_without_a_recipient_is_refused_as_the_emulators_limit()
+    public async Task A_request_without_a_recipient_is_refused_as_k8_does()
     {
         await using var emulator = new EmulatorFactory();
 
         using var response = await emulator.Send("""{"text":"Hej"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
-        (await Body(response)).Should().Be("TellusTalk Emulator: a request needs 'to' for the emulator to record a message.");
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/html; charset=utf-8");
+        (await Body(response)).Should().Be("key: to is missing or empty");
+        Store(emulator).List().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Attachments_k8_cannot_take_are_answered_500_with_k8s_text()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","attachments":null}""");
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/html; charset=utf-8");
+        (await Body(response)).Should().Be("'NoneType' object is not iterable");
         Store(emulator).List().Should().BeEmpty();
     }
 
@@ -109,6 +122,7 @@ public sealed class SendEndpointTests
     [InlineData(HttpStatusCode.BadRequest, "{", "application/json", "tester")]
     [InlineData(HttpStatusCode.BadRequest, """{"text":"Hej"}""", "application/json", "tester")]
     [InlineData(HttpStatusCode.BadRequest, """{"to":"sms:+46701740605","text":"Hej","subject":5}""", "application/json", "tester")]
+    [InlineData(HttpStatusCode.InternalServerError, """{"to":"sms:+46701740605","text":"Hej","attachments":null}""", "application/json", "tester")]
     [InlineData(HttpStatusCode.OK, Probe, "application/json", "tester")]
     public async Task Every_answer_to_a_send_carries_TellusTalks_headers_and_a_content_length(
         HttpStatusCode status,

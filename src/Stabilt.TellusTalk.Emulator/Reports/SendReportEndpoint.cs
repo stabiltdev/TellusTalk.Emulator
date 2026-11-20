@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 
@@ -19,9 +20,9 @@ internal sealed class SendReportEndpoint : IEndpoint
         NotFound,
         BadRequest<ApiError>
     >> Handle(
-        MessageStore store,
-        ReportSender sender,
-        IHostApplicationLifetime lifetime,
+        [FromServices] MessageStore store,
+        [FromServices] ReportSender sender,
+        [FromServices] IHostApplicationLifetime lifetime,
         string id,
         ReportOrder order)
     {

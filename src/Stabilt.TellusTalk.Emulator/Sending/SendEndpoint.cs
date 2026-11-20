@@ -33,17 +33,18 @@ internal sealed class SendEndpoint : IEndpoint
     private static async Task<Results<
         SendAccepted,
         TellusTalkRefusal,
+        TellusTalkError,
         EmulatorLimit,
         FailureResult,
         EmptyHttpResult
     >> Handle(
         [FromHeader(Name = "Content-Type")] string? contentType,
+        [FromServices] TimeProvider time,
+        [FromServices] MessageFactory factory,
+        [FromServices] MessageStore store,
+        [FromServices] SendFailures failures,
         Stream body,
         ClaimsPrincipal user,
-        TimeProvider time,
-        MessageFactory factory,
-        MessageStore store,
-        SendFailures failures,
         CancellationToken cancellationToken)
     {
         if (!IsJson(contentType))
@@ -61,6 +62,7 @@ internal sealed class SendEndpoint : IEndpoint
             {
                 Refused refused => Refusals.EmulatorLimit(StatusCodes.Status400BadRequest, refused.Text),
                 RefusedByTellusTalk refusedByTellusTalk => Refusals.TellusTalk(refusedByTellusTalk.Text),
+                FailedInTellusTalk failed => Refusals.TellusTalkError(failed.Text),
                 _ => throw new InvalidOperationException($"The read result '{read}' has no answer."),
             };
         }

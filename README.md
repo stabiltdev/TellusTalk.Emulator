@@ -37,7 +37,7 @@ It sends nothing onward. Its only outgoing calls are the delivery reports to the
 | Delivery reports | JSON to http(s) URLs, automatically and on request | Reports by e-mail or SMS, other report formats, retries |
 | Replies | `reply_to` is kept and shown | Replies themselves |
 | Storage | In memory | Persistence: a restart empties the lists |
-| Failures | TellusTalk's own `401` and `400` sender refusals, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
+| Failures | TellusTalk's own `401`, its `400` refusals of fields and its `500` for `attachments`, refusals of what the emulator cannot record, and a list of `4xx` and `5xx`, late if asked, for the next sends to any number or to one, on request | Dropped connections |
 
 ## Running it
 
@@ -173,17 +173,33 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 The emulator refuses:
 
 - what TellusTalk refuses, each with TellusTalk's own text as `text/html`: a request without credentials, or with
-  malformed ones, with `401`; and with `400`, a sender field (`subject`, `sms_originator_source`,
-  `sms_originator_text` or `sms_originator_number`) that is null or not a string (`Invalid subject not a string: None`),
-  an `sms_originator_source` other than `replysms`, `text`, `number` or `subject`, matched exactly, case included, and a
-  source of `subject`, `text` or `number` without its value (`subject`, `sms_originator_text` or
-  `sms_originator_number`, absent or empty). They are checked in that order, which TellusTalk has not been seen to
-  settle, and before the emulator's own limits;
+  malformed ones, with `401`; and with `400`, in this order:
+  - a `to` or `text` that is absent, null or empty, `0` and `false` included (`key: to is missing or empty`), or of
+    another type than `to` takes (a string, a list or an object) or `text` takes (a string);
+  - a `reply_to` or `report_to` that is null, a number or a boolean;
+  - an `sms_validity_time` or `sms_max_parts` that is null;
+  - a character set, `sms_character_set` or, when that is absent or null, `sms_format`, that is neither null nor a
+    string, or a string other than `optimize`, `gsm`, `unicode` or `binary`, matched exactly; and a binary SMS whose
+    `sms_udh` is absent, null or empty, `0` and `false` included;
+  - an `sms_header` that is not a string, null included;
+  - a sender field (`subject`, `sms_originator_source`, `sms_originator_text` or `sms_originator_number`) that is null
+    or not a string (`Invalid subject not a string: None`), an `sms_originator_source` other than `replysms`, `text`,
+    `number` or `subject`, matched exactly, case included, and a source of `subject`, `text` or `number` without its
+    value (`subject`, `sms_originator_text` or `sms_originator_number`, absent or empty);
+  - a `billing_id` string holding anything but ASCII letters and digits, `å` included; an empty one, or one that is no
+    string, passes.
+
+  Where TellusTalk was not seen to check two of them against each other, the order is the emulator's, and where a rule
+  rests on a reading of TellusTalk's text rather than on a value seen, [k8-behaviour.md](docs/k8-behaviour.md) says so.
+  All come before the emulator's own limits;
+- what TellusTalk answers with `500`, with its text as `text/html`: an `attachments` that Python cannot iterate, such as
+  null (`'NoneType' object is not iterable`), or one holding an item without `pop`, such as a string's characters
+  (`'str' object has no attribute 'pop'`). A list of objects, as the specification has it, passes. It comes before the
+  refusals of the fields after `text`;
 - what it cannot record, each with a `text/plain` body that begins `TellusTalk Emulator:` and says it is the
-  emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object, a
-  request without `to`, a `to` that is neither an address nor a list of addresses, recipient objects (the form secure
-  messages and signatures take), and a `log:` recipient, which TellusTalk answers with a `log_href` the emulator cannot
-  give.
+  emulator's limit: a body that is not JSON (`415`); and with a `400`, JSON that does not parse or is not an object,
+  recipient objects (the form secure messages and signatures take) as `to` or in it, a `to` list holding something other
+  than an address, and a `log:` recipient, which TellusTalk answers with a `log_href` the emulator cannot give.
 
 Everything else is accepted and answered as TellusTalk answers it. What TellusTalk's specification forbids, or what
 TellusTalk was seen to correct quietly, becomes a warning on the message, shown on the page and served by the read API:
@@ -200,14 +216,11 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `subject-too-long` | On an SMS, `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
 | `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits. |
 | `single-thread-without-replysms` | On an SMS, `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
-| `character-set-invalid` | On an SMS, an `sms_character_set` that is not `optimize`, `gsm`, `unicode` or `binary`. |
 | `format-deprecated` | On an SMS, `sms_format`, which `sms_character_set` replaces. |
-| `binary-without-udh` | A binary SMS without `sms_udh`. |
 | `binary-not-hex` | A binary SMS whose text is not hex. |
 | `gsm-unsupported-characters` | On an SMS, characters outside the GSM alphabet under `sms_character_set: gsm`. |
 | `max-parts-invalid` | On an SMS, `sms_max_parts` below 1. |
 | `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator keeps it whole. |
-| `billing-id-invalid` | A `billing_id` that is not alphanumeric. |
 | `scheduled-time-invalid` | A `scheduled_send_time` that is not an ISO 8601 date and time; the message is sent at once. |
 | `report-address-invalid` | A `report_to` or `reply_to` that is no e-mail address, `sms:` number or http(s) URL. |
 

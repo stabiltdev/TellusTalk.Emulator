@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Stabilt.TellusTalk.Emulator.Http;
 
 namespace Stabilt.TellusTalk.Emulator.Sending;
@@ -9,7 +10,7 @@ internal sealed class SetSendFailuresEndpoint : IEndpoint
 
     /// <summary>Without a number the failures are for any send; without a body, one send fails with 500.</summary>
     private static Results<Ok<List<SendFailureResponse>>, BadRequest<ApiError>> Handle(
-        SendFailures failures,
+        [FromServices] SendFailures failures,
         string? number,
         List<FailureOrder?>? orders)
     {
