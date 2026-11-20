@@ -91,15 +91,15 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
-    public async Task A_request_without_a_recipient_is_refused_as_the_emulators_limit()
+    public async Task A_request_without_a_recipient_is_refused_as_k8_does()
     {
         await using var emulator = new EmulatorFactory();
 
         using var response = await emulator.Send("""{"text":"Hej"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        response.Content.Headers.ContentType!.ToString().Should().Be("text/plain; charset=utf-8");
-        (await Body(response)).Should().Be("TellusTalk Emulator: a request needs 'to' for the emulator to record a message.");
+        response.Content.Headers.ContentType!.ToString().Should().Be("text/html; charset=utf-8");
+        (await Body(response)).Should().Be("key: to is missing or empty");
         Store(emulator).List().Should().BeEmpty();
     }
 

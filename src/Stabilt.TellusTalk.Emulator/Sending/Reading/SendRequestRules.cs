@@ -18,7 +18,7 @@ internal static class SendRequestRules
     private static readonly FrozenSet<string> Sources =
         new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
 
-    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [Sender];
+    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [To, Text, Sender];
 
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
@@ -59,6 +59,32 @@ internal static class SendRequestRules
     /// <summary>The rules about an SMS, which only the request's SMS messages carry.</summary>
     public static IReadOnlyList<Warning> CheckSms(SendRequest request) =>
         [.. SenderWarnings(request), .. EncodingWarnings(request), .. MaxPartsWarnings(request)];
+
+    /// <summary>K8 tests for truth before it tests the type, so a <c>0</c> or <c>false</c> is missing or empty.</summary>
+    private static RefusedByTellusTalk? To(SendRequestBody body)
+    {
+        if (PythonText.IsFalse(body.To))
+        {
+            return new RefusedByTellusTalk("key: to is missing or empty");
+        }
+
+        return body.To.ValueKind is JsonValueKind.String or JsonValueKind.Array or JsonValueKind.Object
+            ? null
+            : new RefusedByTellusTalk(
+                $"key: to is of type <class '{PythonText.TypeName(body.To)}'> expected (str,dict,list)");
+    }
+
+    private static RefusedByTellusTalk? Text(SendRequestBody body)
+    {
+        if (PythonText.IsFalse(body.Text))
+        {
+            return new RefusedByTellusTalk("key: text is missing or empty");
+        }
+
+        return body.Text.ValueKind == JsonValueKind.String
+            ? null
+            : new RefusedByTellusTalk($"key: text is of type {PythonText.TypeName(body.Text)} expected (str)");
+    }
 
     private static RefusedByTellusTalk? Sender(SendRequestBody body) =>
         SenderRefusal(body) is { } text ? new RefusedByTellusTalk(text) : null;

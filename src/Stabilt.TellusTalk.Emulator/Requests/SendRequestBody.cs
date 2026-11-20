@@ -9,8 +9,8 @@ namespace Stabilt.TellusTalk.Emulator.Requests;
 /// A send request's body: every field TellusTalk's send schemas define, for any channel. The schemas cannot be read one
 /// at a time: the only <c>additionalProperties: false</c>, on <c>sms_mms_params</c>, would forbid even <c>to</c>, and
 /// the specification's own list example sends <c>subject</c> to an SMS recipient. Each field keeps the JSON it arrived
-/// as, whatever its type, so a value of the wrong type is a warning rather than a refusal; a field the body left out is
-/// <see cref="JsonValueKind.Undefined"/> and one sent as null is <see cref="JsonValueKind.Null"/>.
+/// as, whatever its type, so the rules rather than the binding decide what a value of the wrong type meets; a field the
+/// body left out is <see cref="JsonValueKind.Undefined"/> and one sent as null is <see cref="JsonValueKind.Null"/>.
 /// </summary>
 internal sealed class SendRequestBody
 {

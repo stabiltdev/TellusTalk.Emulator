@@ -11,8 +11,6 @@ internal static class SendRequestReader
 {
     private const string InvalidJson = "TellusTalk Emulator: the request body is not valid JSON.";
     private const string NotAnObject = "TellusTalk Emulator: the request body must be a JSON object.";
-    private const string NoRecipient =
-        "TellusTalk Emulator: a request needs 'to' for the emulator to record a message.";
     private const string NotAnAddress = "TellusTalk Emulator: 'to' must be an address or a list of addresses.";
 
     private const string RecipientObjects =
@@ -72,11 +70,6 @@ internal static class SendRequestReader
         if (SendRequestRules.Refusal(body) is { } refusedByTellusTalk)
         {
             return refusedByTellusTalk;
-        }
-
-        if (body.To.ValueKind == JsonValueKind.Undefined)
-        {
-            return new Refused(NoRecipient);
         }
 
         var (addresses, refusal) = ReadAddresses(body.To);
@@ -180,6 +173,7 @@ internal static class SendRequestReader
         return addresses;
     }
 
+    /// <summary>K8's rules have refused every other <c>to</c>: it is a string, a list or an object here.</summary>
     private static (IReadOnlyList<string> Addresses, string? Refusal) ReadAddresses(JsonElement to)
     {
         if (to.ValueKind == JsonValueKind.String)
@@ -187,9 +181,9 @@ internal static class SendRequestReader
             return ([to.GetString()!], null);
         }
 
-        if (to.ValueKind != JsonValueKind.Array)
+        if (to.ValueKind == JsonValueKind.Object)
         {
-            return ([], NotAnAddress);
+            return ([], RecipientObjects);
         }
 
         var items = to

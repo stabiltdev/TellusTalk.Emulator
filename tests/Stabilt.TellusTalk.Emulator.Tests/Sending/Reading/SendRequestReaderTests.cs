@@ -18,10 +18,54 @@ public sealed class SendRequestReaderTests
         Read("""["sms:+46701740605"]""").Should().Be(new Refused("TellusTalk Emulator: the request body must be a JSON object."));
     }
 
-    [Fact]
-    public void A_request_without_to_is_refused()
+    [Theory]
+    [InlineData("""{"text":"Hej"}""")]
+    [InlineData("""{"to":null,"text":"Hej"}""")]
+    [InlineData("""{"to":"","text":"Hej"}""")]
+    [InlineData("""{"to":[],"text":"Hej"}""")]
+    [InlineData("""{"to":0,"text":"Hej"}""")]
+    public void A_to_that_is_missing_or_empty_is_refused_as_k8_does(string json)
     {
-        Read("""{"text":"Hej"}""").Should().Be(new Refused("TellusTalk Emulator: a request needs 'to' for the emulator to record a message."));
+        Read(json).Should().Be(new RefusedByTellusTalk("key: to is missing or empty"));
+    }
+
+    [Theory]
+    [InlineData("""{"to":46701740619,"text":"Hej"}""", "int")]
+    [InlineData("""{"to":4.5,"text":"Hej"}""", "float")]
+    [InlineData("""{"to":true,"text":"Hej"}""", "bool")]
+    public void A_to_of_another_type_is_refused_as_k8_does(string json, string type)
+    {
+        Read(json).Should().Be(new RefusedByTellusTalk($"key: to is of type <class '{type}'> expected (str,dict,list)"));
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740605"}""")]
+    [InlineData("""{"to":"sms:+46701740605","text":null}""")]
+    [InlineData("""{"to":"sms:+46701740605","text":""}""")]
+    public void A_text_that_is_missing_or_empty_is_refused_as_k8_does(string json)
+    {
+        Read(json).Should().Be(new RefusedByTellusTalk("key: text is missing or empty"));
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740605","text":123}""", "int")]
+    [InlineData("""{"to":"sms:+46701740605","text":true}""", "bool")]
+    [InlineData("""{"to":"sms:+46701740605","text":["Hej"]}""", "list")]
+    public void A_text_of_another_type_is_refused_as_k8_does(string json, string type)
+    {
+        Read(json).Should().Be(new RefusedByTellusTalk($"key: text is of type {type} expected (str)"));
+    }
+
+    [Fact]
+    public void A_missing_to_is_refused_before_a_missing_text()
+    {
+        Read("{}").Should().Be(new RefusedByTellusTalk("key: to is missing or empty"));
+    }
+
+    [Fact]
+    public void K8s_refusal_of_to_comes_before_the_sender_refusals()
+    {
+        Read("""{"subject":null,"text":"Hej"}""").Should().Be(new RefusedByTellusTalk("key: to is missing or empty"));
     }
 
     [Fact]
@@ -144,6 +188,20 @@ public sealed class SendRequestReaderTests
     }
 
     [Fact]
+    public void A_to_that_is_one_recipient_object_is_refused_as_the_emulators_limit()
+    {
+        Read("""{"to":{"address":"sms:+46701740605"},"text":"Hej"}""")
+            .Should().Be(new Refused("TellusTalk Emulator: the emulator handles plain recipients only, not recipient objects. TellusTalk itself accepts them."));
+    }
+
+    [Fact]
+    public void A_to_list_holding_something_other_than_an_address_is_refused_as_the_emulators_limit()
+    {
+        Read("""{"to":["sms:+46701740605",46701740606],"text":"Hej"}""")
+            .Should().Be(new Refused("TellusTalk Emulator: 'to' must be an address or a list of addresses."));
+    }
+
+    [Fact]
     public void Spaces_in_a_number_are_removed_with_a_warning()
     {
         var request = Accepted("""{"to":"sms:+46 70 174 06 05","text":"Hej"}""");
@@ -233,17 +291,17 @@ public sealed class SendRequestReaderTests
     [Fact]
     public void The_type_of_each_sender_field_is_checked_in_order()
     {
-        Read("""{"to":"sms:+46701740605","sms_originator_number":null,"subject":null}""")
+        Read("""{"to":"sms:+46701740605","text":"Hej","sms_originator_number":null,"subject":null}""")
             .Should().Be(new RefusedByTellusTalk("Invalid subject not a string: None"));
     }
 
     [Fact]
     public void Null_in_a_field_that_is_no_sender_field_is_read_as_absent()
     {
-        var request = Accepted("""{"to":"sms:+46701740605","text":null,"sms_header":null}""");
+        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_udh":null,"scheduled_send_time":null}""");
 
-        request.Text.Should().BeNull();
-        request.Header.Should().BeNull();
+        request.Udh.Should().BeNull();
+        request.ScheduledSendTime.Should().BeNull();
     }
 
     [Fact]

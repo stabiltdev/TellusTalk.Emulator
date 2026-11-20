@@ -15,6 +15,30 @@ internal static class PythonText
         ? value.GetString()!
         : Repr(value);
 
+    public static string TypeName(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Null => "NoneType",
+        JsonValueKind.True or JsonValueKind.False => "bool",
+        JsonValueKind.Number => IsInteger(value.GetRawText()) ? "int" : "float",
+        JsonValueKind.String => "str",
+        JsonValueKind.Array => "list",
+        JsonValueKind.Object => "dict",
+        _ => throw new ArgumentException("An absent value has no type in Python.", nameof(value)),
+    };
+
+    /// <summary>Python's <c>not value</c>, an absent value read as <c>None</c>.</summary>
+    public static bool IsFalse(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Undefined or JsonValueKind.Null or JsonValueKind.False => true,
+        JsonValueKind.String => value.GetString()!.Length == 0,
+        JsonValueKind.Array => value.GetArrayLength() == 0,
+        JsonValueKind.Object => !value
+            .EnumerateObject()
+            .Any(),
+        JsonValueKind.Number => IsZero(value.GetRawText()),
+        _ => false,
+    };
+
     private static string Repr(JsonElement value) => value.ValueKind switch
     {
         JsonValueKind.Null => "None",
@@ -57,9 +81,16 @@ internal static class PythonText
         return "{" + string.Join(", ", rendered) + "}";
     }
 
+    /// <summary>Python's <c>json</c> reads a number with a fraction or an exponent as a float, any other as an int.</summary>
+    private static bool IsInteger(string raw) => raw.IndexOfAny(['.', 'e', 'E']) < 0;
+
+    private static bool IsZero(string raw) => IsInteger(raw)
+        ? BigInteger.Parse(raw, CultureInfo.InvariantCulture).IsZero
+        : double.Parse(raw, CultureInfo.InvariantCulture) == 0;
+
     private static string Number(string raw)
     {
-        if (raw.IndexOfAny(['.', 'e', 'E']) < 0)
+        if (IsInteger(raw))
         {
             var integer = BigInteger.Parse(raw, CultureInfo.InvariantCulture);
 
