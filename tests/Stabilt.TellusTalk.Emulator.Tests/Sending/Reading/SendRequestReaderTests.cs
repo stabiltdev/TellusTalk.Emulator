@@ -100,6 +100,77 @@ public sealed class SendRequestReaderTests
             .Should().Be(new FailedInTellusTalk("'NoneType' object is not iterable"));
     }
 
+    [Theory]
+    [InlineData("reply_to", "null", "NoneType")]
+    [InlineData("reply_to", "123", "int")]
+    [InlineData("reply_to", "false", "bool")]
+    [InlineData("report_to", "null", "NoneType")]
+    [InlineData("report_to", "123", "int")]
+    [InlineData("report_to", "1.5", "float")]
+    public void An_address_list_of_another_type_is_refused_as_k8_does(string field, string value, string type)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"Hej","{{field}}":{{value}}}""")
+            .Should().Be(new RefusedByTellusTalk($"400 Bad Request: {field} is of type <class '{type}'>. Expected (list,dict,str)"));
+    }
+
+    [Theory]
+    [InlineData("sms_validity_time")]
+    [InlineData("sms_max_parts")]
+    public void A_null_count_is_refused_as_k8_does(string field)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"Hej","{{field}}":null}""")
+            .Should().Be(new RefusedByTellusTalk($"Invalid {field} not an int: None"));
+    }
+
+    [Theory]
+    [InlineData("sms_max_parts", "\"2\"")]
+    [InlineData("sms_validity_time", "\"60\"")]
+    public void A_count_written_as_a_string_is_accepted_with_a_warning(string field, string value)
+    {
+        var request = Accepted($$"""{"to":"sms:+46701740605","text":"Hej","{{field}}":{{value}}}""");
+
+        request.Warnings.Should().ContainSingle().Which.Should().Match<Warning>(warning =>
+            warning.Code == WarningCodes.WrongJsonType && warning.Field == field);
+    }
+
+    [Theory]
+    [InlineData("null", "None")]
+    [InlineData("123", "123")]
+    [InlineData("true", "True")]
+    public void A_header_that_is_no_string_is_refused_as_k8_does(string value, string shown)
+    {
+        Read($$"""{"to":"sms:+46701740605","text":"Hej","sms_header":{{value}}}""")
+            .Should().Be(new RefusedByTellusTalk($"Invalid sms_header not a string: {shown}"));
+    }
+
+    [Fact]
+    public void Reply_to_is_refused_before_report_to()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","report_to":123,"reply_to":123}""")
+            .Should().Be(new RefusedByTellusTalk("400 Bad Request: reply_to is of type <class 'int'>. Expected (list,dict,str)"));
+    }
+
+    [Fact]
+    public void The_validity_time_is_refused_before_the_max_parts()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","sms_max_parts":null,"sms_validity_time":null}""")
+            .Should().Be(new RefusedByTellusTalk("Invalid sms_validity_time not an int: None"));
+    }
+
+    [Fact]
+    public void The_max_parts_are_refused_before_the_header()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","sms_header":123,"sms_max_parts":null}""")
+            .Should().Be(new RefusedByTellusTalk("Invalid sms_max_parts not an int: None"));
+    }
+
+    [Fact]
+    public void Report_to_is_refused_before_the_header()
+    {
+        Read("""{"to":"sms:+46701740605","text":"Hej","sms_header":123,"report_to":123}""")
+            .Should().Be(new RefusedByTellusTalk("400 Bad Request: report_to is of type <class 'int'>. Expected (list,dict,str)"));
+    }
+
     [Fact]
     public void To_as_a_string_gives_one_recipient()
     {
@@ -339,9 +410,9 @@ public sealed class SendRequestReaderTests
     [Fact]
     public void A_number_where_the_schema_says_string_is_read_as_its_json_text_with_a_warning()
     {
-        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_header":123}""");
+        var request = Accepted("""{"to":"sms:+46701740605","text":"Hej","sms_udh":123}""");
 
-        request.Header.Should().Be("123");
+        request.Udh.Should().Be("123");
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.WrongJsonType);
     }
 

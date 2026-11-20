@@ -18,7 +18,18 @@ internal static class SendRequestRules
     private static readonly FrozenSet<string> Sources =
         new[] { "replysms", "text", "number", "subject" }.ToFrozenSet(StringComparer.Ordinal);
 
-    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder = [To, Text, Attachments, Sender];
+    private static readonly Func<SendRequestBody, ReadResult?>[] InOrder =
+    [
+        To,
+        Text,
+        Attachments,
+        ReplyTo,
+        ReportTo,
+        ValidityTime,
+        MaxParts,
+        Header,
+        Sender,
+    ];
 
     public static FrozenSet<string> CharacterSets { get; } =
         new[] { "optimize", "gsm", "unicode", "binary" }.ToFrozenSet(StringComparer.Ordinal);
@@ -108,6 +119,30 @@ internal static class SendRequestRules
     }
 
     private static FailedInTellusTalk NoPop(string type) => new($"'{type}' object has no attribute 'pop'");
+
+    private static RefusedByTellusTalk? ReplyTo(SendRequestBody body) => AddressList(body.ReplyTo, "reply_to");
+
+    private static RefusedByTellusTalk? ReportTo(SendRequestBody body) => AddressList(body.ReportTo, "report_to");
+
+    private static RefusedByTellusTalk? AddressList(JsonElement value, string field) =>
+        value.ValueKind is JsonValueKind.Undefined or JsonValueKind.String or JsonValueKind.Array or JsonValueKind.Object
+            ? null
+            : new RefusedByTellusTalk(
+                $"400 Bad Request: {field} is of type <class '{PythonText.TypeName(value)}'>. Expected (list,dict,str)");
+
+    private static RefusedByTellusTalk? ValidityTime(SendRequestBody body) =>
+        NullCount(body.SmsValidityTime, "sms_validity_time");
+
+    private static RefusedByTellusTalk? MaxParts(SendRequestBody body) => NullCount(body.SmsMaxParts, "sms_max_parts");
+
+    /// <summary>Only null was seen refused; K8 took <c>"2"</c> and <c>"60"</c>, so what else it refuses is not guessed.</summary>
+    private static RefusedByTellusTalk? NullCount(JsonElement value, string field) =>
+        value.ValueKind == JsonValueKind.Null ? new RefusedByTellusTalk($"Invalid {field} not an int: None") : null;
+
+    private static RefusedByTellusTalk? Header(SendRequestBody body) =>
+        body.SmsHeader.ValueKind is JsonValueKind.Undefined or JsonValueKind.String
+            ? null
+            : new RefusedByTellusTalk($"Invalid sms_header not a string: {PythonText.Of(body.SmsHeader)}");
 
     private static RefusedByTellusTalk? Sender(SendRequestBody body) =>
         SenderRefusal(body) is { } text ? new RefusedByTellusTalk(text) : null;
