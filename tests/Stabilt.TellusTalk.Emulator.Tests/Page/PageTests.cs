@@ -106,14 +106,30 @@ public sealed class PageTests
     }
 
     [Fact]
-    public async Task An_empty_blocked_tab_says_nothing_is_held_back()
+    public async Task The_detail_says_a_not_numeric_number_was_not_sent()
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, """{"to":"sms:+4670174062X","text":"Hej"}""");
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        var detail = page.QuerySelector("#detail")!;
+        detail.QuerySelectorAll(".tt-sub")
+            .Select(paragraph => Collapsed(paragraph.TextContent))
+            .Should().Contain("Not sent: the number is not numeric (txtNUMBER_NOT_NUMERIC).");
+        detail.QuerySelector(".tt-phone .note")!.TextContent.Should().Be("Not sent");
+        detail.TextContent.Should().NotContain("Held back");
+    }
+
+    [Fact]
+    public async Task An_empty_blocked_tab_says_nothing_is_blocked()
     {
         await using var emulator = new EmulatorFactory();
         await Send(emulator, """{"to":"sms:+46701740605","text":"Nu"}""");
 
         using var page = await Page(emulator, "?tab=blocked");
 
-        page.QuerySelector("#detail")!.TextContent.Trim().Should().Be("Nothing is held back.");
+        page.QuerySelector("#detail")!.TextContent.Trim().Should().Be("Nothing is blocked.");
     }
 
     [Fact]

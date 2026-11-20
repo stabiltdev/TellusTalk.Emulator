@@ -101,6 +101,19 @@ public sealed class CaughtMessageTests
     }
 
     [Fact]
+    public async Task A_message_blocked_for_its_number_reads_its_reason()
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = new TellusTalkEmulatorClient(emulator.CreateClient());
+        var id = await Send(emulator, """{"to":"sms:+4670174062X","text":"Hej"}""");
+
+        var message = await client.GetMessageAsync(id, TestContext.Current.CancellationToken);
+
+        message!.State.Should().Be(MessageState.Blocked);
+        message.BlockedReason.Should().Be(BlockedReason.NumberNotNumeric);
+    }
+
+    [Fact]
     public async Task A_message_on_another_channel_is_read_without_sender_links_or_parts()
     {
         await using var emulator = new EmulatorFactory();

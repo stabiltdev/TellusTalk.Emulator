@@ -29,10 +29,13 @@ internal sealed class MessageStore(TimeProvider time, IOptions<EmulatorOptions> 
         {
             foreach (var message in messages)
             {
-                // K8's duplicate key on another channel is unobserved, so only an SMS is held back.
-                var original = options.Value.BlockDuplicates && message.To.Channel == MessageChannel.Sms
-                    ? FindOriginal(message)
-                    : null;
+                // K8's duplicate key on another channel is unobserved, so only an SMS is held back. A message already
+                // blocked for another reason is not also a duplicate.
+                var original = options.Value.BlockDuplicates &&
+                    message.To.Channel == MessageChannel.Sms &&
+                    message.BlockedReason is null
+                        ? FindOriginal(message)
+                        : null;
                 var added = original is null
                     ? message
                     : message with { DuplicateOf = original.Id, BlockedReason = BlockedReason.Duplicate };

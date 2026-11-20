@@ -281,6 +281,38 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task A_not_numeric_number_is_listed_in_the_answer()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":"sms:+4670174062X","text":"Hej"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","log_uuid":"<id>","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}""");
+        var blocked = Store(emulator).List(MessageState.Blocked).Should().ContainSingle().Subject;
+        using var client = emulator.CreateClient();
+        using var message = JsonDocument.Parse(await client.GetStringAsync(
+            new Uri($"/api/messages/{blocked.Id}", UriKind.Relative),
+            TestContext.Current.CancellationToken));
+        message.RootElement.GetProperty("state").GetString().Should().Be("blocked");
+        message.RootElement.GetProperty("blockedReason").GetString().Should().Be("numberNotNumeric");
+        message.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task A_valid_and_a_not_numeric_number_send_one_and_block_the_other()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":["sms:+46701740605","sms:+4670174062X"],"text":"Hej"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":2}""");
+        Store(emulator).List(MessageState.Sent).Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
+        Store(emulator).List(MessageState.Blocked).Should().ContainSingle().Which.To.Address.Should().Be("+4670174062X");
+    }
+
+    [Fact]
     public async Task An_unset_DateTime_as_scheduled_time_is_sent_at_once()
     {
         await using var emulator = new EmulatorFactory();

@@ -42,7 +42,10 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                     isSms ? sms : null,
                     request,
                     isSms ? smsWarnings : request.Warnings,
-                    rawRequest);
+                    rawRequest)
+                {
+                    BlockedReason = recipient.NotNumeric ? BlockedReason.NumberNotNumeric : null,
+                };
             })
             .ToList();
 

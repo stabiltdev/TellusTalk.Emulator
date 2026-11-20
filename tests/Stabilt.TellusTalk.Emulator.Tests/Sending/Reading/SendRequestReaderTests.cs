@@ -415,12 +415,37 @@ public sealed class SendRequestReaderTests
     }
 
     [Fact]
-    public void A_number_with_other_characters_than_digits_is_kept_with_a_warning()
+    public void An_sms_number_with_other_characters_than_digits_is_not_numeric_with_a_warning()
     {
         var request = Accepted("""{"to":"sms:+4670abc","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc"));
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { NotNumeric = true });
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
+    }
+
+    [Fact]
+    public void An_sms_number_is_not_numeric_once_its_spaces_and_hyphens_are_removed()
+    {
+        var request = Accepted("""{"to":"sms:+46 70-174 06 2X","text":"Hej"}""");
+
+        request.Recipients.Single().Should().Be(new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X") { NotNumeric = true });
+    }
+
+    [Fact]
+    public void A_local_number_of_digits_is_numeric()
+    {
+        var request = Accepted("""{"to":"sms:0701740605","text":"Hej"}""");
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "0701740605", "sms:0701740605") { NotNumeric = false });
+        request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
+    }
+
+    [Fact]
+    public void A_bare_address_is_never_not_numeric()
+    {
+        var request = Accepted("""{"to":"test.user@example.se","text":"Hej"}""");
+
+        request.Recipients.Single().NotNumeric.Should().BeFalse();
     }
 
     [Fact]

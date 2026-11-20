@@ -346,8 +346,10 @@ A message:
 }
 ```
 
-- A held-back message has `state` `blocked`, `blockedReason` `duplicate`, and `duplicateOf` naming the message it
-  duplicates; every other message has both `null`. A report attempt's `status` may be `blocked`.
+- A blocked message has `state` `blocked` and says why in `blockedReason`: `duplicate` for a held-back message, whose
+  `duplicateOf` names the message it duplicates, or `numberNotNumeric` for an SMS number that is not numeric. Any other
+  message has both `null`, and a message blocked for its number has `duplicateOf` `null`. A report attempt's `status`
+  may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
   after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.

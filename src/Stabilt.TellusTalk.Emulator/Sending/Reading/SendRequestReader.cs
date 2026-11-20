@@ -226,6 +226,7 @@ internal static class SendRequestReader
                 {
                     MessageChannel.Email => ReadEmail(rest, address, warnings),
                     MessageChannel.Group => new Recipient(channel, rest, address),
+                    MessageChannel.Sms => ReadSmsNumber(rest, address, warnings),
                     _ => ReadNumber(channel, rest, address, warnings),
                 };
             }
@@ -237,6 +238,17 @@ internal static class SendRequestReader
             $"'{address}' lacks the 'sms:' prefix the specification asks for; the emulator reads it as an SMS number."));
 
         return ReadNumber(MessageChannel.Sms, address, address, warnings);
+    }
+
+    /// <summary>
+    /// K8 was seen blocking an <c>sms:</c> number with a letter. An address without a prefix is read as an SMS number
+    /// on a guess, since it could be an e-mail address, so it is never blocked as one.
+    /// </summary>
+    private static Recipient ReadSmsNumber(string number, string address, List<Warning> warnings)
+    {
+        var recipient = ReadNumber(MessageChannel.Sms, number, address, warnings);
+
+        return recipient with { NotNumeric = !PhoneNumbers.IsNumeric(recipient.Address) };
     }
 
     /// <summary>

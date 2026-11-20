@@ -302,6 +302,21 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
+    public async Task A_not_numeric_number_gets_no_report()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+4670174062X","text":"Hej","report_to":"https://example.se/reports"}""");
+
+        for (var step = 0; step < 5; step++)
+        {
+            await Step(emulator);
+        }
+
+        emulator.Reports.Received.Should().BeEmpty();
+        (await Attempts(emulator, id, expected: 0)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task A_message_without_a_report_address_gets_no_report()
     {
         await using var emulator = new EmulatorFactory();

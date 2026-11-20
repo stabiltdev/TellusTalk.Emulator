@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Stabilt.TellusTalk.Emulator.Messages;
@@ -16,6 +17,15 @@ internal sealed class SendAccepted(SendResponse response) :
     IValueHttpResult,
     IValueHttpResult<SendResponse>
 {
+    /// <summary>
+    /// K8 writes the <c>+</c> of a number as it is, which the default encoder escapes as HTML-sensitive; a JSON
+    /// answer is never read as HTML.
+    /// </summary>
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public SendResponse Value { get; } = response;
 
     public int StatusCode { get; } = StatusCodes.Status200OK;
@@ -27,7 +37,9 @@ internal sealed class SendAccepted(SendResponse response) :
     object? IValueHttpResult.Value => Value;
 
     public Task ExecuteAsync(HttpContext httpContext) =>
-        TypedResults.Text(JsonSerializer.Serialize(Value), ContentType, statusCode: StatusCode).ExecuteAsync(httpContext);
+        TypedResults
+            .Text(JsonSerializer.Serialize(Value, Options), ContentType, statusCode: StatusCode)
+            .ExecuteAsync(httpContext);
 }
 
 /// <summary>K8's members in K8's order, each optional one written only when it has something.</summary>
@@ -40,9 +52,12 @@ internal sealed record SendResponse(
     IReadOnlyList<InvalidAddress>? InvalidReplyTo,
     [property: JsonPropertyName("log_uuid"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? LogUuid,
+    [property: JsonPropertyName("invalid_recipients"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<InvalidAddress>? InvalidRecipients,
     [property: JsonPropertyName("job_size")] int JobSize)
 {
     private const string UnknownAddressType = "Unknown Address Type";
+    private const string NumberNotNumeric = "Number Not Numeric";
 
     /// <summary>
     /// K8 gives the job's id as each of its ids, and the number of recipients as the size. With several recipients each
@@ -54,6 +69,11 @@ internal sealed record SendResponse(
         Invalid(request.InvalidReportTo, UnknownAddressType),
         Invalid(request.InvalidReplyTo, UnknownAddressType),
         job.Size == 1 ? job.JobId : null,
+        Invalid(
+            [.. request.Recipients
+                .Where(recipient => recipient.NotNumeric)
+                .Select(recipient => recipient.AsSent)],
+            NumberNotNumeric),
         job.Size);
 
     private static List<InvalidAddress>? Invalid(IReadOnlyList<string> addresses, string error) =>
