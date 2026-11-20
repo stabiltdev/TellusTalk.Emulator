@@ -239,7 +239,9 @@ internal static class SendRequestReader
         return ReadNumber(MessageChannel.Sms, address, address, warnings);
     }
 
-    /// <summary>That TellusTalk removes spaces has been observed in an SMS number, not in another channel's.</summary>
+    /// <summary>
+    /// That TellusTalk removes spaces and hyphens has been observed in an SMS number, not in another channel's.
+    /// </summary>
     private static Recipient ReadNumber(MessageChannel channel, string number, string address, List<Warning> warnings)
     {
         if (number.Contains(' ', StringComparison.Ordinal))
@@ -251,6 +253,18 @@ internal static class SendRequestReader
                 channel == MessageChannel.Sms
                     ? $"'{address}' contains spaces; TellusTalk removes them, and so does the emulator."
                     : $"'{address}' contains spaces; the emulator removes them, as TellusTalk does in an SMS number."));
+        }
+
+        if (number.Contains('-', StringComparison.Ordinal))
+        {
+            number = number.Replace("-", string.Empty, StringComparison.Ordinal);
+            warnings.Add(new Warning(
+                WarningCodes.HyphensRemoved,
+                "to",
+                channel == MessageChannel.Sms
+                    ? $"'{address}' contains hyphens; TellusTalk removes them, and so does the emulator."
+                    : $"'{address}' contains hyphens; the emulator removes them, as TellusTalk does in an SMS " +
+                      "number."));
         }
 
         if (!PhoneNumbers.IsPlusDigits(number))

@@ -210,6 +210,7 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `wrong-json-type` | A field of another JSON type than the schema's, such as `"sms_flash": "true"`. |
 | `to-missing-prefix` | A recipient without any channel's prefix; the emulator reads it as an SMS number. |
 | `to-spaces-removed` | Spaces in a number; the emulator removes them, as TellusTalk does in an SMS number. |
+| `to-hyphens-removed` | Hyphens in a number; the emulator removes them after the spaces, as TellusTalk does in an SMS number. |
 | `to-not-digits` | A number that is not `+` followed by digits. |
 | `to-email-invalid` | An `email:` address without a name, `@` and a domain. |
 | `originator-text-too-long` | On an SMS, `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |

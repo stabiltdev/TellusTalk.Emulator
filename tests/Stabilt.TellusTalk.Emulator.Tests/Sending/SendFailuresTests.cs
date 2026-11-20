@@ -188,6 +188,17 @@ public sealed class SendFailuresTests
     }
 
     [Fact]
+    public async Task A_number_written_with_hyphens_meets_the_failure_armed_for_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        await ArmFor(emulator, "+46701740621", new { status = 503 });
+
+        using var failed = await emulator.Send("""{"to":"sms:+46-70-174-06-21","text":"Probe"}""");
+
+        failed.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
     public async Task A_send_to_several_numbers_spends_one_failure_of_the_first_recipient_that_has_any()
     {
         await using var emulator = new EmulatorFactory();

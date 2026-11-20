@@ -379,6 +379,33 @@ public sealed class SendRequestReaderTests
     }
 
     [Fact]
+    public void Hyphens_in_a_number_are_removed_with_a_warning()
+    {
+        var request = Accepted("""{"to":"sms:+46-70-174-06-21","text":"Hej"}""");
+
+        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+46701740621", "sms:+46-70-174-06-21"));
+        request.Warnings.Should().Equal(new Warning(
+            WarningCodes.HyphensRemoved,
+            "to",
+            "'sms:+46-70-174-06-21' contains hyphens; TellusTalk removes them, and so does the emulator."));
+    }
+
+    [Theory]
+    [InlineData("fax:+46-70-174-06-21")]
+    [InlineData("mms:+46-70-174-06-21")]
+    [InlineData("voice:+46-70-174-06-21")]
+    public void Hyphens_in_a_fax_mms_or_voice_number_are_removed_with_a_warning(string address)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Single().Address.Should().Be("+46701740621");
+        request.Warnings.Should().Equal(new Warning(
+            WarningCodes.HyphensRemoved,
+            "to",
+            $"'{address}' contains hyphens; the emulator removes them, as TellusTalk does in an SMS number."));
+    }
+
+    [Fact]
     public void A_number_without_the_sms_prefix_is_read_as_an_sms_recipient_with_a_warning()
     {
         var request = Accepted("""{"to":"+46701740605","text":"Hej"}""");
