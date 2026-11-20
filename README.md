@@ -161,7 +161,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 | Environment variable | Default | Meaning |
 |---|---|---|
 | `Emulator__SmsSender` | `replysms` | The user's Sender in TellusTalk: `replysms`, `text:<name>`, `number:<number>` or `subject`. Shown when a request has no sender field. |
-| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, and when the sender field K8 chose is empty. |
+| `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, when the sender field K8 chose is empty, and for an `sms_originator_number` that is not `+` and digits. |
 | `Emulator__AccountSender` | none | Obsolete. Honoured only when `Emulator__SmsSender` is not set: a value of `+` and digits means `replysms` with that number as `ReplyNumber` (unless `ReplyNumber` is set); anything else means `text:<value>`. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |
@@ -215,7 +215,7 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `to-email-invalid` | An `email:` address without a name, `@` and a domain. |
 | `originator-text-too-long` | On an SMS, `sms_originator_text` over 11 characters; TellusTalk passes it on whole. |
 | `subject-too-long` | On an SMS, `subject` as the sender, named or chosen by TellusTalk, over 11 characters. |
-| `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits. |
+| `originator-number-invalid` | On an SMS, `sms_originator_number` that is not `+` followed by digits; the reply number is shown instead, as TellusTalk sends it. |
 | `single-thread-without-replysms` | On an SMS, `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
 | `format-deprecated` | On an SMS, `sms_format`, which `sms_character_set` replaces. |
 | `binary-not-hex` | A binary SMS whose text is not hex. |

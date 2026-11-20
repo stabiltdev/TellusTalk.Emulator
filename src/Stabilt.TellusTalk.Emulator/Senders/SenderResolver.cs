@@ -37,7 +37,8 @@ internal static class SenderResolver
     /// <summary>
     /// <c>replysms</c> shows the account's reply number whatever the user's Sender setting says. <c>text</c>, <c>number</c>
     /// and <c>subject</c> show their field, which a request that gets here holds as a string, and non-empty when it named
-    /// the source; an empty one that TellusTalk chose shows the reply number instead.
+    /// the source; an empty one that TellusTalk chose shows the reply number instead. So does a <c>number</c> that
+    /// is not <c>+</c> and digits: K8 sent the reply number for <c>Acme</c>.
     /// </summary>
     public static ShownSender Resolve(SendRequest request, SenderSettings settings)
     {
@@ -48,7 +49,9 @@ internal static class SenderResolver
             ReplySmsSource => ReplyNumber(settings, ReplySmsSource),
             SubjectSource => FromField(request.Subject!, source, settings),
             TextSource => FromField(request.OriginatorText!, source, settings),
-            NumberSource => FromField(request.OriginatorNumber!, source, settings),
+            NumberSource => PhoneNumbers.IsPlusDigits(request.OriginatorNumber!)
+                ? Shown(request.OriginatorNumber!, source, fromAccount: false)
+                : ReplyNumber(settings, source),
             _ => throw new InvalidOperationException($"The reader refuses the sender source '{source}'."),
         };
     }

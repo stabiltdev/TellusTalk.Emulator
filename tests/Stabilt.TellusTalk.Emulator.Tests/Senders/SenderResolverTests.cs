@@ -125,6 +125,20 @@ public sealed class SenderResolverTests
     }
 
     [Fact]
+    public void A_sender_number_that_is_no_number_shows_the_reply_number()
+    {
+        Resolve(Plain with { OriginatorNumber = "Acme" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "number", FromAccount: true));
+    }
+
+    [Fact]
+    public void A_named_sender_number_that_is_no_number_shows_the_reply_number()
+    {
+        Resolve(Plain with { OriginatorSource = "number", OriginatorNumber = "Acme" }, Settings(SmsSenderKind.Text, "Setting"))
+            .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "number", FromAccount: true));
+    }
+
+    [Fact]
     public void Without_a_source_the_subject_comes_before_the_text_and_the_number()
     {
         var settings = Settings(SmsSenderKind.Text, "Setting");
