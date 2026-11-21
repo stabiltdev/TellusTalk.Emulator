@@ -261,7 +261,8 @@ public sealed class SendEndpointTests
     {
         await using var emulator = new EmulatorFactory();
 
-        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","report_to":"not an address"}""");
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","report_to":"not an address"}""");
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
@@ -273,7 +274,8 @@ public sealed class SendEndpointTests
     {
         await using var emulator = new EmulatorFactory();
 
-        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","reply_to":"not an address"}""");
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","reply_to":"not an address"}""");
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_reply_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
@@ -313,8 +315,10 @@ public sealed class SendEndpointTests
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":2}""");
-        Store(emulator).List(MessageState.Sent).Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
-        Store(emulator).List(MessageState.Blocked).Should().ContainSingle().Which.To.Address.Should().Be("+4670174062X");
+        Store(emulator).List(MessageState.Sent)
+            .Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
+        Store(emulator).List(MessageState.Blocked)
+            .Should().ContainSingle().Which.To.Address.Should().Be("+4670174062X");
     }
 
     [Fact]
@@ -414,7 +418,9 @@ public sealed class SendEndpointTests
     private static Task<string> Body(HttpResponseMessage response) =>
         response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>The answer as written, with the job's id, which K8 gives for each of its ids, as <c>&lt;id&gt;</c>.</summary>
+    /// <summary>
+    /// The answer as written, with the job's id, which K8 gives for each of its ids, as <c>&lt;id&gt;</c>.
+    /// </summary>
     private static async Task<string> Answer(HttpResponseMessage response)
     {
         var body = await Body(response);

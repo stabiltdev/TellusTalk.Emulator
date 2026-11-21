@@ -289,7 +289,8 @@ public sealed class ReportFlowTests
         await using var emulator = new EmulatorFactory();
         using var response = await emulator.Send(
             """{"to":"sms:+46701740605","text":"Hej","report_to":["https://example.se/reports","not an address"]}""");
-        using var answer = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        using var answer = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var report = (await StepUntilReported(emulator, 1)).Single();
 
@@ -305,7 +306,9 @@ public sealed class ReportFlowTests
     public async Task A_not_numeric_number_gets_no_report()
     {
         await using var emulator = new EmulatorFactory();
-        var id = await Send(emulator, """{"to":"sms:+4670174062X","text":"Hej","report_to":"https://example.se/reports"}""");
+        var id = await Send(
+            emulator,
+            """{"to":"sms:+4670174062X","text":"Hej","report_to":"https://example.se/reports"}""");
 
         for (var step = 0; step < 5; step++)
         {
