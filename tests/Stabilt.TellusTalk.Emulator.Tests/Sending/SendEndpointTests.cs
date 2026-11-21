@@ -281,6 +281,18 @@ public sealed class SendEndpointTests
     }
 
     [Fact]
+    public async Task An_answer_writes_a_letter_outside_ASCII_as_it_is_and_escapes_an_emoji_and_a_no_break_space()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","report_to":"ingen adress här\u00a0😀"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","invalid_report_to":[{"address":"ingen adress här\u00A0\uD83D\uDE00","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
+    }
+
+    [Fact]
     public async Task A_not_numeric_number_is_listed_in_the_answer()
     {
         await using var emulator = new EmulatorFactory();
