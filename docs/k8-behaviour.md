@@ -291,8 +291,9 @@ is settled when someone observes the real thing.
 - Which `report_to` and `reply_to` addresses K8 lists besides one that is no address at all, such as an `sms:` number
   with a letter or a URL without a host, and with what error; the emulator lists every one that is no e-mail address,
   `sms:` number or http(s) URL, with `Unknown Address Type`.
-- How K8 writes characters outside ASCII in an answer's addresses; the emulator writes them as they are, as K8 was seen
-  to write a `+`.
+- How K8 writes characters outside ASCII in an answer's addresses; the emulator writes a letter such as `å` as it is,
+  as K8 was seen to write a `+`, and escapes some others as `\u` sequences, among them an emoji and a space other than
+  U+0020, such as U+00A0.
 - Whether a number K8 blocks counts for the duplicate rule, as an original or as a duplicate; the emulator does neither.
 - Whether a number K8 blocks gets a delivery report, and in what form; the emulator sends none (issue #31).
 - What a local number such as `0701740698` as `sms_originator_number` shows as the sender, and what `"Acme"` shows

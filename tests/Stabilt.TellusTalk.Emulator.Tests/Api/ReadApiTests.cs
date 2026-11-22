@@ -396,6 +396,19 @@ public sealed class ReadApiTests
     }
 
     [Fact]
+    public async Task A_not_numeric_number_is_blocked_for_not_being_numeric_and_duplicates_nothing()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+4670174062X","text":"Hej"}""");
+
+        using var message = await Get(emulator, $"/api/messages/{id}");
+
+        message.RootElement.GetProperty("state").GetString().Should().Be("blocked");
+        message.RootElement.GetProperty("blockedReason").GetString().Should().Be("numberNotNumeric");
+        message.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task Messages_filter_by_the_blocked_state()
     {
         await using var emulator = new EmulatorFactory();

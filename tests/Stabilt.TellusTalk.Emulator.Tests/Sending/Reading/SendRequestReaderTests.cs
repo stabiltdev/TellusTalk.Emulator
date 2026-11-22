@@ -419,7 +419,8 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:+4670abc","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { NotNumeric = true });
+        request.Recipients.Should().Equal(
+            new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { NotNumeric = true });
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
     }
 
@@ -428,7 +429,8 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:+46 70-174 06 2X","text":"Hej"}""");
 
-        request.Recipients.Single().Should().Be(new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X") { NotNumeric = true });
+        request.Recipients.Single().Should().Be(
+            new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X") { NotNumeric = true });
     }
 
     [Fact]
@@ -436,7 +438,8 @@ public sealed class SendRequestReaderTests
     {
         var request = Accepted("""{"to":"sms:0701740605","text":"Hej"}""");
 
-        request.Recipients.Should().Equal(new Recipient(MessageChannel.Sms, "0701740605", "sms:0701740605") { NotNumeric = false });
+        request.Recipients.Should().Equal(
+            new Recipient(MessageChannel.Sms, "0701740605", "sms:0701740605") { NotNumeric = false });
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
     }
 

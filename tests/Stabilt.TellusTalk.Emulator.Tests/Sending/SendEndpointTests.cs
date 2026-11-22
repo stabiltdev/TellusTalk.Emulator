@@ -261,7 +261,8 @@ public sealed class SendEndpointTests
     {
         await using var emulator = new EmulatorFactory();
 
-        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","report_to":"not an address"}""");
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","report_to":"not an address"}""");
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
@@ -273,11 +274,24 @@ public sealed class SendEndpointTests
     {
         await using var emulator = new EmulatorFactory();
 
-        using var response = await emulator.Send("""{"to":"sms:+46701740605","text":"Hej","reply_to":"not an address"}""");
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","reply_to":"not an address"}""");
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_reply_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
         Store(emulator).List(MessageState.Sent).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task An_answer_writes_a_letter_outside_ASCII_as_it_is_and_escapes_an_emoji_and_a_no_break_space()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(
+            """{"to":"sms:+46701740605","text":"Hej","report_to":"ingen adress här\u00a0😀"}""");
+
+        (await Answer(response)).Should().Be(
+            """{"job_id":"<id>","job_uuid":"<id>","invalid_report_to":[{"address":"ingen adress här\u00A0\uD83D\uDE00","error":"Unknown Address Type"}],"log_uuid":"<id>","job_size":1}""");
     }
 
     [Fact]
@@ -289,14 +303,7 @@ public sealed class SendEndpointTests
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","log_uuid":"<id>","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}""");
-        var blocked = Store(emulator).List(MessageState.Blocked).Should().ContainSingle().Subject;
-        using var client = emulator.CreateClient();
-        using var message = JsonDocument.Parse(await client.GetStringAsync(
-            new Uri($"/api/messages/{blocked.Id}", UriKind.Relative),
-            TestContext.Current.CancellationToken));
-        message.RootElement.GetProperty("state").GetString().Should().Be("blocked");
-        message.RootElement.GetProperty("blockedReason").GetString().Should().Be("numberNotNumeric");
-        message.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+        Store(emulator).List(MessageState.Blocked).Should().ContainSingle();
     }
 
     [Fact]
@@ -308,8 +315,10 @@ public sealed class SendEndpointTests
 
         (await Answer(response)).Should().Be(
             """{"job_id":"<id>","job_uuid":"<id>","invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":2}""");
-        Store(emulator).List(MessageState.Sent).Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
-        Store(emulator).List(MessageState.Blocked).Should().ContainSingle().Which.To.Address.Should().Be("+4670174062X");
+        Store(emulator).List(MessageState.Sent)
+            .Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
+        Store(emulator).List(MessageState.Blocked)
+            .Should().ContainSingle().Which.To.Address.Should().Be("+4670174062X");
     }
 
     [Fact]
@@ -409,7 +418,9 @@ public sealed class SendEndpointTests
     private static Task<string> Body(HttpResponseMessage response) =>
         response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>The answer as written, with the job's id, which K8 gives for each of its ids, as <c>&lt;id&gt;</c>.</summary>
+    /// <summary>
+    /// The answer as written, with the job's id, which K8 gives for each of its ids, as <c>&lt;id&gt;</c>.
+    /// </summary>
     private static async Task<string> Answer(HttpResponseMessage response)
     {
         var body = await Body(response);

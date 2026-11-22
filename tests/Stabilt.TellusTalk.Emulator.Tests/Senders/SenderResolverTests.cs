@@ -134,7 +134,9 @@ public sealed class SenderResolverTests
     [Fact]
     public void A_named_sender_number_that_is_no_number_shows_the_reply_number()
     {
-        Resolve(Plain with { OriginatorSource = "number", OriginatorNumber = "Acme" }, Settings(SmsSenderKind.Text, "Setting"))
+        var request = Plain with { OriginatorSource = "number", OriginatorNumber = "Acme" };
+
+        Resolve(request, Settings(SmsSenderKind.Text, "Setting"))
             .Should().Be(new ShownSender(ReplyNumber, SenderKind.Number, "number", FromAccount: true));
     }
 
