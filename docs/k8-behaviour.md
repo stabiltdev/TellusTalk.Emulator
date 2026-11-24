@@ -57,6 +57,13 @@ from PTS's range for fiction, and no account is named.
   `0` and `-1`, a text of three parts under `sms_max_parts: 1` (stored whole), and a `scheduled_send_time` that is a word
   or not ISO 8601 (sent at once) → accepted.
 
+### Scheduled sends
+
+- **2026-11-24:** three sends scheduled for the same wall time, one without an offset, one with `Z` and one with
+  `+01:00` → the one without an offset went out with the `Z` one, an hour after the `+01:00` one. K8 reads a time
+  without an offset as UTC. The admin's log showed `scheduled_time` empty for all three; their report times showed
+  when each went out.
+
 ### Delivery reports
 
 - **2026-11-07:** a delivered SMS with a URL in `report_to` → a `POST` of JSON with `log_status` `txtDELIVERED`,
@@ -255,7 +262,6 @@ is settled when someone observes the real thing.
 - Whether `billing_id: ""` is accepted, and which characters besides a space and a hyphen K8 refuses; the emulator
   accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
 - Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
-- How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
 - What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
   passes the request's on.

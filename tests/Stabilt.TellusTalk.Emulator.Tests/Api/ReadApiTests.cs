@@ -242,7 +242,9 @@ public sealed class ReadApiTests
     public async Task A_due_time_is_served_in_UTC_like_every_other_time()
     {
         await using var emulator = new EmulatorFactory();
-        await Send(emulator, """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-08T00:30:00"}""");
+        await Send(
+            emulator,
+            """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-08T00:30:00+01:00"}""");
 
         using var list = await Get(emulator, "/api/messages");
 

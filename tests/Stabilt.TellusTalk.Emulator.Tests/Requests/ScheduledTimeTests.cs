@@ -14,28 +14,15 @@ public sealed class ScheduledTimeTests
     }
 
     [Theory]
-    [InlineData("2026-11-08T00:10:00", "2026-11-07T23:10:00Z")]
-    [InlineData("2026-07-01T12:00:00", "2026-07-01T10:00:00Z")]
-    public void A_time_without_an_offset_is_read_as_Swedish_time(string value, string expected)
+    [InlineData("2026-11-08T00:10:00", "2026-11-08T00:10:00Z")]
+    [InlineData("2026-07-01T12:00", "2026-07-01T12:00:00Z")]
+    [InlineData("2026-07-01T12:00:00.5", "2026-07-01T12:00:00.5Z")]
+    [InlineData("0001-01-01T00:00:00", "0001-01-01T00:00:00Z")]
+    public void A_time_without_an_offset_is_read_as_UTC(string value, string expected)
     {
         ScheduledTime.TryParse(value, out var due).Should().BeTrue();
         due.Should().Be(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture));
-    }
-
-    [Theory]
-    [InlineData("0001-01-01T00:00:00")]
-    [InlineData("1800-01-01T00:00:00")]
-    public void A_time_too_early_for_an_offset_is_read_as_long_past(string value)
-    {
-        ScheduledTime.TryParse(value, out var due).Should().BeTrue();
-        due.Should().BeBefore(new DateTimeOffset(1900, 1, 1, 0, 0, 0, TimeSpan.Zero));
-    }
-
-    [Fact]
-    public void A_time_inside_the_spring_forward_gap_is_read()
-    {
-        ScheduledTime.TryParse("2026-03-29T02:30:00", out var due).Should().BeTrue();
-        due.Should().Be(new DateTimeOffset(2026, 3, 29, 1, 30, 0, TimeSpan.Zero));
+        due.Offset.Should().Be(TimeSpan.Zero);
     }
 
     [Fact]
