@@ -133,6 +133,16 @@ public sealed class DeliveryReportTests
     }
 
     [Fact]
+    public void Html_is_the_text_also_when_the_request_has_an_html_of_its_own()
+    {
+        var message = Message("""{"to":"sms:+46701740605","text":"Probe text.","html":"<p><b>Probe</b> html.</p>"}""");
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
+
+        report.RootElement.GetProperty("html").GetString().Should().Be("Probe text.");
+    }
+
+    [Fact]
     public void A_request_without_echo_reports_null()
     {
         var message = Message("""{"to":"sms:+46701740605","text":"Hej"}""");

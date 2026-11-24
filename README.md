@@ -309,8 +309,8 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
 A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21` and
 `"failed_reason": "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"`. `echo` carries the request's `echo` as it was
 sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
-itself carries the message alone. `text_linebreaksbr`, and `html` when the request has none of its own, write each line
-break as `<br>` followed by the line break.
+itself carries the message alone. `text_linebreaksbr` and `html` write each line break as `<br>` followed by the line
+break; a request's own `html` is not reported, as TellusTalk does not report it.
 
 A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
 `"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,

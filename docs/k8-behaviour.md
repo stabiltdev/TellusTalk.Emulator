@@ -99,6 +99,9 @@ from PTS's range for fiction, and no account is named.
   Python's aiohttp.
 - **2026-11-14:** a failed SMS → its report about a second after the send; a delivered one → after five to eight
   seconds.
+- **2026-11-24:** an SMS with an `html` of its own → a report whose `html` was the text, not the request's `html`.
+- **2026-11-24:** an SMS with `attachments` of one file → accepted; the report's `text` was the text alone, `quantity`
+  `1`, and the admin's log listed the attachment's name.
 
 ### The user's report recipients
 
@@ -198,6 +201,9 @@ for the sender fields.
 - **2026-11-17:** `billing_id: "billing id-1"` → `Invalid billing_id billing id-1`.
 - **2026-11-17:** `attachments: null` → `500` with `'NoneType' object is not iterable`, and `attachments: "file"` →
   `500` with `'str' object has no attribute 'pop'`. Neither was in the admin's log.
+- **2026-11-24:** `attachments: ["file"]` → `500` with `'str' object has no attribute 'pop'`, and `attachments: 1` →
+  `500` with `'int' object is not iterable`, neither in the admin's log; `attachments: {}` → accepted and sent, though
+  the admin's log answered a 500 page for that row's details and left it out of an export.
 - **2026-11-17:** a request that breaks two of these rules → the refusal of the first in these orders: `attachments`
   before `sms_validity_time`, `sms_max_parts`, `sms_header`, `reply_to`, `report_to` and `sms_character_set`;
   `reply_to` before `report_to` before `sms_character_set` before `sms_header`; `sms_validity_time` before
@@ -260,8 +266,8 @@ is settled when someone observes the real thing.
   order seen.
 - Whether `0`, `false`, `[]` and `{}` are missing or empty in `to` and `text`; K8's text reads as Python's truth test,
   so the emulator refuses them as missing or empty, and gives the type text only to a value that is true.
-- What `attachments` does beyond `null` and `"file"`. The emulator reads K8's two texts as Python iterating the value
-  and calling `pop` on each item: a number or a boolean fails as not iterable; a non-empty string or object fails on its
+- What `attachments` does beyond the values above. The emulator reads K8's texts as Python iterating the value and
+  calling `pop` on each item: a number or a boolean fails as not iterable; a non-empty string or object fails on its
   first character or key, and a list on its first item that is a string, number, boolean or `null`; `[]`, `{}`, `""`
   and a list of objects or lists pass.
 - The types not tried in the fields above: a decimal or a boolean in `to`, a list or an object in `text` or
@@ -283,8 +289,8 @@ is settled when someone observes the real thing.
   accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
 - Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
-- What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
-  passes the request's on.
+- What the phone shows for an SMS with an `html` or `attachments`; the emulator shows the text alone, as the report and
+  the admin's log had it.
 - What a report's `text` is for an empty `subject`; the emulator takes it as no subject.
 - What else TellusTalk refuses, apart from a missing `Authorization`, the sender fields and the fields above, and with
   what text.
