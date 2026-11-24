@@ -6,8 +6,6 @@ namespace Stabilt.TellusTalk.Emulator.Requests;
 /// <param name="AsSent">The address as it arrived.</param>
 internal sealed record Recipient(MessageChannel Channel, string Address, string AsSent)
 {
-    /// <summary>
-    /// An <c>sms:</c> number holding other characters than digits after an optional leading <c>+</c>, which K8 blocks.
-    /// </summary>
-    public bool NotNumeric { get; init; }
+    /// <summary>Why K8 blocks this <c>sms:</c> number, if it does.</summary>
+    public InvalidNumber? Invalid { get; init; }
 }

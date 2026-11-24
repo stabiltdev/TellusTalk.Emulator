@@ -44,7 +44,15 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                     isSms ? smsWarnings : request.Warnings,
                     rawRequest)
                 {
-                    BlockedReason = recipient.NotNumeric ? BlockedReason.NumberNotNumeric : null,
+                    BlockedReason = recipient.Invalid switch
+                    {
+                        null => null,
+                        InvalidNumber.Missing => BlockedReason.MissingAddress,
+                        InvalidNumber.NotANumber => BlockedReason.NotANumber,
+                        InvalidNumber.NotNumeric => BlockedReason.NumberNotNumeric,
+                        _ => throw new InvalidOperationException(
+                            $"No blocked reason for the invalid number '{recipient.Invalid}'."),
+                    },
                 };
             })
             .ToList();

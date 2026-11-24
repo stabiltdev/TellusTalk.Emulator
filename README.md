@@ -255,16 +255,20 @@ phone, and is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it of
 A message on another channel is never held back and holds back no SMS, since what TellusTalk counts as a duplicate
 there has not been observed.
 
-## Numbers that are not numeric
+## Numbers TellusTalk blocks or rewrites
 
-An `sms:` number that, without its spaces and hyphens, holds anything but digits after an optional leading `+` is
-blocked, as TellusTalk blocks it: the send is answered with the number in `invalid_recipients`, and the number's
-message is listed as `blocked`, with `blockedReason` `numberNotNumeric`, and reaches no phone. It is no original for a
-duplicate and is never held back as one, never falls due, and gets no delivery report. The request's other recipients
-go out.
+An `sms:` number that, without its spaces and hyphens, is empty, is a `+` alone, or holds anything but digits after an
+optional leading `+` is blocked, as TellusTalk blocks it: the send is answered with the number in
+`invalid_recipients`, with the error `Missing Address`, `Not a Number` or `Number Not Numeric`, and the number's message
+is listed as `blocked`, with `blockedReason` `missingAddress`, `notANumber` or `numberNotNumeric`, and reaches no phone.
+It is no original for a duplicate and is never held back as one, never falls due, and gets no delivery report. The
+request's other recipients go out.
 
-An address without a prefix is never blocked this way, since it may be an e-mail address, and nor is a number of
-digits without `+`, such as a local number; both keep the `to-not-digits` warning.
+An address without a prefix is never blocked this way, since it may be an e-mail address.
+
+An SMS number of digits without `+` is read as Swedish when TellusTalk was seen to read it so: a local number such as
+`0701740605` becomes `+46701740605`, and `46701740605` becomes `+46701740605`. Any other, such as one beginning with
+`00`, is kept as written. Each keeps the `to-not-digits` warning.
 
 ## Delivery reports
 
@@ -374,9 +378,9 @@ A message:
 ```
 
 - A blocked message has `state` `blocked` and says why in `blockedReason`: `duplicate` for a held-back message, whose
-  `duplicateOf` names the message it duplicates, or `numberNotNumeric` for an SMS number that is not numeric. Any other
-  message has both `null`, and a message blocked for its number has `duplicateOf` `null`. A report attempt's `status`
-  may be `blocked`.
+  `duplicateOf` names the message it duplicates, or `numberNotNumeric`, `notANumber` or `missingAddress` for an SMS
+  number that is not numeric, a `+` alone or empty. Any other message has both `null`, and a message blocked for its
+  number has `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
   after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.

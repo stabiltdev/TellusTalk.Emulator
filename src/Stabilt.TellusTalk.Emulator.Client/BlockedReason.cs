@@ -8,4 +8,10 @@ public enum BlockedReason
 
     /// <summary>Its SMS number holds other characters than digits after an optional leading <c>+</c>.</summary>
     NumberNotNumeric,
+
+    /// <summary>Its SMS number is a <c>+</c> alone.</summary>
+    NotANumber,
+
+    /// <summary>Its SMS number is empty.</summary>
+    MissingAddress,
 }

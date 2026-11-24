@@ -31,6 +31,12 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-17:** `sms:+4670174062X` → `{"job_id":…,"job_uuid":…,"log_uuid":…,"invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}`,
   the address as sent, its `+` unescaped. The admin's log showed it Blocked (1) with `failed_reason`
   `txtNUMBER_NOT_NUMERIC`, and nothing was sent.
+- **2026-11-24:** `sms:+` and `sms:` → `200` with `invalid_recipients` `[{"address":"sms:+","error":"Not a Number"}]`
+  and `[{"address":"sms:","error":"Missing Address"}]`, `job_size` `1`. The admin's log showed each Blocked (1), with
+  `failed_reason` `txtNOT_A_NUMBER` and `txtMISSING_ADDRESS`, `failed_details` the address, and an empty `to_address`.
+- **2026-11-24:** `sms:0701740660`, `0701740661` without a prefix, and `sms:46701740662` → accepted, and the admin's log
+  showed them as `sms:+46701740660`, `sms:+46701740661` and `sms:+46701740662`, with the user's country code for local
+  messages empty; with it at `46`, a local number became the same.
 - **2026-11-17:** `report_to: "not an address"` →
   `{"job_id":…,"job_uuid":…,"invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":…,"job_size":1}`,
   and the message went out; `reply_to: "not an address"` alike, with `invalid_reply_to`.
@@ -299,9 +305,9 @@ is settled when someone observes the real thing.
   letter; the emulator removes them as from an SMS number, and keeps a letter with the `to-not-digits` warning.
 - How K8 reads a `to` address without a prefix that is no number, such as a bare e-mail address, and whether it blocks
   one; the emulator reads it as an SMS number and never blocks it, though it blocks the same address after `sms:`.
-- Which `sms:` numbers K8 blocks besides one with a letter: digits without `+`, such as a local number (issue #32), an
-  empty number, or `+` alone; the emulator sends them with the `to-not-digits` warning, and blocks a number holding any
-  other character than digits after an optional `+`.
+- How K8 reads digits without `+` that begin with neither a single `0` nor `46`, such as `0046…` or another country's
+  code, and whether a country code for local messages other than Sweden's changes a local number; the emulator keeps
+  such a number as written, with the `to-not-digits` warning.
 - Where `invalid_recipients`, `invalid_report_to` and `invalid_reply_to` sit in an answer to several recipients, and
   in which order the two address lists come when a request has both; the emulator keeps the places seen with one
   recipient and writes `invalid_report_to` first.
@@ -315,6 +321,7 @@ is settled when someone observes the real thing.
 - Whether a number K8 blocks gets a delivery report, and in what form; the emulator sends none (issue #31).
 - What a local number such as `0701740698` as `sms_originator_number` shows as the sender, and what `"Acme"` shows
   beside a named source `number`; the emulator shows the reply number for every `number` that is not `+` and digits.
+  On 2026-11-24 the admin's log showed `0701740698` and `46701740698` as the sender as written.
 - Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
 - Whether K8 refuses the sender fields and the fields above as it does for an SMS when a request has no SMS recipient,
   such as an e-mail with `html` and no `text`; the emulator does.

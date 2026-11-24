@@ -121,6 +121,21 @@ public sealed class PageTests
         detail.TextContent.Should().NotContain("Held back");
     }
 
+    [Theory]
+    [InlineData("""{"to":"sms:+","text":"Hej"}""", "Not sent: the number is a + alone (txtNOT_A_NUMBER).")]
+    [InlineData("""{"to":"sms:","text":"Hej"}""", "Not sent: the number is empty (txtMISSING_ADDRESS).")]
+    public async Task The_detail_says_a_plus_alone_or_an_empty_number_was_not_sent(string body, string expected)
+    {
+        await using var emulator = new EmulatorFactory();
+        await Send(emulator, body);
+
+        using var page = await Page(emulator, "?tab=blocked");
+
+        page.QuerySelector("#detail")!.QuerySelectorAll(".tt-sub")
+            .Select(paragraph => Collapsed(paragraph.TextContent))
+            .Should().Contain(expected);
+    }
+
     [Fact]
     public async Task An_empty_blocked_tab_says_nothing_is_blocked()
     {

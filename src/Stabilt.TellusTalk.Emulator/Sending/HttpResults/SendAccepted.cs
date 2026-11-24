@@ -57,11 +57,10 @@ internal sealed record SendResponse(
     [property: JsonPropertyName("job_size")] int JobSize)
 {
     private const string UnknownAddressType = "Unknown Address Type";
-    private const string NumberNotNumeric = "Number Not Numeric";
 
     /// <summary>
-    /// K8 gives the job's id as each of its ids, and the number of recipients as the size. With several recipients each
-    /// message has a log id of its own, and K8 answers with none.
+    /// K8 gives the job's id as each of its ids, and the number of recipients as the size, blocked ones included. With
+    /// several recipients each message has a log id of its own, and K8 answers with none.
     /// </summary>
     public static SendResponse From(SendJob job, SendRequest request) => new(
         job.JobId,
@@ -69,17 +68,33 @@ internal sealed record SendResponse(
         Invalid(request.InvalidReportTo, UnknownAddressType),
         Invalid(request.InvalidReplyTo, UnknownAddressType),
         job.Size == 1 ? job.JobId : null,
-        Invalid(
-            [.. request.Recipients
-                .Where(recipient => recipient.NotNumeric)
-                .Select(recipient => recipient.AsSent)],
-            NumberNotNumeric),
+        Blocked(request.Recipients),
         job.Size);
 
     private static List<InvalidAddress>? Invalid(IReadOnlyList<string> addresses, string error) =>
         addresses.Count == 0
             ? null
             : [.. addresses.Select(address => new InvalidAddress(address, error))];
+
+    private static List<InvalidAddress>? Blocked(IReadOnlyList<Recipient> recipients)
+    {
+        List<InvalidAddress> invalid =
+        [
+            .. recipients
+                .Where(recipient => recipient.Invalid is not null)
+                .Select(recipient => new InvalidAddress(recipient.AsSent, Error(recipient.Invalid!.Value))),
+        ];
+
+        return invalid.Count == 0 ? null : invalid;
+    }
+
+    private static string Error(InvalidNumber invalid) => invalid switch
+    {
+        InvalidNumber.Missing => "Missing Address",
+        InvalidNumber.NotANumber => "Not a Number",
+        InvalidNumber.NotNumeric => "Number Not Numeric",
+        _ => throw new InvalidOperationException($"No error for the invalid number '{invalid}'."),
+    };
 }
 
 internal sealed record InvalidAddress(
