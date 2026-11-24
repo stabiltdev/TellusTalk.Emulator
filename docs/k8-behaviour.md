@@ -99,6 +99,11 @@ from PTS's range for fiction, and no account is named.
   Python's aiohttp.
 - **2026-11-14:** a failed SMS → its report about a second after the send; a delivered one → after five to eight
   seconds.
+- **2026-11-24:** a report address whose settings name `Authorization: Report probe-sh1`, `Report-Secret` and
+  `X-Probe-MiXeD` → a report with all three and their values as written, beside K8's own headers. The names' case could
+  not be seen, since the receiver was reached through a proxy that rewrites them.
+- **2026-11-24:** a report → a row of its own in the admin's log: article HTTP Sent, `to_address` the URL, subject
+  "Delivery Report", the send's `job_uuid` and a `log_uuid` of its own.
 - **2026-11-24:** a receiver that answers `500`, or `401` → the report failed at once, and the admin's log showed
   Delivery Failed (21) with `failed_reason` `HTTPError: Error Code: 500` and `reason: Internal Server Error` on a second
   line, or `401` and `Unauthorized`. Nothing was sent again within two and a half hours.
