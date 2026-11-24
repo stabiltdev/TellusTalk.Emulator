@@ -99,6 +99,13 @@ from PTS's range for fiction, and no account is named.
   Python's aiohttp.
 - **2026-11-14:** a failed SMS → its report about a second after the send; a delivered one → after five to eight
   seconds.
+- **2026-11-24:** a receiver that answers `500`, or `401` → the report failed at once, and the admin's log showed
+  Delivery Failed (21) with `failed_reason` `HTTPError: Error Code: 500` and `reason: Internal Server Error` on a second
+  line, or `401` and `Unauthorized`. Nothing was sent again within two and a half hours.
+- **2026-11-24:** a receiver that does not answer → the report failed after 60 seconds, with `failed_reason`
+  `RequestError: Internal request timed out, url: ` and the URL. Nothing was sent again.
+- **2026-11-24:** a receiver that answers `302` → K8 followed it with a `GET` without the report; one that answers
+  `307` → the same `POST` with the report. Both were logged Delivery Success (22) on the target's `200`.
 - **2026-11-24:** an SMS with an `html` of its own → a report whose `html` was the text, not the request's `html`.
 - **2026-11-24:** an SMS with `attachments` of one file → accepted; the report's `text` was the text alone, `quantity`
   `1`, and the admin's log listed the attachment's name.
@@ -300,7 +307,7 @@ is settled when someone observes the real thing.
 - How TellusTalk treats the other rules the warnings cover.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status
   takes.
-- Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
+- What a report in another `content_type` holds.
 - Whether an absent `subject` and `subject: ""` count as the same in the key of a duplicate; the emulator takes them as
   the same.
 - Whether a text with tracking links is compared before or after the links are shortened (issue #24); the emulator

@@ -278,6 +278,10 @@ an app's failure path can be tried with a number of its own. A report of either 
 number of times: from the buttons beside the message on the page, or with `POST /api/messages/{id}/reports`. A
 message on another channel is not reported, since TellusTalk's report for another channel has not been observed.
 
+A report is posted once, as TellusTalk posts it: a receiver that answers with an error, or does not answer within 60
+seconds, does not get it again. A redirect is followed, a `302` as a `GET` without the report and a `307` as the same
+`POST`. While a receiver keeps the emulator waiting, the reports that fall due after it wait too.
+
 Each report is a `POST` with the JSON TellusTalk was seen sending:
 
 ```json
