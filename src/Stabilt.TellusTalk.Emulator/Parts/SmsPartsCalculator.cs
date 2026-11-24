@@ -8,12 +8,14 @@ internal static class SmsPartsCalculator
     private const int Ucs2SplitPart = 67;
     private const int BinaryPart = 140;
 
-    /// <summary>The requested set, or, for <c>optimize</c> and anything undocumented, the cheapest one that fits.</summary>
+    /// <summary>
+    /// The requested set, or, for <c>gsm</c>, <c>optimize</c> and anything undocumented, the cheapest one that fits: K8
+    /// was seen to send a text with a character outside the GSM alphabet as UCS-2 under <c>gsm</c> too.
+    /// </summary>
     public static SmsCharacterSet Choose(string text, string? requested) => requested switch
     {
         "binary" => SmsCharacterSet.Binary,
         "unicode" => SmsCharacterSet.Ucs2,
-        "gsm" => SmsCharacterSet.Gsm,
         _ => text.All(c => GsmAlphabet.IsBasic(c) || GsmAlphabet.IsExtension(c)) ? SmsCharacterSet.Gsm : SmsCharacterSet.Ucs2,
     };
 
@@ -94,7 +96,6 @@ internal static class SmsPartsCalculator
         return new SmsParts(characterSet, length, starts, splitPart - used);
     }
 
-    /// <summary>A character outside both tables, possible only when GSM is forced, is counted as one septet.</summary>
     private static List<Unit> GsmUnits(string text) => text
         .Select((c, index) => new Unit(index, GsmAlphabet.IsExtension(c) ? 2 : 1))
         .ToList();

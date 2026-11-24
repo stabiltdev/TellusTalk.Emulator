@@ -71,6 +71,9 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-24:** the same text without `sms_max_parts`, with the user's Max number of parts (Settings, SMS, Mail → SMS)
   at 1 → the same, and a real phone got one SMS of the first 160 characters. The setting's default is the
   organisation's, 8; the emulator has no such setting.
+- **2026-11-24:** a text of 100 characters with `ł`, under `sms_character_set: gsm` and under `optimize` → reports with
+  `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
+  text as UCS-2.
 
 ### Scheduled sends
 
@@ -239,7 +242,7 @@ is settled when someone observes the real thing.
   binary content whole.
 - Which limit holds when `sms_max_parts` and the user's Max number of parts differ; the emulator knows only
   `sms_max_parts`, and 8 without it.
-- What `sms_character_set: gsm` does with a character outside the GSM alphabet.
+- What the phone shows for a character outside the GSM alphabet under `sms_character_set: gsm` (issue #22).
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.
 - What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's

@@ -80,7 +80,8 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             messageWarnings.Add(new Warning(
                 WarningCodes.GsmUnsupportedCharacters,
                 "text",
-                "The text holds characters outside the GSM alphabet, which sms_character_set gsm forces; how TellusTalk sends them is unknown."));
+                "The text holds characters outside the GSM alphabet that sms_character_set gsm asks for; TellusTalk " +
+                "sends it as UCS-2 instead, and so does the emulator."));
         }
 
         var parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
