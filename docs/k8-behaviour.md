@@ -57,6 +57,15 @@ from PTS's range for fiction, and no account is named.
   `0` and `-1`, a text of three parts under `sms_max_parts: 1` (stored whole), and a `scheduled_send_time` that is a word
   or not ISO 8601 (sent at once) → accepted.
 
+### Parts
+
+- **2026-11-24:** a text of 160 GSM characters, and one of 161 → reports with `quantity` `1` and `2`.
+- **2026-11-24:** a text of 320 GSM characters under `sms_max_parts: 1` → `200` with nothing to show the limit, and a
+  report whose `text` was the first 160 characters, `quantity` `1`; the admin's log kept the text whole.
+- **2026-11-24:** the same text without `sms_max_parts`, with the user's Max number of parts (Settings, SMS, Mail → SMS)
+  at 1 → the same, and a real phone got one SMS of the first 160 characters. The setting's default is the
+  organisation's, 8; the emulator has no such setting.
+
 ### Scheduled sends
 
 - **2026-11-24:** three sends scheduled for the same wall time, one without an offset, one with `Z` and one with
@@ -220,8 +229,10 @@ receiver. A send that went out reported `txtDELIVERY_FAILED` within about three 
 Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
 is settled when someone observes the real thing.
 
-- What TellusTalk sends when the text needs more parts than `sms_max_parts`: it accepted such a text on 2026-11-17 and
-  stored it whole.
+- How K8 cuts a text to more than one part, and binary content; the emulator keeps the parts as the text splits, and
+  binary content whole.
+- Which limit holds when `sms_max_parts` and the user's Max number of parts differ; the emulator knows only
+  `sms_max_parts`, and 8 without it.
 - What `sms_character_set: gsm` does with a character outside the GSM alphabet.
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.

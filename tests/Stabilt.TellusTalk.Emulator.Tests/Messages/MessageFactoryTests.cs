@@ -128,11 +128,46 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
-    public void A_text_needing_more_parts_than_allowed_is_kept_whole_with_a_warning()
+    public void A_text_needing_more_parts_than_allowed_is_cut_to_what_fits_them_with_a_warning()
     {
         var message = Create(Json(new { to = "sms:+46701740605", text = Welcome, sms_max_parts = 1 })).Messages.Single();
 
-        message.Text.Should().Be(Welcome);
+        message.Text.Should().Be(Welcome[..160]);
+        message.Sms!.Parts.Count.Should().Be(1);
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
+    }
+
+    [Fact]
+    public void A_tracking_link_the_cut_drops_is_left_out_of_the_links()
+    {
+        var text = new string('a', 100) + " redirect=https://example.se/first " + new string('b', 20) +
+            " redirect=https://example.se/second";
+        var shortened = new string('a', 100) + " https://ebox.nu/r_xxxxxx/0 " + new string('b', 20) +
+            " https://ebox.nu/r_xxxxxx/1";
+
+        var message = Create(Json(new { to = "sms:+46701740605", text, sms_max_parts = 1 })).Messages.Single();
+
+        message.Text.Should().Be(shortened[..160]);
+        message.Sms!.Links.Should().ContainSingle().Which.Target.Should().Be("https://example.se/first");
+    }
+
+    [Fact]
+    public void Binary_content_needing_more_parts_than_allowed_is_kept_whole_with_a_warning()
+    {
+        var content = string.Concat(Enumerable.Repeat("41", 141));
+
+        var body = new
+        {
+            to = "sms:+46701740605",
+            text = content,
+            sms_character_set = "binary",
+            sms_udh = "050003CC0201",
+            sms_max_parts = 1,
+        };
+
+        var message = Create(Json(body)).Messages.Single();
+
+        message.Text.Should().Be(content);
         message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
     }
 

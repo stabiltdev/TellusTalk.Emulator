@@ -77,12 +77,25 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
 
         var parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
         var maxParts = request.MaxParts is >= 1 and var allowed ? allowed : DefaultMaxParts;
-        if (parts.Count > maxParts)
+        if (parts.Count > maxParts && characterSet == SmsCharacterSet.Binary)
         {
             messageWarnings.Add(new Warning(
                 WarningCodes.MaxPartsExceeded,
                 "sms_max_parts",
-                $"The text needs {parts.Count} parts but sms_max_parts allows {maxParts}; the emulator keeps it whole, and what TellusTalk does is unknown."));
+                $"The content needs {parts.Count} parts but sms_max_parts allows {maxParts}; the emulator keeps " +
+                "binary content whole, since how TellusTalk cuts it is unknown."));
+        }
+        else if (parts.Count > maxParts)
+        {
+            messageWarnings.Add(new Warning(
+                WarningCodes.MaxPartsExceeded,
+                "sms_max_parts",
+                $"The text needs {parts.Count} parts but sms_max_parts allows {maxParts}; TellusTalk sends what " +
+                "fits them and drops the rest."));
+
+            text = SmsPartsCalculator.Cut(text, parts, maxParts);
+            links = [.. links.Where(link => text.Contains(link.Shown, StringComparison.Ordinal))];
+            parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
         }
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. request.SmsWarnings, .. messageWarnings];

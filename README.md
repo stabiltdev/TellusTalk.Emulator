@@ -222,7 +222,7 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `binary-not-hex` | A binary SMS whose text is not hex. |
 | `gsm-unsupported-characters` | On an SMS, characters outside the GSM alphabet under `sms_character_set: gsm`. |
 | `max-parts-invalid` | On an SMS, `sms_max_parts` below 1. |
-| `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator keeps it whole. |
+| `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator cuts it to what fits them, as TellusTalk does, and keeps binary content whole. |
 | `scheduled-time-invalid` | A `scheduled_send_time` that is not an ISO 8601 date and time; the message is sent at once. |
 | `report-address-invalid` | A `report_to` or `reply_to` that is no e-mail address, `sms:` number or http(s) URL. |
 

@@ -33,6 +33,40 @@ internal static class SmsPartsCalculator
     };
 
     /// <summary>
+    /// What is left of a GSM or UCS-2 text cut to <paramref name="maxParts"/> parts: for one part, as much as fits a
+    /// part without a concatenation header, as K8 was seen to cut; for more, the parts as the text splits, which is
+    /// unobserved. A unit is never split.
+    /// </summary>
+    public static string Cut(string text, SmsParts parts, int maxParts)
+    {
+        if (parts.Count <= maxParts)
+        {
+            return text;
+        }
+
+        if (maxParts > 1)
+        {
+            return text[..parts.Starts[maxParts]];
+        }
+
+        var (units, singlePart) = parts.CharacterSet == SmsCharacterSet.Gsm
+            ? (GsmUnits(text), GsmSinglePart)
+            : (Ucs2Units(text), Ucs2SinglePart);
+        var used = 0;
+        foreach (var unit in units)
+        {
+            if (used + unit.Cost > singlePart)
+            {
+                return text[..unit.Index];
+            }
+
+            used += unit.Cost;
+        }
+
+        return text;
+    }
+
+    /// <summary>
     /// A text that fits one part is sent whole; a longer one is split into smaller parts, since each then carries a
     /// concatenation header. A unit that does not fit what is left of a part starts the next one, never split.
     /// </summary>
