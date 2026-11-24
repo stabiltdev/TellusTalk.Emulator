@@ -420,7 +420,7 @@ public sealed class SendRequestReaderTests
         var request = Accepted("""{"to":"sms:+4670abc","text":"Hej"}""");
 
         request.Recipients.Should().Equal(
-            new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { NotNumeric = true });
+            new Recipient(MessageChannel.Sms, "+4670abc", "sms:+4670abc") { Invalid = InvalidNumber.NotNumeric });
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
     }
 
@@ -430,25 +430,69 @@ public sealed class SendRequestReaderTests
         var request = Accepted("""{"to":"sms:+46 70-174 06 2X","text":"Hej"}""");
 
         request.Recipients.Single().Should().Be(
-            new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X") { NotNumeric = true });
+            new Recipient(MessageChannel.Sms, "+4670174062X", "sms:+46 70-174 06 2X")
+            {
+                Invalid = InvalidNumber.NotNumeric,
+            });
     }
 
-    [Fact]
-    public void A_local_number_of_digits_is_numeric()
+    [Theory]
+    [InlineData("sms:+", nameof(InvalidNumber.NotANumber))]
+    [InlineData("sms:", nameof(InvalidNumber.Missing))]
+    [InlineData("sms: ", nameof(InvalidNumber.Missing))]
+    public void A_plus_alone_and_an_empty_sms_number_are_invalid_with_a_warning(string address, string expected)
     {
-        var request = Accepted("""{"to":"sms:0701740605","text":"Hej"}""");
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
 
-        request.Recipients.Should().Equal(
-            new Recipient(MessageChannel.Sms, "0701740605", "sms:0701740605") { NotNumeric = false });
+        request.Recipients.Single().Invalid.Should().Be(Enum.Parse<InvalidNumber>(expected));
+        request.Warnings.Should().Contain(warning => warning.Code == WarningCodes.NotDigits);
+    }
+
+    [Theory]
+    [InlineData("sms:0701740605", "0701740605")]
+    [InlineData("sms:46701740605", "46701740605")]
+    [InlineData("sms:070-174 06 05", "0701740605")]
+    [InlineData("0701740605", "0701740605")]
+    public void A_local_number_and_one_of_46_without_a_plus_are_read_as_Swedish_with_a_warning(
+        string address,
+        string digits)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Single().Should().Be(new Recipient(MessageChannel.Sms, "+46701740605", address));
+        request.Warnings.Should().Contain(new Warning(
+            WarningCodes.NotDigits,
+            "to",
+            $"'{digits}' is not '+' followed by digits, as the specification asks of an SMS number; TellusTalk " +
+            "reads it as '+46701740605', and so does the emulator."));
+    }
+
+    [Theory]
+    [InlineData("sms:00467017406050")]
+    [InlineData("sms:4512345678")]
+    [InlineData("sms:701740605")]
+    public void Other_digits_without_a_plus_are_kept_as_written_with_a_warning(string address)
+    {
+        var request = Accepted(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        request.Recipients.Single().Should().Be(new Recipient(MessageChannel.Sms, address["sms:".Length..], address));
         request.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.NotDigits);
     }
 
     [Fact]
-    public void A_bare_address_is_never_not_numeric()
+    public void A_local_fax_number_is_kept_as_written()
+    {
+        var request = Accepted("""{"to":"fax:0701740605","text":"Hej"}""");
+
+        request.Recipients.Single().Address.Should().Be("0701740605");
+    }
+
+    [Fact]
+    public void A_bare_address_is_never_invalid()
     {
         var request = Accepted("""{"to":"test.user@example.se","text":"Hej"}""");
 
-        request.Recipients.Single().NotNumeric.Should().BeFalse();
+        request.Recipients.Single().Invalid.Should().BeNull();
     }
 
     [Fact]

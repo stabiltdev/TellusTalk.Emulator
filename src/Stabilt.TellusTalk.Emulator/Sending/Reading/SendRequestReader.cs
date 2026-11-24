@@ -241,14 +241,15 @@ internal static class SendRequestReader
     }
 
     /// <summary>
-    /// K8 was seen blocking an <c>sms:</c> number with a letter. An address without a prefix is read as an SMS number
-    /// on a guess, since it could be an e-mail address, so it is never blocked as one.
+    /// K8 was seen blocking an <c>sms:</c> number that is empty, a <c>+</c> alone, or holds a letter. An address
+    /// without a prefix is read as an SMS number on a guess, since it could be an e-mail address, so it is never
+    /// blocked as one.
     /// </summary>
     private static Recipient ReadSmsNumber(string number, string address, List<Warning> warnings)
     {
         var recipient = ReadNumber(MessageChannel.Sms, number, address, warnings);
 
-        return recipient with { NotNumeric = !PhoneNumbers.IsNumeric(recipient.Address) };
+        return recipient with { Invalid = PhoneNumbers.Invalid(recipient.Address) };
     }
 
     /// <summary>
@@ -279,7 +280,16 @@ internal static class SendRequestReader
                       "number."));
         }
 
-        if (!PhoneNumbers.IsPlusDigits(number))
+        if (channel == MessageChannel.Sms && PhoneNumbers.AsSwedish(number) is { } swedish)
+        {
+            warnings.Add(new Warning(
+                WarningCodes.NotDigits,
+                "to",
+                $"'{number}' is not '+' followed by digits, as the specification asks of an SMS number; TellusTalk " +
+                $"reads it as '{swedish}', and so does the emulator."));
+            number = swedish;
+        }
+        else if (!PhoneNumbers.IsPlusDigits(number))
         {
             warnings.Add(new Warning(
                 WarningCodes.NotDigits,

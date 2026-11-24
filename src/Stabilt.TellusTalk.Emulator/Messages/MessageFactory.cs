@@ -44,7 +44,15 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                     isSms ? smsWarnings : request.Warnings,
                     rawRequest)
                 {
-                    BlockedReason = recipient.NotNumeric ? BlockedReason.NumberNotNumeric : null,
+                    BlockedReason = recipient.Invalid switch
+                    {
+                        null => null,
+                        InvalidNumber.Missing => BlockedReason.MissingAddress,
+                        InvalidNumber.NotANumber => BlockedReason.NotANumber,
+                        InvalidNumber.NotNumeric => BlockedReason.NumberNotNumeric,
+                        _ => throw new InvalidOperationException(
+                            $"No blocked reason for the invalid number '{recipient.Invalid}'."),
+                    },
                 };
             })
             .ToList();
@@ -72,17 +80,31 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
             messageWarnings.Add(new Warning(
                 WarningCodes.GsmUnsupportedCharacters,
                 "text",
-                "The text holds characters outside the GSM alphabet, which sms_character_set gsm forces; how TellusTalk sends them is unknown."));
+                "The text holds characters outside the GSM alphabet that sms_character_set gsm asks for; TellusTalk " +
+                "sends it as UCS-2 instead, and so does the emulator."));
         }
 
         var parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
         var maxParts = request.MaxParts is >= 1 and var allowed ? allowed : DefaultMaxParts;
-        if (parts.Count > maxParts)
+        if (parts.Count > maxParts && characterSet == SmsCharacterSet.Binary)
         {
             messageWarnings.Add(new Warning(
                 WarningCodes.MaxPartsExceeded,
                 "sms_max_parts",
-                $"The text needs {parts.Count} parts but sms_max_parts allows {maxParts}; the emulator keeps it whole, and what TellusTalk does is unknown."));
+                $"The content needs {parts.Count} parts but sms_max_parts allows {maxParts}; the emulator keeps " +
+                "binary content whole, since how TellusTalk cuts it is unknown."));
+        }
+        else if (parts.Count > maxParts)
+        {
+            messageWarnings.Add(new Warning(
+                WarningCodes.MaxPartsExceeded,
+                "sms_max_parts",
+                $"The text needs {parts.Count} parts but sms_max_parts allows {maxParts}; TellusTalk sends what " +
+                "fits them and drops the rest."));
+
+            text = SmsPartsCalculator.Cut(text, parts, maxParts);
+            links = [.. links.Where(link => text.Contains(link.Shown, StringComparison.Ordinal))];
+            parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
         }
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. request.SmsWarnings, .. messageWarnings];

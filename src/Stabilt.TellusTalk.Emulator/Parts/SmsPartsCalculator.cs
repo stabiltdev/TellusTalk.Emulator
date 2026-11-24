@@ -8,12 +8,14 @@ internal static class SmsPartsCalculator
     private const int Ucs2SplitPart = 67;
     private const int BinaryPart = 140;
 
-    /// <summary>The requested set, or, for <c>optimize</c> and anything undocumented, the cheapest one that fits.</summary>
+    /// <summary>
+    /// The requested set, or, for <c>gsm</c>, <c>optimize</c> and anything undocumented, the cheapest one that fits: K8
+    /// was seen to send a text with a character outside the GSM alphabet as UCS-2 under <c>gsm</c> too.
+    /// </summary>
     public static SmsCharacterSet Choose(string text, string? requested) => requested switch
     {
         "binary" => SmsCharacterSet.Binary,
         "unicode" => SmsCharacterSet.Ucs2,
-        "gsm" => SmsCharacterSet.Gsm,
         _ => text.All(c => GsmAlphabet.IsBasic(c) || GsmAlphabet.IsExtension(c)) ? SmsCharacterSet.Gsm : SmsCharacterSet.Ucs2,
     };
 
@@ -31,6 +33,40 @@ internal static class SmsPartsCalculator
         SmsCharacterSet.Ucs2 => Split(characterSet, Ucs2Units(text), Ucs2SinglePart, Ucs2SplitPart),
         _ => BinaryParts(text, udh),
     };
+
+    /// <summary>
+    /// What is left of a GSM or UCS-2 text cut to <paramref name="maxParts"/> parts: for one part, as much as fits a
+    /// part without a concatenation header, as K8 was seen to cut; for more, the parts as the text splits, which is
+    /// unobserved. A unit is never split.
+    /// </summary>
+    public static string Cut(string text, SmsParts parts, int maxParts)
+    {
+        if (parts.Count <= maxParts)
+        {
+            return text;
+        }
+
+        if (maxParts > 1)
+        {
+            return text[..parts.Starts[maxParts]];
+        }
+
+        var (units, singlePart) = parts.CharacterSet == SmsCharacterSet.Gsm
+            ? (GsmUnits(text), GsmSinglePart)
+            : (Ucs2Units(text), Ucs2SinglePart);
+        var used = 0;
+        foreach (var unit in units)
+        {
+            if (used + unit.Cost > singlePart)
+            {
+                return text[..unit.Index];
+            }
+
+            used += unit.Cost;
+        }
+
+        return text;
+    }
 
     /// <summary>
     /// A text that fits one part is sent whole; a longer one is split into smaller parts, since each then carries a
@@ -60,7 +96,6 @@ internal static class SmsPartsCalculator
         return new SmsParts(characterSet, length, starts, splitPart - used);
     }
 
-    /// <summary>A character outside both tables, possible only when GSM is forced, is counted as one septet.</summary>
     private static List<Unit> GsmUnits(string text) => text
         .Select((c, index) => new Unit(index, GsmAlphabet.IsExtension(c) ? 2 : 1))
         .ToList();

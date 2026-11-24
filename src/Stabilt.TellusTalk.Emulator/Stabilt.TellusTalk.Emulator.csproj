@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- The image, for both architectures, which restore must know of. The extra family carries time zone data, which
-       reading a time as Europe/Stockholm needs; the plain chiseled image has none. -->
+  <!-- The image, for both architectures, which restore must know of. The extra family carries ICU, which .NET needs
+       unless globalization is invariant; the plain chiseled image has none. -->
   <PropertyGroup>
     <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
     <ContainerRepository>stabiltdev/tellustalk-emulator</ContainerRepository>

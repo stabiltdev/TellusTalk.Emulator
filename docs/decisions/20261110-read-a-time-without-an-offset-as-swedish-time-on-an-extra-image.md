@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261124-read-a-time-without-an-offset-as-utc](20261124-read-a-time-without-an-offset-as-utc.md)
 date: 2026-11-10
 deciders: [Peter Hedberg]
 supersedes: [ADR 20261108-read-a-time-without-an-offset-as-swedish-time](20261108-read-a-time-without-an-offset-as-swedish-time.md)

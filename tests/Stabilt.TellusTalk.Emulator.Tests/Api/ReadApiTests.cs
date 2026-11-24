@@ -242,7 +242,9 @@ public sealed class ReadApiTests
     public async Task A_due_time_is_served_in_UTC_like_every_other_time()
     {
         await using var emulator = new EmulatorFactory();
-        await Send(emulator, """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-08T00:30:00"}""");
+        await Send(
+            emulator,
+            """{"to":"sms:+46701740605","text":"Senare","scheduled_send_time":"2026-11-08T00:30:00+01:00"}""");
 
         using var list = await Get(emulator, "/api/messages");
 
@@ -272,8 +274,8 @@ public sealed class ReadApiTests
     public async Task A_number_filter_is_compared_as_given()
     {
         await using var emulator = new EmulatorFactory();
-        await Send(emulator, """{"to":"sms:0701740605","text":"Hej"}""");
-        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"fax:0701740605","text":"Hej"}""");
+        await Send(emulator, """{"to":"fax:+46701740605","text":"Hej"}""");
 
         (await Total(emulator, "/api/messages?to=0701740605")).Should().Be(1);
     }
@@ -406,6 +408,20 @@ public sealed class ReadApiTests
         message.RootElement.GetProperty("state").GetString().Should().Be("blocked");
         message.RootElement.GetProperty("blockedReason").GetString().Should().Be("numberNotNumeric");
         message.RootElement.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+","text":"Hej"}""", "notANumber")]
+    [InlineData("""{"to":"sms:","text":"Hej"}""", "missingAddress")]
+    public async Task A_plus_alone_and_an_empty_number_are_blocked_for_their_reasons(string body, string expected)
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, body);
+
+        using var message = await Get(emulator, $"/api/messages/{id}");
+
+        message.RootElement.GetProperty("state").GetString().Should().Be("blocked");
+        message.RootElement.GetProperty("blockedReason").GetString().Should().Be(expected);
     }
 
     [Fact]

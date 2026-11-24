@@ -95,11 +95,56 @@ public sealed class SmsPartsCalculatorTests
         parts.Should().BeEquivalentTo(new SmsParts(SmsCharacterSet.Binary, 11, [0], 129));
     }
 
+    [Fact]
+    public void A_GSM_text_cut_to_one_part_keeps_160_septets()
+    {
+        var text = new string('a', 320);
+
+        SmsPartsCalculator.Cut(text, SmsPartsCalculator.Calculate(text, SmsCharacterSet.Gsm, udh: null), maxParts: 1)
+            .Should().Be(new string('a', 160));
+    }
+
+    [Fact]
+    public void A_cut_never_splits_an_extension_character()
+    {
+        var text = new string('a', 159) + "€" + new string('b', 10);
+
+        SmsPartsCalculator.Cut(text, SmsPartsCalculator.Calculate(text, SmsCharacterSet.Gsm, udh: null), maxParts: 1)
+            .Should().Be(new string('a', 159));
+    }
+
+    [Fact]
+    public void A_UCS2_text_cut_to_one_part_keeps_70_code_units_and_never_splits_a_surrogate_pair()
+    {
+        var text = new string('å', 69) + "😊" + new string('b', 10);
+
+        SmsPartsCalculator.Cut(text, SmsPartsCalculator.Calculate(text, SmsCharacterSet.Ucs2, udh: null), maxParts: 1)
+            .Should().Be(new string('å', 69));
+    }
+
+    [Fact]
+    public void A_text_cut_to_two_parts_keeps_them_as_it_splits()
+    {
+        var text = new string('a', 400);
+
+        SmsPartsCalculator.Cut(text, SmsPartsCalculator.Calculate(text, SmsCharacterSet.Gsm, udh: null), maxParts: 2)
+            .Should().Be(new string('a', 306));
+    }
+
+    [Fact]
+    public void A_text_within_its_parts_is_not_cut()
+    {
+        var parts = SmsPartsCalculator.Calculate(Welcome, SmsCharacterSet.Gsm, udh: null);
+
+        SmsPartsCalculator.Cut(Welcome, parts, maxParts: 2).Should().Be(Welcome);
+    }
+
     [Theory]
     [InlineData(Welcome, null, nameof(SmsCharacterSet.Gsm))]
     [InlineData(Welcome, "optimize", nameof(SmsCharacterSet.Gsm))]
     [InlineData("Tack 😊", null, nameof(SmsCharacterSet.Ucs2))]
-    [InlineData("Tack 😊", "gsm", nameof(SmsCharacterSet.Gsm))]
+    [InlineData("Tack 😊", "gsm", nameof(SmsCharacterSet.Ucs2))]
+    [InlineData("Hej", "gsm", nameof(SmsCharacterSet.Gsm))]
     [InlineData("Hej", "unicode", nameof(SmsCharacterSet.Ucs2))]
     [InlineData("41", "binary", nameof(SmsCharacterSet.Binary))]
     [InlineData("Hej", "latin1", nameof(SmsCharacterSet.Gsm))]

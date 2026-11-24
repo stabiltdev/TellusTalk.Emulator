@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Stabilt.TellusTalk.Emulator.Messages;
+using Stabilt.TellusTalk.Emulator.Parts;
 using Stabilt.TellusTalk.Emulator.Requests;
 using Stabilt.TellusTalk.Emulator.Sending.Reading;
 
@@ -120,19 +121,58 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
-    public void A_character_outside_the_GSM_alphabet_under_forced_GSM_is_warned_about()
+    public void A_character_outside_the_GSM_alphabet_under_gsm_sends_the_text_as_UCS2_with_a_warning()
     {
-        var message = Create("""{"to":"sms:+46701740605","text":"Tack 😊","sms_character_set":"gsm"}""").Messages.Single();
+        var text = "Probe ł " + new string('0', 92);
 
+        var message = Create(Json(new { to = "sms:+46701740605", text, sms_character_set = "gsm" })).Messages.Single();
+
+        message.Sms!.Parts.CharacterSet.Should().Be(SmsCharacterSet.Ucs2);
+        message.Sms.Parts.Count.Should().Be(2);
         message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.GsmUnsupportedCharacters);
     }
 
     [Fact]
-    public void A_text_needing_more_parts_than_allowed_is_kept_whole_with_a_warning()
+    public void A_text_needing_more_parts_than_allowed_is_cut_to_what_fits_them_with_a_warning()
     {
         var message = Create(Json(new { to = "sms:+46701740605", text = Welcome, sms_max_parts = 1 })).Messages.Single();
 
-        message.Text.Should().Be(Welcome);
+        message.Text.Should().Be(Welcome[..160]);
+        message.Sms!.Parts.Count.Should().Be(1);
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
+    }
+
+    [Fact]
+    public void A_tracking_link_the_cut_drops_is_left_out_of_the_links()
+    {
+        var text = new string('a', 100) + " redirect=https://example.se/first " + new string('b', 20) +
+            " redirect=https://example.se/second";
+        var shortened = new string('a', 100) + " https://ebox.nu/r_xxxxxx/0 " + new string('b', 20) +
+            " https://ebox.nu/r_xxxxxx/1";
+
+        var message = Create(Json(new { to = "sms:+46701740605", text, sms_max_parts = 1 })).Messages.Single();
+
+        message.Text.Should().Be(shortened[..160]);
+        message.Sms!.Links.Should().ContainSingle().Which.Target.Should().Be("https://example.se/first");
+    }
+
+    [Fact]
+    public void Binary_content_needing_more_parts_than_allowed_is_kept_whole_with_a_warning()
+    {
+        var content = string.Concat(Enumerable.Repeat("41", 141));
+
+        var body = new
+        {
+            to = "sms:+46701740605",
+            text = content,
+            sms_character_set = "binary",
+            sms_udh = "050003CC0201",
+            sms_max_parts = 1,
+        };
+
+        var message = Create(Json(body)).Messages.Single();
+
+        message.Text.Should().Be(content);
         message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
     }
 

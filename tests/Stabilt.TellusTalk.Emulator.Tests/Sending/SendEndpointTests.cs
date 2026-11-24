@@ -306,6 +306,34 @@ public sealed class SendEndpointTests
         Store(emulator).List(MessageState.Blocked).Should().ContainSingle();
     }
 
+    [Theory]
+    [InlineData("sms:+", "Not a Number")]
+    [InlineData("sms:", "Missing Address")]
+    public async Task A_plus_alone_and_an_empty_number_are_listed_in_the_answer_with_their_errors(
+        string address,
+        string error)
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send(JsonSerializer.Serialize(new { to = address, text = "Hej" }));
+
+        (await Answer(response)).Should().Be(
+            $$"""{"job_id":"<id>","job_uuid":"<id>","log_uuid":"<id>","invalid_recipients":[{"address":"{{address}}","error":"{{error}}"}],"job_size":1}""");
+        Store(emulator).List(MessageState.Blocked).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task A_local_number_is_sent_to_its_Swedish_number()
+    {
+        await using var emulator = new EmulatorFactory();
+
+        using var response = await emulator.Send("""{"to":"sms:0701740605","text":"Hej"}""");
+
+        (await Answer(response)).Should().Be("""{"job_id":"<id>","job_uuid":"<id>","log_uuid":"<id>","job_size":1}""");
+        Store(emulator).List(MessageState.Sent)
+            .Should().ContainSingle().Which.To.Address.Should().Be("+46701740605");
+    }
+
     [Fact]
     public async Task A_valid_and_a_not_numeric_number_send_one_and_block_the_other()
     {

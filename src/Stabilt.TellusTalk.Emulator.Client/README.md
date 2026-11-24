@@ -57,8 +57,9 @@ Assert.Equal("order-1001", message.Fields["echo"].GetString());
 | `MessageQuery.Search` | Searches the address, the text, an SMS's sender and another channel's subject |
 
 A message is a `CaughtMessage` with every property the read API serves: its state and, for a blocked message, its
-`BlockedReason`, `Duplicate` or `NumberNotNumeric`, the sender as the phone shows it, the parts, the report and reply
-addresses, the warnings, the reports sent, and the request as it arrived, with its fields as JSON values. A status
+`BlockedReason`, `Duplicate`, `NumberNotNumeric`, `NotANumber` or `MissingAddress`, the sender as the phone shows it,
+the parts, the report and reply addresses, the warnings, the reports sent, and the request as it arrived, with its
+fields as JSON values. A status
 other than success, and other than `404` for one message, throws `HttpRequestException`. A base address with a path of
 its own needs a trailing `/`.
 

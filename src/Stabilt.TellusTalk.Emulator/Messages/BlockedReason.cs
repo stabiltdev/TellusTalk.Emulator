@@ -8,4 +8,10 @@ internal enum BlockedReason
 
     /// <summary>K8 logs it as <c>txtNUMBER_NOT_NUMERIC</c>.</summary>
     NumberNotNumeric,
+
+    /// <summary>K8 logs it as <c>txtNOT_A_NUMBER</c>.</summary>
+    NotANumber,
+
+    /// <summary>K8 logs it as <c>txtMISSING_ADDRESS</c>.</summary>
+    MissingAddress,
 }

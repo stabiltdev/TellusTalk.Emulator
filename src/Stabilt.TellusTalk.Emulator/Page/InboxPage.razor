@@ -139,9 +139,10 @@
                 {
                     @DuplicateLine(duplicateOf)
                 }
-                else if (message.BlockedReason == BlockedReason.NumberNotNumeric)
+                else if (message.BlockedReason is { } reason)
                 {
-                    <p class="tt-sub">Not sent: the number is not numeric (<code>txtNUMBER_NOT_NUMERIC</code>).</p>
+                    var fault = NumberFault(reason);
+                    <p class="tt-sub">Not sent: the number @fault.Text (<code>@fault.LogStatus</code>).</p>
                 }
                 @WarningList(message)
                 <PartsBar Sizes="@Sizes(sms.Parts)" Left="@sms.Parts.LeftInLastPart" Length="@sms.Parts.Length"
@@ -313,6 +314,14 @@
     private static RenderFragment Destination(TrackingLink link) => link.Target is { } target
         ? @<code>@target</code>
         : @<text>the message's own page</text>;
+
+    private static (string Text, string LogStatus) NumberFault(BlockedReason reason) => reason switch
+    {
+        BlockedReason.NumberNotNumeric => ("is not numeric", "txtNUMBER_NOT_NUMERIC"),
+        BlockedReason.NotANumber => ("is a + alone", "txtNOT_A_NUMBER"),
+        BlockedReason.MissingAddress => ("is empty", "txtMISSING_ADDRESS"),
+        _ => throw new InvalidOperationException($"The blocked reason '{reason}' is no fault of the number."),
+    };
 
     /// <summary>The original may be scheduled, trimmed by the retention limit or deleted, so the link goes to the tab that lists it, if any.</summary>
     private RenderFragment DuplicateLine(string originalId) =>

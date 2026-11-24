@@ -122,12 +122,14 @@ public sealed class ReportFlowTests
 #pragma warning restore CA2025
         await emulator.Reports.WaitFor(1);
         await caller.CancelAsync();
+        gate.SetResult();
         await FluentActions
             .Awaiting(() => request)
             .Should().ThrowAsync<OperationCanceledException>();
-        gate.SetResult();
 
-        (await Attempts(emulator, id, expected: 1)).Single().GetProperty("status").GetString().Should().Be("failed");
+        var attempt = (await Attempts(emulator, id, expected: 1)).Single();
+        attempt.GetProperty("status").GetString().Should().Be("failed");
+        attempt.GetProperty("outcome").GetString().Should().Be("200 OK");
     }
 
     [Fact]

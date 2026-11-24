@@ -220,9 +220,9 @@ TellusTalk was seen to correct quietly, becomes a warning on the message, shown 
 | `single-thread-without-replysms` | On an SMS, `sms_single_thread` when the source that decided the sender, or the user's Sender setting when it decided, is not `replysms`. |
 | `format-deprecated` | On an SMS, `sms_format`, which `sms_character_set` replaces. |
 | `binary-not-hex` | A binary SMS whose text is not hex. |
-| `gsm-unsupported-characters` | On an SMS, characters outside the GSM alphabet under `sms_character_set: gsm`. |
+| `gsm-unsupported-characters` | On an SMS, characters outside the GSM alphabet under `sms_character_set: gsm`; the emulator sends the text as UCS-2, as TellusTalk does. |
 | `max-parts-invalid` | On an SMS, `sms_max_parts` below 1. |
-| `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator keeps it whole. |
+| `max-parts-exceeded` | On an SMS, a text needing more parts than `sms_max_parts` allows; the emulator cuts it to what fits them, as TellusTalk does, and keeps binary content whole. |
 | `scheduled-time-invalid` | A `scheduled_send_time` that is not an ISO 8601 date and time; the message is sent at once. |
 | `report-address-invalid` | A `report_to` or `reply_to` that is no e-mail address, `sms:` number or http(s) URL. |
 
@@ -255,16 +255,20 @@ phone, and is listed as `blocked`. `Emulator__BlockDuplicates=false` turns it of
 A message on another channel is never held back and holds back no SMS, since what TellusTalk counts as a duplicate
 there has not been observed.
 
-## Numbers that are not numeric
+## Numbers TellusTalk blocks or rewrites
 
-An `sms:` number that, without its spaces and hyphens, holds anything but digits after an optional leading `+` is
-blocked, as TellusTalk blocks it: the send is answered with the number in `invalid_recipients`, and the number's
-message is listed as `blocked`, with `blockedReason` `numberNotNumeric`, and reaches no phone. It is no original for a
-duplicate and is never held back as one, never falls due, and gets no delivery report. The request's other recipients
-go out.
+An `sms:` number that, without its spaces and hyphens, is empty, is a `+` alone, or holds anything but digits after an
+optional leading `+` is blocked, as TellusTalk blocks it: the send is answered with the number in
+`invalid_recipients`, with the error `Missing Address`, `Not a Number` or `Number Not Numeric`, and the number's message
+is listed as `blocked`, with `blockedReason` `missingAddress`, `notANumber` or `numberNotNumeric`, and reaches no phone.
+It is no original for a duplicate and is never held back as one, never falls due, and gets no delivery report. The
+request's other recipients go out.
 
-An address without a prefix is never blocked this way, since it may be an e-mail address, and nor is a number of
-digits without `+`, such as a local number; both keep the `to-not-digits` warning.
+An address without a prefix is never blocked this way, since it may be an e-mail address.
+
+An SMS number of digits without `+` is read as Swedish when TellusTalk was seen to read it so: a local number such as
+`0701740605` becomes `+46701740605`, and `46701740605` becomes `+46701740605`. Any other, such as one beginning with
+`00`, is kept as written. Each keeps the `to-not-digits` warning.
 
 ## Delivery reports
 
@@ -273,6 +277,10 @@ if it was scheduled. The report says delivered, or failed when the recipient is 
 an app's failure path can be tried with a number of its own. A report of either kind can also be sent at once, any
 number of times: from the buttons beside the message on the page, or with `POST /api/messages/{id}/reports`. A
 message on another channel is not reported, since TellusTalk's report for another channel has not been observed.
+
+A report is posted once, as TellusTalk posts it: a receiver that answers with an error, or does not answer within 60
+seconds, does not get it again. A redirect is followed, a `302` as a `GET` without the report and a `307` as the same
+`POST`. While a receiver keeps the emulator waiting, the reports that fall due after it wait too.
 
 Each report is a `POST` with the JSON TellusTalk was seen sending:
 
@@ -305,8 +313,8 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
 A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21` and
 `"failed_reason": "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"`. `echo` carries the request's `echo` as it was
 sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
-itself carries the message alone. `text_linebreaksbr`, and `html` when the request has none of its own, write each line
-break as `<br>` followed by the line break.
+itself carries the message alone. `text_linebreaksbr` and `html` write each line break as `<br>` followed by the line
+break; a request's own `html` is not reported, as TellusTalk does not report it.
 
 A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
 `"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,
@@ -374,9 +382,9 @@ A message:
 ```
 
 - A blocked message has `state` `blocked` and says why in `blockedReason`: `duplicate` for a held-back message, whose
-  `duplicateOf` names the message it duplicates, or `numberNotNumeric` for an SMS number that is not numeric. Any other
-  message has both `null`, and a message blocked for its number has `duplicateOf` `null`. A report attempt's `status`
-  may be `blocked`.
+  `duplicateOf` names the message it duplicates, or `numberNotNumeric`, `notANumber` or `missingAddress` for an SMS
+  number that is not numeric, a `+` alone or empty. Any other message has both `null`, and a message blocked for its
+  number has `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
   after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.

@@ -113,6 +113,22 @@ public sealed class CaughtMessageTests
         message.BlockedReason.Should().Be(BlockedReason.NumberNotNumeric);
     }
 
+    [Theory]
+    [InlineData("""{"to":"sms:+","text":"Hej"}""", nameof(BlockedReason.NotANumber))]
+    [InlineData("""{"to":"sms:","text":"Hej"}""", nameof(BlockedReason.MissingAddress))]
+    public async Task A_message_blocked_for_a_plus_alone_or_an_empty_number_reads_its_reason(
+        string body,
+        string expected)
+    {
+        await using var emulator = new EmulatorFactory();
+        using var client = new TellusTalkEmulatorClient(emulator.CreateClient());
+        var id = await Send(emulator, body);
+
+        var message = await client.GetMessageAsync(id, TestContext.Current.CancellationToken);
+
+        message!.BlockedReason.Should().Be(Enum.Parse<BlockedReason>(expected));
+    }
+
     [Fact]
     public async Task A_message_on_another_channel_is_read_without_sender_links_or_parts()
     {

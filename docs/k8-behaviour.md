@@ -31,6 +31,12 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-17:** `sms:+4670174062X` → `{"job_id":…,"job_uuid":…,"log_uuid":…,"invalid_recipients":[{"address":"sms:+4670174062X","error":"Number Not Numeric"}],"job_size":1}`,
   the address as sent, its `+` unescaped. The admin's log showed it Blocked (1) with `failed_reason`
   `txtNUMBER_NOT_NUMERIC`, and nothing was sent.
+- **2026-11-24:** `sms:+` and `sms:` → `200` with `invalid_recipients` `[{"address":"sms:+","error":"Not a Number"}]`
+  and `[{"address":"sms:","error":"Missing Address"}]`, `job_size` `1`. The admin's log showed each Blocked (1), with
+  `failed_reason` `txtNOT_A_NUMBER` and `txtMISSING_ADDRESS`, `failed_details` the address, and an empty `to_address`.
+- **2026-11-24:** `sms:0701740660`, `0701740661` without a prefix, and `sms:46701740662` → accepted, and the admin's log
+  showed them as `sms:+46701740660`, `sms:+46701740661` and `sms:+46701740662`, with the user's country code for local
+  messages empty; with it at `46`, a local number became the same.
 - **2026-11-17:** `report_to: "not an address"` →
   `{"job_id":…,"job_uuid":…,"invalid_report_to":[{"address":"not an address","error":"Unknown Address Type"}],"log_uuid":…,"job_size":1}`,
   and the message went out; `reply_to: "not an address"` alike, with `invalid_reply_to`.
@@ -57,6 +63,25 @@ from PTS's range for fiction, and no account is named.
   `0` and `-1`, a text of three parts under `sms_max_parts: 1` (stored whole), and a `scheduled_send_time` that is a word
   or not ISO 8601 (sent at once) → accepted.
 
+### Parts
+
+- **2026-11-24:** a text of 160 GSM characters, and one of 161 → reports with `quantity` `1` and `2`.
+- **2026-11-24:** a text of 320 GSM characters under `sms_max_parts: 1` → `200` with nothing to show the limit, and a
+  report whose `text` was the first 160 characters, `quantity` `1`; the admin's log kept the text whole.
+- **2026-11-24:** the same text without `sms_max_parts`, with the user's Max number of parts (Settings, SMS, Mail → SMS)
+  at 1 → the same, and a real phone got one SMS of the first 160 characters. The setting's default is the
+  organisation's, 8; the emulator has no such setting.
+- **2026-11-24:** a text of 100 characters with `ł`, under `sms_character_set: gsm` and under `optimize` → reports with
+  `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
+  text as UCS-2.
+
+### Scheduled sends
+
+- **2026-11-24:** three sends scheduled for the same wall time, one without an offset, one with `Z` and one with
+  `+01:00` → the one without an offset went out with the `Z` one, an hour after the `+01:00` one. K8 reads a time
+  without an offset as UTC. The admin's log showed `scheduled_time` empty for all three; their report times showed
+  when each went out.
+
 ### Delivery reports
 
 - **2026-11-07:** a delivered SMS with a URL in `report_to` → a `POST` of JSON with `log_status` `txtDELIVERED`,
@@ -74,6 +99,21 @@ from PTS's range for fiction, and no account is named.
   Python's aiohttp.
 - **2026-11-14:** a failed SMS → its report about a second after the send; a delivered one → after five to eight
   seconds.
+- **2026-11-24:** a report address whose settings name `Authorization: Report probe-sh1`, `Report-Secret` and
+  `X-Probe-MiXeD` → a report with all three and their values as written, beside K8's own headers. The names' case could
+  not be seen, since the receiver was reached through a proxy that rewrites them.
+- **2026-11-24:** a report → a row of its own in the admin's log: article HTTP Sent, `to_address` the URL, subject
+  "Delivery Report", the send's `job_uuid` and a `log_uuid` of its own.
+- **2026-11-24:** a receiver that answers `500`, or `401` → the report failed at once, and the admin's log showed
+  Delivery Failed (21) with `failed_reason` `HTTPError: Error Code: 500` and `reason: Internal Server Error` on a second
+  line, or `401` and `Unauthorized`. Nothing was sent again within two and a half hours.
+- **2026-11-24:** a receiver that does not answer → the report failed after 60 seconds, with `failed_reason`
+  `RequestError: Internal request timed out, url: ` and the URL. Nothing was sent again.
+- **2026-11-24:** a receiver that answers `302` → K8 followed it with a `GET` without the report; one that answers
+  `307` → the same `POST` with the report. Both were logged Delivery Success (22) on the target's `200`.
+- **2026-11-24:** an SMS with an `html` of its own → a report whose `html` was the text, not the request's `html`.
+- **2026-11-24:** an SMS with `attachments` of one file → accepted; the report's `text` was the text alone, `quantity`
+  `1`, and the admin's log listed the attachment's name.
 
 ### The user's report recipients
 
@@ -173,6 +213,9 @@ for the sender fields.
 - **2026-11-17:** `billing_id: "billing id-1"` → `Invalid billing_id billing id-1`.
 - **2026-11-17:** `attachments: null` → `500` with `'NoneType' object is not iterable`, and `attachments: "file"` →
   `500` with `'str' object has no attribute 'pop'`. Neither was in the admin's log.
+- **2026-11-24:** `attachments: ["file"]` → `500` with `'str' object has no attribute 'pop'`, and `attachments: 1` →
+  `500` with `'int' object is not iterable`, neither in the admin's log; `attachments: {}` → accepted and sent, though
+  the admin's log answered a 500 page for that row's details and left it out of an export.
 - **2026-11-17:** a request that breaks two of these rules → the refusal of the first in these orders: `attachments`
   before `sms_validity_time`, `sms_max_parts`, `sms_header`, `reply_to`, `report_to` and `sms_character_set`;
   `reply_to` before `report_to` before `sms_character_set` before `sms_header`; `sms_validity_time` before
@@ -213,9 +256,11 @@ receiver. A send that went out reported `txtDELIVERY_FAILED` within about three 
 Where TellusTalk's behaviour has not been observed, the emulator follows its specification. These are the places; each
 is settled when someone observes the real thing.
 
-- What TellusTalk sends when the text needs more parts than `sms_max_parts`: it accepted such a text on 2026-11-17 and
-  stored it whole.
-- What `sms_character_set: gsm` does with a character outside the GSM alphabet.
+- How K8 cuts a text to more than one part, and binary content; the emulator keeps the parts as the text splits, and
+  binary content whole.
+- Which limit holds when `sms_max_parts` and the user's Max number of parts differ; the emulator knows only
+  `sms_max_parts`, and 8 without it.
+- What the phone shows for a character outside the GSM alphabet under `sms_character_set: gsm` (issue #22).
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.
 - What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
@@ -233,8 +278,8 @@ is settled when someone observes the real thing.
   order seen.
 - Whether `0`, `false`, `[]` and `{}` are missing or empty in `to` and `text`; K8's text reads as Python's truth test,
   so the emulator refuses them as missing or empty, and gives the type text only to a value that is true.
-- What `attachments` does beyond `null` and `"file"`. The emulator reads K8's two texts as Python iterating the value
-  and calling `pop` on each item: a number or a boolean fails as not iterable; a non-empty string or object fails on its
+- What `attachments` does beyond the values above. The emulator reads K8's texts as Python iterating the value and
+  calling `pop` on each item: a number or a boolean fails as not iterable; a non-empty string or object fails on its
   first character or key, and a list on its first item that is a string, number, boolean or `null`; `[]`, `{}`, `""`
   and a list of objects or lists pass.
 - The types not tried in the fields above: a decimal or a boolean in `to`, a list or an object in `text` or
@@ -255,10 +300,9 @@ is settled when someone observes the real thing.
 - Whether `billing_id: ""` is accepted, and which characters besides a space and a hyphen K8 refuses; the emulator
   accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
 - Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
-- How TellusTalk reads a `scheduled_send_time` without an offset; the emulator reads it as Swedish time.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
-- What `html` and `attachments` do on an SMS, and what a report's `html` is when the request has an `html`; the emulator
-  passes the request's on.
+- What the phone shows for an SMS with an `html` or `attachments`; the emulator shows the text alone, as the report and
+  the admin's log had it.
 - What a report's `text` is for an empty `subject`; the emulator takes it as no subject.
 - What else TellusTalk refuses, apart from a missing `Authorization`, the sender fields and the fields above, and with
   what text.
@@ -268,7 +312,7 @@ is settled when someone observes the real thing.
 - How TellusTalk treats the other rules the warnings cover.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status
   takes.
-- Whether TellusTalk sends a report again when the receiver fails, and what a report in another `content_type` holds.
+- What a report in another `content_type` holds.
 - Whether an absent `subject` and `subject: ""` count as the same in the key of a duplicate; the emulator takes them as
   the same.
 - Whether a text with tracking links is compared before or after the links are shortened (issue #24); the emulator
@@ -282,9 +326,9 @@ is settled when someone observes the real thing.
   letter; the emulator removes them as from an SMS number, and keeps a letter with the `to-not-digits` warning.
 - How K8 reads a `to` address without a prefix that is no number, such as a bare e-mail address, and whether it blocks
   one; the emulator reads it as an SMS number and never blocks it, though it blocks the same address after `sms:`.
-- Which `sms:` numbers K8 blocks besides one with a letter: digits without `+`, such as a local number (issue #32), an
-  empty number, or `+` alone; the emulator sends them with the `to-not-digits` warning, and blocks a number holding any
-  other character than digits after an optional `+`.
+- How K8 reads digits without `+` that begin with neither a single `0` nor `46`, such as `0046…` or another country's
+  code, and whether a country code for local messages other than Sweden's changes a local number; the emulator keeps
+  such a number as written, with the `to-not-digits` warning.
 - Where `invalid_recipients`, `invalid_report_to` and `invalid_reply_to` sit in an answer to several recipients, and
   in which order the two address lists come when a request has both; the emulator keeps the places seen with one
   recipient and writes `invalid_report_to` first.
@@ -298,6 +342,7 @@ is settled when someone observes the real thing.
 - Whether a number K8 blocks gets a delivery report, and in what form; the emulator sends none (issue #31).
 - What a local number such as `0701740698` as `sms_originator_number` shows as the sender, and what `"Acme"` shows
   beside a named source `number`; the emulator shows the reply number for every `number` that is not `+` and digits.
+  On 2026-11-24 the admin's log showed `0701740698` and `46701740698` as the sender as written.
 - Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
 - Whether K8 refuses the sender fields and the fields above as it does for an SMS when a request has no SMS recipient,
   such as an e-mail with `html` and no `text`; the emulator does.
