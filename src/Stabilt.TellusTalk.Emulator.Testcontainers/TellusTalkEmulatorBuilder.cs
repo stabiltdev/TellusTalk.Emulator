@@ -66,6 +66,17 @@ public sealed class TellusTalkEmulatorBuilder : ContainerBuilder<TellusTalkEmula
         return WithEnvironment("Emulator__ReplyNumber", number);
     }
 
+    /// <summary>
+    /// The user's Max number of parts, which cuts a text sent without <c>sms_max_parts</c> to what fits that many
+    /// parts; 8 by default, as the organisation's is.
+    /// </summary>
+    public TellusTalkEmulatorBuilder WithSmsMaxParts(int maxParts)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxParts, 1);
+
+        return WithEnvironment("Emulator__SmsMaxParts", maxParts.ToString(CultureInfo.InvariantCulture));
+    }
+
     /// <summary>The sender the TellusTalk account is configured with, shown when a request sets none; a number stands in for two-way SMS.</summary>
     [Obsolete("Use WithSmsSender with TellusTalkSmsSender.Text for a name, or TellusTalkSmsSender.ReplySms and WithReplyNumber for a two-way number.")]
     public TellusTalkEmulatorBuilder WithAccountSender(string sender)

@@ -297,7 +297,8 @@ internal static class SendRequestRules
             yield return new Warning(
                 WarningCodes.MaxPartsInvalid,
                 "sms_max_parts",
-                $"sms_max_parts is {request.MaxParts}; the specification's minimum is 1, so the emulator uses the default of 8.");
+                $"sms_max_parts is {request.MaxParts}; the specification's minimum is 1, so the emulator uses the " +
+                "user's Max number of parts.");
         }
     }
 

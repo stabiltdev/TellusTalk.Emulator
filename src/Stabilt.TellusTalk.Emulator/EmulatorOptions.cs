@@ -20,6 +20,12 @@ internal sealed class EmulatorOptions
     /// <summary>Obsolete: use <see cref="SmsSender"/> and <see cref="ReplyNumber"/>. Honoured only when <see cref="SmsSender"/> is not set.</summary>
     public string? AccountSender { get; set; }
 
+    /// <summary>
+    /// The user's Max number of parts in TellusTalk, which cuts a text sent without <c>sms_max_parts</c>; the
+    /// organisation's default is 8.
+    /// </summary>
+    public int SmsMaxParts { get; set; } = 8;
+
     /// <summary>How long after a message is sent, or falls due, its delivery report goes out.</summary>
     public int ReportDelaySeconds { get; set; } = 1;
 

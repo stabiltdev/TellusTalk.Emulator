@@ -163,6 +163,7 @@ Assert.Empty(message.GetProperty("warnings").EnumerateArray());
 |---|---|---|
 | `Emulator__SmsSender` | `replysms` | The user's Sender in TellusTalk: `replysms`, `text:<name>`, `number:<number>` or `subject`. Shown when a request has no sender field. |
 | `Emulator__ReplyNumber` | `+46701740698` | The number TellusTalk assigns for replies, shown for `replysms`, for Sender `replysms` or `subject`, when the sender field K8 chose is empty, and for an `sms_originator_number` that is not `+` and digits. |
+| `Emulator__SmsMaxParts` | `8` | The user's Max number of parts in TellusTalk, 1 or more: a text sent without `sms_max_parts` is cut to what fits that many parts. `sms_max_parts` holds over it. |
 | `Emulator__AccountSender` | none | Obsolete. Honoured only when `Emulator__SmsSender` is not set: a value of `+` and digits means `replysms` with that number as `ReplyNumber` (unless `ReplyNumber` is set); anything else means `text:<value>`. |
 | `Emulator__RetentionLimit` | `1000` | How many messages are kept; the oldest go first. |
 | `Emulator__ReportDelaySeconds` | `1` | How long after a message is sent, or falls due, its delivery report goes out. |

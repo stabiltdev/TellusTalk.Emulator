@@ -7,7 +7,6 @@ using Stabilt.TellusTalk.Emulator.Authentication;
 using Stabilt.TellusTalk.Emulator.Http;
 using Stabilt.TellusTalk.Emulator.Messages;
 using Stabilt.TellusTalk.Emulator.Reports;
-using Stabilt.TellusTalk.Emulator.Senders;
 using Stabilt.TellusTalk.Emulator.Sending;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,13 +24,7 @@ builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.C
 // rather than, in Development, an exception that passes it by.
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
 
-builder.Services
-    .AddOptions<EmulatorOptions>()
-    .BindConfiguration(EmulatorOptions.Section)
-    .Validate(
-        options => options.SmsSender is null || SmsSender.TryParse(options.SmsSender, out _),
-        "Emulator__SmsSender must be replysms, text:<name>, number:<number> or subject.")
-    .ValidateOnStart();
+builder.Services.AddEmulatorOptions();
 
 builder.Services
     .AddSingleton<MessageFactory>()

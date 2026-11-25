@@ -51,6 +51,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .AddTellusTalkEmulator("tellustalk")
             .WithSmsSender(TellusTalkSmsSender.Text("Acme"))
             .WithReplyNumber("+46701740697")
+            .WithSmsMaxParts(3)
             .WithFailingNumbers("+46701740698", "+46701740699")
             .WithReportDelay(TimeSpan.FromSeconds(3))
             .WithRetentionLimit(200)
@@ -62,6 +63,7 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
         environment.Should().Contain([
             KeyValuePair.Create("Emulator__SmsSender", "text:Acme"),
             KeyValuePair.Create("Emulator__ReplyNumber", "+46701740697"),
+            KeyValuePair.Create("Emulator__SmsMaxParts", "3"),
             KeyValuePair.Create("Emulator__FailingNumbers", "+46701740698, +46701740699"),
             KeyValuePair.Create("Emulator__ReportDelaySeconds", "3"),
             KeyValuePair.Create("Emulator__RetentionLimit", "200"),
@@ -217,6 +219,16 @@ public sealed class TellusTalkEmulatorBuilderExtensionsTests
             .AddTellusTalkEmulator("tellustalk");
 
         FluentActions.Invoking(() => emulator.WithRetentionLimit(0)).Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void A_max_number_of_parts_below_one_is_refused()
+    {
+        var emulator = DistributedApplication
+            .CreateBuilder()
+            .AddTellusTalkEmulator("tellustalk");
+
+        FluentActions.Invoking(() => emulator.WithSmsMaxParts(0)).Should().Throw<ArgumentOutOfRangeException>();
     }
 
     /// <summary>The resource's environment as publishing writes it, where an endpoint is a placeholder rather than an address.</summary>

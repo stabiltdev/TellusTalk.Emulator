@@ -24,6 +24,7 @@ test asserts with, `api/messages`.
 |---|---|
 | `WithSmsSender(sender)` | The user's Sender setting, shown when a request sets none: `TellusTalkSmsSender.Text(name)`, `.Number(number)`, `.ReplySms` or `.Subject` |
 | `WithReplyNumber(number)` | The number TellusTalk assigns for replies, shown for `replysms` |
+| `WithSmsMaxParts(maxParts)` | The user's Max number of parts, which cuts a text sent without `sms_max_parts`; 8 by default |
 | `WithAccountSender(sender)` | Obsolete; use `WithSmsSender` |
 | `WithFailingNumbers(numbers)` | Adds numbers whose delivery reports say the operator could not deliver; each call adds to the earlier ones |
 | `WithReportDelay(delay)` | How long after a message is sent, or falls due, its delivery report goes out |

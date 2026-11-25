@@ -8,10 +8,10 @@ namespace Stabilt.TellusTalk.Emulator.Messages;
 
 internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions> options)
 {
-    /// <summary>The specification's default for <c>sms_max_parts</c>.</summary>
-    private const int DefaultMaxParts = 8;
-
     private readonly SenderSettings _senderSettings = SenderSettings.From(options.Value);
+
+    /// <summary>K8 was seen to let a request's <c>sms_max_parts</c> hold over the user's setting either way.</summary>
+    private readonly int _userMaxParts = options.Value.SmsMaxParts;
 
     public SendJob Create(SendRequest request, string userName, string rawRequest)
     {
@@ -87,7 +87,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
         }
 
         var parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
-        var maxParts = request.MaxParts is >= 1 and var allowed ? allowed : DefaultMaxParts;
+        var maxParts = request.MaxParts is >= 1 and var allowed ? allowed : _userMaxParts;
         if (parts.Count > maxParts && characterSet == SmsCharacterSet.Binary)
         {
             messageWarnings.Add(new Warning(
