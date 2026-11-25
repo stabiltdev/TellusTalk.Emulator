@@ -147,6 +147,21 @@ public sealed class TellusTalkEmulatorBuilderTests
     }
 
     [Fact]
+    public async Task The_max_number_of_parts_cuts_a_text_sent_without_sms_max_parts()
+    {
+        await using var emulator = LocalImage.Builder()
+            .WithSmsMaxParts(1)
+            .Build();
+        await emulator.StartAsync(TestContext.Current.CancellationToken);
+        using var client = Client(emulator);
+
+        await Send(client, $$"""{"to": "sms:+46701740605", "text": "{{new string('a', 320)}}"}""");
+
+        var message = await OnlyMessage(client);
+        message.GetProperty("text").GetString().Should().Be(new string('a', 160));
+    }
+
+    [Fact]
     public async Task With_duplicate_blocking_off_a_repeated_send_goes_out()
     {
         await using var emulator = LocalImage.Builder()

@@ -66,3 +66,4 @@ its `status` to `superseded by [ADR <identity>](<identity>.md)`, and update its 
 | [20261120-answer-a-send-as-k8-does](20261120-answer-a-send-as-k8-does.md) | Answer a send as K8 does: invalid addresses listed, invalid recipients blocked with a reason | accepted |
 | [20261124-read-a-time-without-an-offset-as-utc](20261124-read-a-time-without-an-offset-as-utc.md) | Read a scheduled time without an offset as UTC, as K8 does | accepted |
 | [20261125-send-redirect-and-the-view-token-as-written](20261125-send-redirect-and-the-view-token-as-written.md) | Send redirect= and --LINK_VIEW-- in an SMS text as written, as K8 does | accepted |
+| [20261125-mirror-tellustalks-max-number-of-parts](20261125-mirror-tellustalks-max-number-of-parts.md) | Mirror TellusTalk's Max number of parts in the settings | accepted |

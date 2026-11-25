@@ -70,7 +70,7 @@ from PTS's range for fiction, and no account is named.
   report whose `text` was the first 160 characters, `quantity` `1`; the admin's log kept the text whole.
 - **2026-11-24:** the same text without `sms_max_parts`, with the user's Max number of parts (Settings, SMS, Mail → SMS)
   at 1 → the same, and a real phone got one SMS of the first 160 characters. The setting's default is the
-  organisation's, 8; the emulator has no such setting.
+  organisation's, 8; `Emulator__SmsMaxParts` mirrors it.
 - **2026-11-24:** a text of 100 characters with `ł`, under `sms_character_set: gsm` and under `optimize` → reports with
   `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
   text as UCS-2.

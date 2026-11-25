@@ -181,6 +181,33 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
+    public void Without_sms_max_parts_the_users_max_number_of_parts_cuts_the_text()
+    {
+        var message = Create(
+                Json(new { to = "sms:+46701740605", text = Welcome }),
+                new EmulatorOptions { SmsMaxParts = 1 })
+            .Messages.Single();
+
+        message.Text.Should().Be(Welcome[..160]);
+        message.Sms!.MaxParts.Should().Be(1);
+        message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
+    }
+
+    [Theory]
+    [InlineData(1, 2, 2)]
+    [InlineData(2, 1, 1)]
+    public void Sms_max_parts_holds_over_the_users_max_number_of_parts_either_way(int setting, int requested, int parts)
+    {
+        var message = Create(
+                Json(new { to = "sms:+46701740605", text = Welcome, sms_max_parts = requested }),
+                new EmulatorOptions { SmsMaxParts = setting })
+            .Messages.Single();
+
+        message.Sms!.MaxParts.Should().Be(requested);
+        message.Sms.Parts.Count.Should().Be(parts);
+    }
+
+    [Fact]
     public void Without_max_parts_the_default_of_eight_applies()
     {
         var message = Create(Json(new { to = "sms:+46701740605", text = Welcome })).Messages.Single();
