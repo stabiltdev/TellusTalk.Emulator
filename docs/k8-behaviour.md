@@ -74,6 +74,10 @@ from PTS's range for fiction, and no account is named.
 - **2026-11-24:** a text of 100 characters with `ł`, under `sms_character_set: gsm` and under `optimize` → reports with
   `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
   text as UCS-2.
+- **2026-11-25:** `ł` under `sms_character_set: gsm` → a real phone showed `ł`.
+- **2026-11-25:** a text of 320 GSM characters under `sms_max_parts: 3`, with the user's Max number of parts at 1 → a
+  report with the whole text and `quantity` `3`; under `sms_max_parts: 1`, with the setting at 3 → the first 160
+  characters and `quantity` `1`. `sms_max_parts` holds either way, and the setting applies only without it.
 
 ### The header
 
@@ -126,9 +130,13 @@ from PTS's range for fiction, and no account is named.
   `RequestError: Internal request timed out, url: ` and the URL. Nothing was sent again.
 - **2026-11-24:** a receiver that answers `302` → K8 followed it with a `GET` without the report; one that answers
   `307` → the same `POST` with the report. Both were logged Delivery Success (22) on the target's `200`.
+- **2026-11-25:** a receiver that answers `204 No Content` → the report failed, and the admin's log showed Delivery
+  Failed (21) with `failed_reason` `HTTPError: Error Code: 204` and `reason: No Content` on a second line. Nothing was
+  sent again within an hour.
 - **2026-11-24:** an SMS with an `html` of its own → a report whose `html` was the text, not the request's `html`.
 - **2026-11-24:** an SMS with `attachments` of one file → accepted; the report's `text` was the text alone, `quantity`
   `1`, and the admin's log listed the attachment's name.
+- **2026-11-25:** an SMS with an `html` of its own and an attachment → a real phone showed the text alone.
 
 ### The user's report recipients
 
@@ -273,9 +281,6 @@ is settled when someone observes the real thing.
 
 - How K8 cuts a text to more than one part, and binary content; the emulator keeps the parts as the text splits, and
   binary content whole.
-- Which limit holds when `sms_max_parts` and the user's Max number of parts differ; the emulator knows only
-  `sms_max_parts`, and 8 without it.
-- What the phone shows for a character outside the GSM alphabet under `sms_character_set: gsm` (issue #22).
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - How K8 cuts a text with an `sms_header` to `sms_max_parts`, and whether `sms_header: ""` adds the blank line; the
   emulator cuts the header, the blank line and the text as one, and adds nothing for an empty header.
@@ -316,8 +321,6 @@ is settled when someone observes the real thing.
   accepts an empty id and refuses any character but ASCII letters and digits, `å` included.
 - Whether a `billing_id` that is no string, such as `true` or a list, is accepted as `123` was; the emulator accepts it.
 - What a short code as the user's Sender shows; the emulator has no setting for it (issue #35).
-- What the phone shows for an SMS with an `html` or `attachments`; the emulator shows the text alone, as the report and
-  the admin's log had it.
 - What a report's `text` is for an empty `subject`; the emulator takes it as no subject.
 - What else TellusTalk refuses, apart from a missing `Authorization`, the sender fields and the fields above, and with
   what text.
