@@ -150,11 +150,6 @@
                 <dl>
                     <dt>Job id</dt>
                     <dd>@message.JobId</dd>
-                    @if (sms.Links.Count > 0)
-                    {
-                        <dt>Links</dt>
-                        <dd>@Links(sms.Links)</dd>
-                    }
                     <dt>Flash</dt>
                     <dd>@(Shown(message.Request.Body.SmsFlash) ?? "No")</dd>
                     <dt>Valid for</dt>
@@ -301,19 +296,6 @@
                 </li>
             }
         </ul>;
-
-    /// <summary>Text, not anchors: a shortened link is a placeholder, and it must not send anyone to ebox.nu.</summary>
-    private static RenderFragment Links(IReadOnlyList<TrackingLink> links) =>
-        @<ul class="tt-links">
-            @foreach (var link in links)
-            {
-                <li><code>@link.Shown</code> <span class="tt-setting">leads to</span> @Destination(link)</li>
-            }
-        </ul>;
-
-    private static RenderFragment Destination(TrackingLink link) => link.Target is { } target
-        ? @<code>@target</code>
-        : @<text>the message's own page</text>;
 
     private static (string Text, string LogStatus) NumberFault(BlockedReason reason) => reason switch
     {

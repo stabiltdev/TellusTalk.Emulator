@@ -37,7 +37,8 @@ internal sealed record DeliveryReport(
     /// <summary>
     /// <c>quantity</c> is taken as the number of parts: TellusTalk's e-mail report for the same SMS listed
     /// "SMS Parts: 1" where the JSON report had a quantity of 1. A subject heads the report's text, and the SMS
-    /// itself carries the message alone. An empty subject is taken as none, since K8 was not seen with one. <c>html</c>
+    /// itself carries the message alone; the SMS's header is left out. An empty subject is taken as none, since K8 was
+    /// not seen with one. <c>html</c>
     /// is the text as <c>text_linebreaksbr</c> writes it, also when the request has an <c>html</c> of its own.
     /// </summary>
     public static DeliveryReport For(Message message, ReportStatus status, DateTimeOffset reportedAt)
@@ -51,7 +52,10 @@ internal sealed record DeliveryReport(
         };
         var blocked = status == ReportStatus.Blocked;
         var body = message.Request.Body;
-        var text = string.IsNullOrEmpty(message.Request.Subject) ? message.Text : $"{message.Request.Subject}\n\n{message.Text}";
+        var sms = message.Sms!; // Only an SMS is ever reported.
+        var text = string.IsNullOrEmpty(message.Request.Subject)
+            ? sms.Body
+            : $"{message.Request.Subject}\n\n{sms.Body}";
         var textLineBreaksBr = text.Replace("\n", "<br>\n", StringComparison.Ordinal);
 
         return new DeliveryReport(
@@ -68,7 +72,7 @@ internal sealed record DeliveryReport(
             text,
             textLineBreaksBr,
             body.Echo.ValueKind == JsonValueKind.Undefined ? null : body.Echo,
-            message.Sms!.Parts.Count, // Only an SMS is ever reported.
+            sms.Parts.Count,
             message.Id,
             message.Id,
             message.JobId,

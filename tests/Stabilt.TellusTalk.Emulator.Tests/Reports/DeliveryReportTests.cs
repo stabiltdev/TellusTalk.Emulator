@@ -133,6 +133,18 @@ public sealed class DeliveryReportTests
     }
 
     [Fact]
+    public void The_text_leaves_the_header_out_and_the_quantity_counts_it()
+    {
+        var message = Message(
+            JsonSerializer.Serialize(new { to = "sms:+46701740605", text = new string('a', 158), sms_header = "H" }));
+
+        using var report = Serialize(DeliveryReport.For(message, ReportStatus.Delivered, _time.GetUtcNow()));
+
+        report.RootElement.GetProperty("text").GetString().Should().Be(new string('a', 158));
+        report.RootElement.GetProperty("quantity").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
     public void Html_is_the_text_also_when_the_request_has_an_html_of_its_own()
     {
         var message = Message("""{"to":"sms:+46701740605","text":"Probe text.","html":"<p><b>Probe</b> html.</p>"}""");

@@ -37,7 +37,6 @@ public sealed class CaughtMessageTests
         message.DueAt.Should().BeNull();
         message.Sender.Should().BeEquivalentTo(new { Shown = "Probe", Kind = SenderKind.Name, Source = "text", FromAccount = false });
         message.Text.Should().Be("Your order has shipped.");
-        message.Links.Should().BeEmpty();
         message.Parts.Should().BeEquivalentTo(new { CharacterSet = SmsCharacterSet.Gsm, Count = 1, Length = 23, LeftInLastPart = 137, MaxParts = 4 });
         message.Parts!.Starts.Should().Equal(0);
         message.ReportTo.Should().ContainSingle().Which.Should().BeEquivalentTo(new { Kind = ReportAddressKind.Url, Target = "https://example.se/reports", ContentType = (string?)null, Headers = new Dictionary<string, string>(StringComparer.Ordinal) { ["Authorization"] = "Basic dGVzdA==" } });
@@ -142,7 +141,6 @@ public sealed class CaughtMessageTests
         message.To.Should().Be("test.user@example.se");
         message.Text.Should().Be("Shipped");
         message.Sender.Should().BeNull();
-        message.Links.Should().BeNull();
         message.Parts.Should().BeNull();
         message.Reports.Should().BeEmpty();
         message.Fields["subject"].GetString().Should().Be("Your order");
@@ -195,20 +193,6 @@ public sealed class CaughtMessageTests
 
         number!.Sender.Should().BeEquivalentTo(new { Shown = "+46701740698", Kind = SenderKind.Number, Source = "account", FromAccount = true });
         name!.Sender.Should().BeEquivalentTo(new { Kind = SenderKind.Name, Source = "subject" });
-    }
-
-    [Fact]
-    public async Task Both_link_kinds_are_read()
-    {
-        await using var emulator = new EmulatorFactory();
-        using var client = new TellusTalkEmulatorClient(emulator.CreateClient());
-        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Svara: redirect=https://example.se/quiz eller --LINK_VIEW--"}""");
-
-        var message = await client.GetMessageAsync(id, TestContext.Current.CancellationToken);
-
-        message!.Links.Should().Equal(
-            new TrackingLink { Kind = TrackingLinkKind.Redirect, Shown = "https://ebox.nu/r_xxxxxx/0", Target = "https://example.se/quiz" },
-            new TrackingLink { Kind = TrackingLinkKind.View, Shown = "https://ebox.nu/z_xxxxxx", Target = null });
     }
 
     [Fact]

@@ -312,9 +312,10 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
 
 A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21` and
 `"failed_reason": "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"`. `echo` carries the request's `echo` as it was
-sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
-itself carries the message alone. `text_linebreaksbr` and `html` write each line break as `<br>` followed by the line
-break; a request's own `html` is not reported, as TellusTalk does not report it.
+sent, and `quantity` the number of parts, the header's included. A request's `subject` heads `text`, followed by a
+blank line; the SMS itself carries the message alone. `text` leaves the `sms_header` out. `text_linebreaksbr` and
+`html` write each line break as `<br>` followed by the line break; a request's own `html` is not reported, as
+TellusTalk does not report it.
 
 A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
 `"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,
@@ -370,7 +371,6 @@ A message:
   "dueAt": null,
   "sender": { "shown": "Probe", "kind": "name", "source": "text", "fromAccount": false },
   "text": "Your order has shipped.",
-  "links": [],
   "parts": { "characterSet": "gsm", "count": 1, "length": 23, "starts": [0], "leftInLastPart": 137, "maxParts": 8 },
   "reportTo": [ { "kind": "url", "target": "https://example.se/reports", "contentType": null, "headers": {} } ],
   "replyTo": [],
@@ -387,15 +387,12 @@ A message:
   number has `duplicateOf` `null`. A report attempt's `status` may be `blocked`.
 - A single recipient's message takes the job's id; each of several recipients gets an id of its own in the same job.
 - `channel` is `sms`, `email`, `fax`, `mms`, `voice` or `group`. For another channel than SMS, `to` is its address
-  after the prefix, `text` is the request's `text` as sent, and `sender`, `links` and `parts` are `null`.
+  after the prefix, `text` is the request's `text` as sent, and `sender` and `parts` are `null`.
 - `sender.source` is the source the request named, else the field TellusTalk chose (`subject`, `text` or `number`),
   else `account` when the settings decided; whether the request named it is in `fields`. `fromAccount` says the shown
   sender came from the settings or the reply number rather than from the request.
-- An SMS's `text` is what the phone shows: `sms_header` in front, and each `redirect=` followed by an http(s) URL and
-  each `--LINK_VIEW--` replaced by a short link in the form of the specification's examples,
-  `https://ebox.nu/r_xxxxxx/0` and `https://ebox.nu/z_xxxxxx`, with a placeholder id. `links` lists them in order, each
-  with its `kind`, `redirect` or `view`, the link as `shown`, and the `target` a redirect leads to; a view link's
-  `target` is `null`.
+- An SMS's `text` is what the phone shows: `sms_header` above the text after a blank line, and `redirect=` and
+  `--LINK_VIEW--` as written, as TellusTalk was seen to send them.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it

@@ -21,7 +21,6 @@ internal sealed record MessageResponse(
     DateTimeOffset? DueAt,
     SenderResponse? Sender,
     string Text,
-    IReadOnlyList<LinkResponse>? Links,
     PartsResponse? Parts,
     IReadOnlyList<AddressResponse> ReportTo,
     IReadOnlyList<AddressResponse> ReplyTo,
@@ -48,7 +47,6 @@ internal sealed record MessageResponse(
             message.DueAt,
             sms is null ? null : SenderResponse.From(sms.Sender),
             message.Text,
-            sms is null ? null : [.. sms.Links.Select(LinkResponse.From)],
             sms is null ? null : PartsResponse.From(sms.Parts, sms.MaxParts),
             [.. message.Request.ReportTo.Select(AddressResponse.From)],
             [.. message.Request.ReplyTo.Select(AddressResponse.From)],
@@ -62,11 +60,6 @@ internal sealed record MessageResponse(
 internal sealed record SenderResponse(string Shown, SenderKind Kind, string Source, bool FromAccount)
 {
     public static SenderResponse From(ShownSender sender) => new(sender.Display, sender.Kind, sender.Source, sender.FromAccount);
-}
-
-internal sealed record LinkResponse(TrackingLinkKind Kind, string Shown, string? Target)
-{
-    public static LinkResponse From(TrackingLink link) => new(link.Kind, link.Shown, link.Target);
 }
 
 internal sealed record PartsResponse(

@@ -34,9 +34,6 @@ public sealed record CaughtMessage
     public string Text { get; init; } = string.Empty;
 
     /// <summary><c>null</c> for a message on another channel than SMS.</summary>
-    public IReadOnlyList<TrackingLink>? Links { get; init; }
-
-    /// <summary><c>null</c> for a message on another channel than SMS.</summary>
     public SmsParts? Parts { get; init; }
 
     public IReadOnlyList<ReportAddress> ReportTo { get; init; } = [];
@@ -65,15 +62,6 @@ public sealed record ShownSender
     public string Source { get; init; } = string.Empty;
 
     public bool FromAccount { get; init; }
-}
-
-public sealed record TrackingLink
-{
-    public TrackingLinkKind Kind { get; init; }
-
-    public string Shown { get; init; } = string.Empty;
-
-    public string? Target { get; init; }
 }
 
 public sealed record SmsParts
