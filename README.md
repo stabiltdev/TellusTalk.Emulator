@@ -312,9 +312,10 @@ Each report is a `POST` with the JSON TellusTalk was seen sending:
 
 A failed report has `"log_status": "txtDELIVERY_FAILED"`, `"log_status_code": 21` and
 `"failed_reason": "txtFAILED_REASON: txtOPERATOR_ROUTING_ERROR, None"`. `echo` carries the request's `echo` as it was
-sent, and `quantity` the number of parts. A request's `subject` heads `text`, followed by a blank line; the SMS
-itself carries the message alone. `text_linebreaksbr` and `html` write each line break as `<br>` followed by the line
-break; a request's own `html` is not reported, as TellusTalk does not report it.
+sent, and `quantity` the number of parts, the header's included. A request's `subject` heads `text`, followed by a
+blank line; the SMS itself carries the message alone. `text` leaves the `sms_header` out. `text_linebreaksbr` and
+`html` write each line break as `<br>` followed by the line break; a request's own `html` is not reported, as
+TellusTalk does not report it.
 
 A held-back send is reported at once, without the delay and whatever `Emulator__FailingNumbers` holds. Its report has
 `"log_status": "txtBLOCKED"`, `"log_status_code": 1`, `"report_time": null`,
@@ -390,8 +391,8 @@ A message:
 - `sender.source` is the source the request named, else the field TellusTalk chose (`subject`, `text` or `number`),
   else `account` when the settings decided; whether the request named it is in `fields`. `fromAccount` says the shown
   sender came from the settings or the reply number rather than from the request.
-- An SMS's `text` is what the phone shows: `sms_header` in front, and `redirect=` and `--LINK_VIEW--` as written, as
-  TellusTalk was seen to send them.
+- An SMS's `text` is what the phone shows: `sms_header` above the text after a blank line, and `redirect=` and
+  `--LINK_VIEW--` as written, as TellusTalk was seen to send them.
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it

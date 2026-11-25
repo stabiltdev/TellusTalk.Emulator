@@ -63,7 +63,9 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     /// <summary>What the request's SMS recipients share: the text as the phone shows it, the SMS part and the warnings.</summary>
     private (string Text, SmsContent Sms, IReadOnlyList<Warning> Warnings) CreateSms(SendRequest request)
     {
-        var text = (request.Header ?? string.Empty) + (request.Text ?? string.Empty);
+        // K8 was seen to put the header above the text after a blank line.
+        var header = string.IsNullOrEmpty(request.Header) ? string.Empty : request.Header + "\n\n";
+        var text = header + (request.Text ?? string.Empty);
 
         var messageWarnings = new List<Warning>();
         var sender = SenderResolver.Resolve(request, _senderSettings);
@@ -108,7 +110,9 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. request.SmsWarnings, .. messageWarnings];
 
-        return (text, new SmsContent(sender, parts, maxParts), warnings);
+        var body = text.Length > header.Length ? text[header.Length..] : string.Empty;
+
+        return (text, new SmsContent(sender, body, parts, maxParts), warnings);
     }
 
     /// <summary>The source that decided the sender is the request's, or the user's Sender setting when the request holds none.</summary>

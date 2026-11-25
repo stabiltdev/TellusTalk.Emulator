@@ -75,6 +75,14 @@ from PTS's range for fiction, and no account is named.
   `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
   text as UCS-2.
 
+### The header
+
+- **2026-11-24:** `sms_header: "H"` beside a text of 159 characters, and of 160 → reports with `quantity` `2` both, and
+  `text` the text alone; the admin's log had the text alone too.
+- **2026-11-25:** `sms_header: "Header"` beside `Probe T23 body.` → a real phone showed the header, a blank line and the
+  text. `sms_header: "H"` beside 158 characters → `quantity` `2`, so the header and the text are joined by two
+  characters, `\n\n`.
+
 ### Tracking links
 
 - **2026-11-24:** a text with `redirect=` and an https URL, twice, and one with `--LINK_VIEW--` → the admin's log and
@@ -269,7 +277,8 @@ is settled when someone observes the real thing.
   `sms_max_parts`, and 8 without it.
 - What the phone shows for a character outside the GSM alphabet under `sms_character_set: gsm` (issue #22).
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
-- Whether `sms_header` is joined to the text with a separator.
+- How K8 cuts a text with an `sms_header` to `sms_max_parts`, and whether `sms_header: ""` adds the blank line; the
+  emulator cuts the header, the blank line and the text as one, and adds nothing for an empty header.
 - Whether `redirect=` and `--LINK_VIEW--` become links for an account that has tracking links turned on, if any can,
   and what the links then look like; the emulator sends them as written, as a test user's SMS had them.
 - Which refusal K8 gives when a request breaks more than one sender rule, and how its sender refusals rank against what

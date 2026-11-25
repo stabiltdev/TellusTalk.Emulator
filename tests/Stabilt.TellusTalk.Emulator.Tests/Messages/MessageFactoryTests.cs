@@ -100,12 +100,30 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
-    public void The_header_goes_in_front_of_the_text_and_the_parts_are_counted_on_both()
+    public void The_header_goes_above_the_text_after_a_blank_line_and_the_parts_are_counted_on_all_three()
     {
-        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_header":"[Test] "}""").Messages.Single();
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_header":"[Test]"}""").Messages.Single();
 
-        message.Text.Should().Be("[Test] Hej");
-        message.Sms!.Parts.Length.Should().Be(12, "the brackets come from the GSM extension table and take two septets each");
+        message.Text.Should().Be("[Test]\n\nHej");
+        message.Sms!.Body.Should().Be("Hej");
+        message.Sms.Parts.Length.Should().Be(13, "brackets are in the GSM extension table and take two septets each");
+    }
+
+    [Fact]
+    public void A_header_and_a_text_of_158_characters_take_two_parts()
+    {
+        var message = Create(Json(new { to = "sms:+46701740605", text = new string('a', 158), sms_header = "H" }))
+            .Messages.Single();
+
+        message.Sms!.Parts.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public void An_empty_header_adds_no_blank_line()
+    {
+        var message = Create("""{"to":"sms:+46701740605","text":"Hej","sms_header":""}""").Messages.Single();
+
+        message.Text.Should().Be("Hej");
     }
 
     [Fact]
