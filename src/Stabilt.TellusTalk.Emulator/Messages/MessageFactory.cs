@@ -37,7 +37,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                     userName,
                     now,
                     dueAt,
-                    // Neither sms_header nor a shortened tracking link was observed outside SMS.
+                    // sms_header was not observed outside SMS.
                     isSms ? text : request.Text ?? string.Empty,
                     isSms ? sms : null,
                     request,
@@ -63,7 +63,7 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
     /// <summary>What the request's SMS recipients share: the text as the phone shows it, the SMS part and the warnings.</summary>
     private (string Text, SmsContent Sms, IReadOnlyList<Warning> Warnings) CreateSms(SendRequest request)
     {
-        var (text, links) = TrackingLinks.Shorten((request.Header ?? string.Empty) + (request.Text ?? string.Empty));
+        var text = (request.Header ?? string.Empty) + (request.Text ?? string.Empty);
 
         var messageWarnings = new List<Warning>();
         var sender = SenderResolver.Resolve(request, _senderSettings);
@@ -103,13 +103,12 @@ internal sealed class MessageFactory(TimeProvider time, IOptions<EmulatorOptions
                 "fits them and drops the rest."));
 
             text = SmsPartsCalculator.Cut(text, parts, maxParts);
-            links = [.. links.Where(link => text.Contains(link.Shown, StringComparison.Ordinal))];
             parts = SmsPartsCalculator.Calculate(text, characterSet, request.Udh);
         }
 
         IReadOnlyList<Warning> warnings = [.. request.Warnings, .. request.SmsWarnings, .. messageWarnings];
 
-        return (text, new SmsContent(sender, links, parts, maxParts), warnings);
+        return (text, new SmsContent(sender, parts, maxParts), warnings);
     }
 
     /// <summary>The source that decided the sender is the request's, or the user's Sender setting when the request holds none.</summary>

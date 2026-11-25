@@ -109,15 +109,15 @@ public sealed class MessageFactoryTests
     }
 
     [Fact]
-    public void The_parts_are_counted_on_the_text_with_its_tracking_links_shortened()
+    public void Redirect_and_the_view_token_are_sent_and_counted_as_written()
     {
-        var target = "https://example.se/" + new string('a', 160);
+        var text = "Svara här: redirect=https://example.se/" + new string('a', 140) + " eller läs --LINK_VIEW--";
 
-        var message = Create(Json(new { to = "sms:+46701740605", text = "Svara här: redirect=" + target })).Messages.Single();
+        var message = Create(Json(new { to = "sms:+46701740605", text })).Messages.Single();
 
-        message.Text.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0");
-        message.Sms!.Parts.Count.Should().Be(1);
-        message.Sms.Links.Should().ContainSingle().Which.Target.Should().Be(target);
+        message.Text.Should().Be(text);
+        message.Sms!.Parts.Length.Should().Be(text.Length);
+        message.Sms.Parts.Count.Should().Be(2);
     }
 
     [Fact]
@@ -140,20 +140,6 @@ public sealed class MessageFactoryTests
         message.Text.Should().Be(Welcome[..160]);
         message.Sms!.Parts.Count.Should().Be(1);
         message.Warnings.Should().ContainSingle().Which.Code.Should().Be(WarningCodes.MaxPartsExceeded);
-    }
-
-    [Fact]
-    public void A_tracking_link_the_cut_drops_is_left_out_of_the_links()
-    {
-        var text = new string('a', 100) + " redirect=https://example.se/first " + new string('b', 20) +
-            " redirect=https://example.se/second";
-        var shortened = new string('a', 100) + " https://ebox.nu/r_xxxxxx/0 " + new string('b', 20) +
-            " https://ebox.nu/r_xxxxxx/1";
-
-        var message = Create(Json(new { to = "sms:+46701740605", text, sms_max_parts = 1 })).Messages.Single();
-
-        message.Text.Should().Be(shortened[..160]);
-        message.Sms!.Links.Should().ContainSingle().Which.Target.Should().Be("https://example.se/first");
     }
 
     [Fact]

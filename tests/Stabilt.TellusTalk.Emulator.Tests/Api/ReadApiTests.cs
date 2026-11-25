@@ -65,7 +65,6 @@ public sealed class ReadApiTests
         sender.GetProperty("fromAccount").GetBoolean().Should().BeFalse();
 
         newest.GetProperty("text").GetString().Should().Be(Welcome);
-        newest.GetProperty("links").GetArrayLength().Should().Be(0);
 
         var parts = newest.GetProperty("parts");
         parts.GetProperty("characterSet").GetString().Should().Be("gsm");
@@ -128,26 +127,16 @@ public sealed class ReadApiTests
     }
 
     [Fact]
-    public async Task A_message_shows_its_tracking_links_shortened_and_lists_where_each_leads()
+    public async Task A_message_keeps_redirect_and_the_view_token_as_written()
     {
         await using var emulator = new EmulatorFactory();
-        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--"}""");
+        const string text = "Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--";
+        var id = await Send(emulator, JsonSerializer.Serialize(new { to = "sms:+46701740605", text }));
 
         using var message = await Get(emulator, $"/api/messages/{id}");
 
-        var root = message.RootElement;
-        root.GetProperty("text").GetString().Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0 eller läs https://ebox.nu/z_xxxxxx");
-        var links = root
-            .GetProperty("links")
-            .EnumerateArray()
-            .ToList();
-        links.Should().HaveCount(2);
-        links[0].GetProperty("kind").GetString().Should().Be("redirect");
-        links[0].GetProperty("shown").GetString().Should().Be("https://ebox.nu/r_xxxxxx/0");
-        links[0].GetProperty("target").GetString().Should().Be("https://example.se/quiz");
-        links[1].GetProperty("kind").GetString().Should().Be("view");
-        links[1].GetProperty("shown").GetString().Should().Be("https://ebox.nu/z_xxxxxx");
-        links[1].GetProperty("target").ValueKind.Should().Be(JsonValueKind.Null);
+        message.RootElement.GetProperty("text").GetString().Should().Be(text);
+        message.RootElement.TryGetProperty("links", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -200,7 +189,6 @@ public sealed class ReadApiTests
         root.GetProperty("toAsSent").GetString().Should().Be("email:test.user@example.se");
         root.GetProperty("text").GetString().Should().Be("Shipped");
         root.GetProperty("sender").ValueKind.Should().Be(JsonValueKind.Null);
-        root.GetProperty("links").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("parts").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("duplicateOf").ValueKind.Should().Be(JsonValueKind.Null);
         root.GetProperty("blockedReason").ValueKind.Should().Be(JsonValueKind.Null);

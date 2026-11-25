@@ -75,6 +75,13 @@ from PTS's range for fiction, and no account is named.
   `quantity` `2` both, and `ł` kept in their `text`. So under `gsm` too, a character outside the GSM alphabet sends the
   text as UCS-2.
 
+### Tracking links
+
+- **2026-11-24:** a text with `redirect=` and an https URL, twice, and one with `--LINK_VIEW--` → the admin's log and
+  the reports had each text as sent.
+- **2026-11-25:** both in one text, from a test user → a real phone showed the text exactly as sent, with no link in
+  place of either.
+
 ### Scheduled sends
 
 - **2026-11-24:** three sends scheduled for the same wall time, one without an offset, one with `Z` and one with
@@ -263,9 +270,8 @@ is settled when someone observes the real thing.
 - What the phone shows for a character outside the GSM alphabet under `sms_character_set: gsm` (issue #22).
 - How `binary` expects its content, and how `sms_udh` and TellusTalk's own concatenation header share a part's room.
 - Whether `sms_header` is joined to the text with a separator.
-- What the short links that `redirect=` and `--LINK_VIEW--` become look like and how long they are, where a redirect's
-  address ends, and whether a delivery report's `text` carries them; the emulator takes their form from the
-  specification's examples and ends an address at whitespace.
+- Whether `redirect=` and `--LINK_VIEW--` become links for an account that has tracking links turned on, if any can,
+  and what the links then look like; the emulator sends them as written, as a test user's SMS had them.
 - Which refusal K8 gives when a request breaks more than one sender rule, and how its sender refusals rank against what
   the emulator itself cannot record; the emulator checks the types, then the source, then the missing value.
 - The types not yet tried in a given sender field, such as a decimal in `sms_originator_text` or a list in
@@ -315,8 +321,6 @@ is settled when someone observes the real thing.
 - What a report in another `content_type` holds.
 - Whether an absent `subject` and `subject: ""` count as the same in the key of a duplicate; the emulator takes them as
   the same.
-- Whether a text with tracking links is compared before or after the links are shortened (issue #24); the emulator
-  compares the request's `text` as sent, before shortening.
 - Duplicates on channels other than SMS, and what their key is; a log of 2026-11-14 showed an e-mail held back 36 seconds
   after the first. The emulator catches every channel but holds back SMS only, since the key on another channel has not
   been observed.
@@ -343,7 +347,7 @@ is settled when someone observes the real thing.
 - What a local number such as `0701740698` as `sms_originator_number` shows as the sender, and what `"Acme"` shows
   beside a named source `number`; the emulator shows the reply number for every `number` that is not `+` and digits.
   On 2026-11-24 the admin's log showed `0701740698` and `46701740698` as the sender as written.
-- Whether `sms_header` and tracking links apply on channels other than SMS; the emulator applies them to SMS only.
+- Whether `sms_header` applies on channels other than SMS; the emulator applies it to SMS only.
 - Whether K8 refuses the sender fields and the fields above as it does for an SMS when a request has no SMS recipient,
   such as an e-mail with `html` and no `text`; the emulator does.
 - When a held-back send that was itself scheduled reports: at once, or when it would have fallen due; the emulator

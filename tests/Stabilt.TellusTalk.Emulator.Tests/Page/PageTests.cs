@@ -488,31 +488,18 @@ public sealed class PageTests
     }
 
     [Fact]
-    public async Task The_detail_lists_each_tracking_link_with_where_it_leads_and_the_phone_links_nowhere()
+    public async Task The_phone_shows_redirect_and_the_view_token_as_written_and_links_nowhere()
     {
         await using var emulator = new EmulatorFactory();
-        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--"}""");
+        var id = await Send(
+            emulator,
+            """{"to":"sms:+46701740605","text":"Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--"}""");
 
         using var page = await Page(emulator, $"?id={id}");
 
-        page.QuerySelector("#detail .tt-bubble")!.TextContent.Should().Be("Svara här: https://ebox.nu/r_xxxxxx/0 eller läs https://ebox.nu/z_xxxxxx");
+        page.QuerySelector("#detail .tt-bubble")!.TextContent
+            .Should().Be("Svara här: redirect=https://example.se/quiz eller läs --LINK_VIEW--");
         page.QuerySelectorAll("#detail .tt-bubble a").Should().BeEmpty();
-        page.QuerySelectorAll("#detail .tt-links li")
-            .Select(item => Collapsed(item.TextContent))
-            .Should().Equal(
-                "https://ebox.nu/r_xxxxxx/0 leads to https://example.se/quiz",
-                "https://ebox.nu/z_xxxxxx leads to the message's own page");
-    }
-
-    [Fact]
-    public async Task A_message_without_tracking_links_lists_none()
-    {
-        await using var emulator = new EmulatorFactory();
-        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
-
-        using var page = await Page(emulator, $"?id={id}");
-
-        Details(page).Should().NotContainKey("Links");
     }
 
     [Fact]

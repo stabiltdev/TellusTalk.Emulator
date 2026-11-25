@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by [ADR 20261125-send-redirect-and-the-view-token-as-written](20261125-send-redirect-and-the-view-token-as-written.md)
 date: 2026-11-09
 deciders: [Peter Hedberg]
 ---
