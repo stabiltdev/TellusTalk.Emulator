@@ -88,6 +88,22 @@ public sealed class ReportFlowTests
         attempt.GetProperty("target").GetString().Should().Be("https://example.se/reports");
         attempt.GetProperty("sent").GetBoolean().Should().BeTrue();
         attempt.GetProperty("outcome").GetString().Should().Be("200 OK");
+        attempt.GetProperty("failedReason").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task A_report_TellusTalk_would_log_as_failed_carries_its_reason_in_the_read_API()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.Answer = HttpStatusCode.NoContent;
+        var id = await Send(emulator, WithReport);
+        await StepUntilReported(emulator, 1);
+
+        var attempt = (await Attempts(emulator, id, expected: 1)).Single();
+
+        attempt.GetProperty("sent").GetBoolean().Should().BeTrue();
+        attempt.GetProperty("outcome").GetString().Should().Be("204 No Content");
+        attempt.GetProperty("failedReason").GetString().Should().Be("HTTPError: Error Code: 204\nreason: No Content");
     }
 
     [Fact]

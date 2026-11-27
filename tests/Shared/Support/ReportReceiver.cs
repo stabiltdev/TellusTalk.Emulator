@@ -14,6 +14,9 @@ public sealed class ReportReceiver : HttpMessageHandler
     /// <summary>Whether a post fails as a refused connection does.</summary>
     public bool Unreachable { get; set; }
 
+    /// <summary>Whether a post fails as the client's own timeout does, without waiting it out.</summary>
+    public bool TimesOut { get; set; }
+
     /// <summary>Hosts that take a report and never answer, as a receiver whose packets are dropped does.</summary>
     public ISet<string> SilentHosts { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -44,6 +47,13 @@ public sealed class ReportReceiver : HttpMessageHandler
         if (Unreachable)
         {
             throw new HttpRequestException("No connection could be made because the target machine actively refused it.");
+        }
+
+        if (TimesOut)
+        {
+            throw new TaskCanceledException(
+                "The request was canceled due to the configured HttpClient.Timeout.",
+                new TimeoutException());
         }
 
         var headers = request.Headers

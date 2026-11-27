@@ -31,7 +31,12 @@ public sealed class ReportSenderTests
         body.RootElement.GetProperty("log_status").GetString().Should().Be("txtDELIVERED");
 
         attempts.Should().ContainSingle().Which.Should().Be(new ReportAttempt(
-            emulator.Time.GetUtcNow(), ReportStatus.Delivered, "https://example.se/reports", Sent: true, "200 OK"));
+            emulator.Time.GetUtcNow(),
+            ReportStatus.Delivered,
+            "https://example.se/reports",
+            Sent: true,
+            "200 OK",
+            FailedReason: null));
     }
 
     [Fact]
@@ -62,6 +67,7 @@ public sealed class ReportSenderTests
         attempts.Should().SatisfyRespectively(
             email => email.Should().Match<ReportAttempt>(attempt => !attempt.Sent && attempt.Outcome.Contains("e-mail")),
             sms => sms.Should().Match<ReportAttempt>(attempt => !attempt.Sent && attempt.Outcome.Contains("SMS")));
+        attempts.Should().OnlyContain(attempt => attempt.FailedReason == null);
     }
 
     [Fact]
@@ -93,6 +99,40 @@ public sealed class ReportSenderTests
         attempts.Should().ContainSingle().Which.Should().Match<ReportAttempt>(attempt => attempt.Sent && attempt.Outcome == "500 Internal Server Error");
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent, "HTTPError: Error Code: 204\nreason: No Content")]
+    [InlineData(HttpStatusCode.Unauthorized, "HTTPError: Error Code: 401\nreason: Unauthorized")]
+    [InlineData(HttpStatusCode.InternalServerError, "HTTPError: Error Code: 500\nreason: Internal Server Error")]
+    public async Task A_receivers_answer_other_than_200_fails_the_report_with_TellusTalks_reason(
+        HttpStatusCode answer,
+        string failedReason)
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.Answer = answer;
+        var message = await Sent(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports"}""");
+
+        var attempts = await Sender(emulator)
+            .Send(message, ReportStatus.Delivered, TestContext.Current.CancellationToken);
+
+        attempts.Should().ContainSingle().Which.FailedReason.Should().Be(failedReason);
+    }
+
+    [Fact]
+    public async Task A_receiver_that_does_not_answer_in_time_fails_the_report_with_TellusTalks_reason()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.TimesOut = true;
+        var message = await Sent(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports"}""");
+
+        var attempts = await Sender(emulator)
+            .Send(message, ReportStatus.Delivered, TestContext.Current.CancellationToken);
+
+        var attempt = attempts.Should().ContainSingle().Subject;
+        attempt.Sent.Should().BeFalse();
+        attempt.Outcome.Should().Be("Not delivered: the receiver did not answer in time.");
+        attempt.FailedReason.Should().Be("RequestError: Internal request timed out, url: https://example.se/reports");
+    }
+
     [Fact]
     public async Task An_unreachable_receiver_is_recorded_as_not_delivered()
     {
@@ -103,6 +143,19 @@ public sealed class ReportSenderTests
         var attempts = await Sender(emulator).Send(message, ReportStatus.Delivered, TestContext.Current.CancellationToken);
 
         attempts.Should().ContainSingle().Which.Should().Match<ReportAttempt>(attempt => !attempt.Sent && attempt.Outcome.StartsWith("Not delivered:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task An_unreachable_receiver_gets_no_failed_reason()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.Unreachable = true;
+        var message = await Sent(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports"}""");
+
+        var attempts = await Sender(emulator)
+            .Send(message, ReportStatus.Delivered, TestContext.Current.CancellationToken);
+
+        attempts.Should().ContainSingle().Which.FailedReason.Should().BeNull();
     }
 
     private static ReportSender Sender(EmulatorFactory emulator) => emulator.Services.GetRequiredService<ReportSender>();
