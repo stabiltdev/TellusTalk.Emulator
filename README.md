@@ -281,7 +281,7 @@ message on another channel is not reported, since TellusTalk's report for anothe
 
 A report is posted once, as TellusTalk posts it: a receiver that answers with an error, or does not answer within 60
 seconds, does not get it again. A redirect is followed, a `302` as a `GET` without the report and a `307` as the same
-`POST`. While a receiver keeps the emulator waiting, the reports that fall due after it wait too.
+`POST`. A receiver that keeps the emulator waiting holds up no other report.
 
 Each report is a `POST` with the JSON TellusTalk was seen sending:
 
