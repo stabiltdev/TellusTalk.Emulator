@@ -53,14 +53,16 @@ internal static class ReadableJson
         var separator = "";
         foreach (var property in element.EnumerateObject())
         {
-            NewLine(readable.Append(separator), depth + 1);
+            readable.Append(separator);
+            NewLine(readable, depth + 1);
             Text(readable, Encoding.UTF8.GetString(JsonMarshal.GetRawUtf8PropertyName(property)));
             readable.Append(": ");
             Value(readable, property.Value, depth + 1);
             separator = ",";
         }
 
-        NewLine(readable, depth).Append('}');
+        NewLine(readable, depth);
+        readable.Append('}');
     }
 
     private static void Items(StringBuilder readable, JsonElement element, int depth)
@@ -75,15 +77,20 @@ internal static class ReadableJson
         var separator = "";
         foreach (var item in element.EnumerateArray())
         {
-            NewLine(readable.Append(separator), depth + 1);
+            readable.Append(separator);
+            NewLine(readable, depth + 1);
             Value(readable, item, depth + 1);
             separator = ",";
         }
 
-        NewLine(readable, depth).Append(']');
+        NewLine(readable, depth);
+        readable.Append(']');
     }
 
-    private static StringBuilder NewLine(StringBuilder readable, int depth) => readable.Append('\n').Append(' ', depth * 2);
+    private static void NewLine(StringBuilder readable, int depth) =>
+        readable
+            .Append('\n')
+            .Append(' ', depth * 2);
 
     /// <summary>A string or a name, quoted, from its text between the quotes as sent.</summary>
     private static void Text(StringBuilder readable, ReadOnlySpan<char> sent)
@@ -108,7 +115,9 @@ internal static class ReadableJson
                      && CodeUnit(sent, at + 6) is var low
                      && char.IsLowSurrogate(low))
             {
-                readable.Append(high).Append(low);
+                readable
+                    .Append(high)
+                    .Append(low);
                 at += 12;
             }
             else if (char.IsSurrogate(CodeUnit(sent, at)))
@@ -130,7 +139,9 @@ internal static class ReadableJson
     {
         if (ShortEscape(character) is { } letter)
         {
-            readable.Append('\\').Append(letter);
+            readable
+                .Append('\\')
+                .Append(letter);
         }
         else if (char.IsControl(character))
         {
