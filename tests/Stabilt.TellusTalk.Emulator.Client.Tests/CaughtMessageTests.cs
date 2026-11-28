@@ -49,7 +49,7 @@ public sealed class CaughtMessageTests
             .Select(warning => warning.Code)
             .Should().BeEquivalentTo(["to-spaces-removed", "unknown-field"]);
         message.Warnings.Should().ContainSingle(warning => warning.Code == "unknown-field").Which.Field.Should().Be("note");
-        message.Reports.Should().ContainSingle().Which.Should().BeEquivalentTo(new { At = at, Status = ReportStatus.Delivered, Target = "https://example.se/reports", Sent = true, Outcome = "200 OK" });
+        message.Reports.Should().ContainSingle().Which.Should().BeEquivalentTo(new { At = at, Status = ReportStatus.Delivered, Target = "https://example.se/reports", Sent = true, Outcome = "200 OK", FailedReason = (string?)null });
         message.Request.Should().Be(Detailed);
     }
 

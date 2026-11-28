@@ -582,6 +582,13 @@ pre {
   font-size: 12px;
 }
 
+.tt-reports li .failed-reason {
+  flex-basis: 100%;
+  color: var(--red);
+  font-size: 12px;
+  white-space: pre-line;
+}
+
 .tt-status {
   padding: 1px 7px;
   border-radius: 999px;

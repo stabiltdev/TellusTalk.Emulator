@@ -89,8 +89,14 @@ internal sealed record WarningResponse(string Code, string? Field, string Text)
     public static WarningResponse From(Warning warning) => new(warning.Code, warning.Field, warning.Text);
 }
 
-internal sealed record ReportAttemptResponse(DateTimeOffset At, ReportStatus Status, string Target, bool Sent, string Outcome)
+internal sealed record ReportAttemptResponse(
+    DateTimeOffset At,
+    ReportStatus Status,
+    string Target,
+    bool Sent,
+    string Outcome,
+    string? FailedReason)
 {
     public static ReportAttemptResponse From(ReportAttempt attempt) =>
-        new(attempt.At, attempt.Status, attempt.Target, attempt.Sent, attempt.Outcome);
+        new(attempt.At, attempt.Status, attempt.Target, attempt.Sent, attempt.Outcome, attempt.FailedReason);
 }

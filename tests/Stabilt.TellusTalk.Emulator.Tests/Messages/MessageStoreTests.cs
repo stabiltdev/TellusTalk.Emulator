@@ -575,7 +575,7 @@ public sealed class MessageStoreTests
     }
 
     private static ReportAttempt Attempt(DateTimeOffset at) =>
-        new(at, ReportStatus.Delivered, "https://example.se/reports", Sent: true, "200 OK");
+        new(at, ReportStatus.Delivered, "https://example.se/reports", Sent: true, "200 OK", FailedReason: null);
 
     private MessageStore Store(int retentionLimit = 1000, bool blockDuplicates = true) =>
         new(_time, Options.Create(new EmulatorOptions { RetentionLimit = retentionLimit, BlockDuplicates = blockDuplicates }));

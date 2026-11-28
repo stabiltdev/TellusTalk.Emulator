@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using Stabilt.TellusTalk.Emulator.Ids;
@@ -45,7 +46,7 @@ internal sealed class ReportSender(IHttpClientFactory clients, TimeProvider time
 
         if (reason is not null)
         {
-            return new ReportAttempt(now, status, address.Target, Sent: false, reason);
+            return new ReportAttempt(now, status, address.Target, Sent: false, reason, FailedReason: null);
         }
 
         using var request = Request(address, DeliveryReport.Json(DeliveryReport.For(message, status, now)));
@@ -60,11 +61,19 @@ internal sealed class ReportSender(IHttpClientFactory clients, TimeProvider time
                 status,
                 address.Target,
                 Sent: true,
-                string.Create(CultureInfo.InvariantCulture, $"{(int)response.StatusCode} {response.ReasonPhrase}"));
+                string.Create(CultureInfo.InvariantCulture, $"{(int)response.StatusCode} {response.ReasonPhrase}"),
+                FailedReason(response));
         }
         catch (HttpRequestException exception)
         {
-            return new ReportAttempt(now, status, address.Target, Sent: false, $"Not delivered: {exception.Message}");
+            // TellusTalk's failed_reason for a receiver that cannot be reached has not been seen.
+            return new ReportAttempt(
+                now,
+                status,
+                address.Target,
+                Sent: false,
+                $"Not delivered: {exception.Message}",
+                FailedReason: null);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -73,9 +82,21 @@ internal sealed class ReportSender(IHttpClientFactory clients, TimeProvider time
                 status,
                 address.Target,
                 Sent: false,
-                "Not delivered: the receiver did not answer in time.");
+                "Not delivered: the receiver did not answer in time.",
+                $"RequestError: Internal request timed out, url: {address.Target}");
         }
     }
+
+    /// <summary>
+    /// K8 was seen to log a report delivered on a <c>200</c> alone: a <c>204</c> failed it as a <c>401</c> and a
+    /// <c>500</c> did. Every other status is taken to fail it too.
+    /// </summary>
+    private static string? FailedReason(HttpResponseMessage response) =>
+        response.StatusCode == HttpStatusCode.OK
+            ? null
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"HTTPError: Error Code: {(int)response.StatusCode}\nreason: {response.ReasonPhrase}");
 
     /// <summary>
     /// The headers TellusTalk was seen sending a report with, the request id in its UUID form, and any header the

@@ -329,8 +329,10 @@ The request carries `Content-Type: application/json`, `Accept: */*`, a `webpages
 in the settings is recorded as not sent, since TellusTalk's other report formats have not been seen.
 
 Every attempt, with the receiver's status or why it was not sent, is kept on the message: on the page and in the read
-API's `reports`. The emulator checks the receiver's certificate, so from inside a container an app on the host is best
-given an `http://host.docker.internal:<port>/…` address.
+API's `reports`. TellusTalk was seen to log a report delivered on a `200` and failed on a `204`, `401` or `500`; the
+emulator takes every answer but `200` to fail it, so an attempt that met another answer, or none in time, also carries
+the reason TellusTalk's log gives it. The emulator checks the receiver's certificate, so from inside a container an app
+on the host is best given an `http://host.docker.internal:<port>/…` address.
 
 ## The read API
 
@@ -377,7 +379,7 @@ A message:
   "replyTo": [],
   "fields": { "to": "sms:+46 70 174 06 05", "text": "Your order has shipped.", "sms_originator_source": "text", "sms_originator_text": "Probe", "report_to": "https://example.se/reports" },
   "warnings": [ { "code": "to-spaces-removed", "field": "to", "text": "…" } ],
-  "reports": [ { "at": "2026-11-07T22:00:01+00:00", "status": "delivered", "target": "https://example.se/reports", "sent": true, "outcome": "200 OK" } ],
+  "reports": [ { "at": "2026-11-07T22:00:01+00:00", "status": "delivered", "target": "https://example.se/reports", "sent": true, "outcome": "200 OK", "failedReason": null } ],
   "request": "<the body as it arrived>"
 }
 ```
@@ -397,7 +399,11 @@ A message:
 - `parts.length` is in septets for `gsm`, UTF-16 code units for `ucs2` and bytes for `binary`; `starts` are where each
   part begins in `text`.
 - `reports` lists every report attempt, oldest first. `sent` says whether the report reached the receiver, whatever it
-  answered; `outcome` is the receiver's status, or why the report was not sent or not delivered.
+  answered; `outcome` is the receiver's status, or why the report was not sent or not delivered. `failedReason` is the
+  `failed_reason` TellusTalk's log gives a report it fails. A receiver that answers anything but `200` gets
+  `HTTPError: Error Code: <status>` with `reason: <reason phrase>` on a second line, such as `204` and `No Content`; one
+  that does not answer within 60 seconds gets `RequestError: Internal request timed out, url: ` and the URL. It is
+  `null` otherwise, a receiver that cannot be reached included, since TellusTalk's text for that has not been seen.
 
 ## Failing sends
 

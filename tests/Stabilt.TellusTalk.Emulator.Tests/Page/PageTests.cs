@@ -371,6 +371,26 @@ public sealed class PageTests
         attempts[0].QuerySelector("time")!.GetAttribute("datetime").Should().Be("2026-11-07T22:00:00Z");
         attempts[1].TextContent.Should().Contain("ops@example.se").And.Contain("Not sent: the emulator sends no e-mail.");
         attempts[1].ClassList.Should().Contain("unsent");
+        page.QuerySelectorAll("#detail .tt-reports .failed-reason").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_report_attempt_TellusTalk_would_log_as_failed_shows_its_reason()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.Answer = HttpStatusCode.NoContent;
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://example.se/reports"}""");
+        using var client = emulator.CreateClient();
+        using var report = await client.PostAsJsonAsync(
+            new Uri($"/api/messages/{id}/reports", UriKind.Relative),
+            new { status = "delivered" },
+            TestContext.Current.CancellationToken);
+        report.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail .tt-reports li .failed-reason")!.TextContent
+            .Should().Be("TellusTalk logs it failed: HTTPError: Error Code: 204\nreason: No Content");
     }
 
     [Fact]

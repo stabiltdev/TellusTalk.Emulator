@@ -263,6 +263,10 @@
                             <code>@attempt.Target</code>
                             <span class="outcome">@attempt.Outcome</span>
                             <time datetime="@PageTime.Iso(attempt.At)">@PageTime.Fallback(attempt.At)</time>
+                            @if (attempt.FailedReason is { } failedReason)
+                            {
+                                <span class="failed-reason">TellusTalk logs it failed: @failedReason</span>
+                            }
                         </li>
                     }
                 </ol>

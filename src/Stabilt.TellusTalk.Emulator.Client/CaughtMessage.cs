@@ -111,4 +111,10 @@ public sealed record ReportAttempt
     public bool Sent { get; init; }
 
     public string Outcome { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The <c>failed_reason</c> TellusTalk's log gives a report it fails, where its text has been seen; <c>null</c>
+    /// otherwise.
+    /// </summary>
+    public string? FailedReason { get; init; }
 }

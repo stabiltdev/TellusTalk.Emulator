@@ -332,6 +332,9 @@ is settled when someone observes the real thing.
 - What a reply contains, whether any report comes before the final one, and which other values a report's status
   takes.
 - What a report in another `content_type` holds.
+- Whether a receiver's status other than `200`, `204`, `401` and `500` fails a report, such as `201` or `202`, and what
+  K8's log gives for a receiver it cannot reach; the emulator takes every status but `200` to fail a report, and gives
+  no `failedReason` for a receiver it cannot reach.
 - Whether an absent `subject` and `subject: ""` count as the same in the key of a duplicate; the emulator takes them as
   the same.
 - Duplicates on channels other than SMS, and what their key is; a log of 2026-11-14 showed an e-mail held back 36 seconds
