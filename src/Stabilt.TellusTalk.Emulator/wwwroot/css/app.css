@@ -344,6 +344,7 @@ pre {
 .tt-detail {
   padding: 22px 26px;
   overflow-y: auto;
+  container-type: inline-size;
 }
 
 .tt-empty {
@@ -366,6 +367,18 @@ pre {
 
 .tt-message.plain dl {
   margin-top: 18px;
+}
+
+/* The detail's own width decides, not the window's: beside the list, a window under about 1,050 px leaves too little
+   room for the phone and the details side by side. */
+@container (max-width: 680px) {
+  .tt-message {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tt-phone {
+    justify-self: center;
+  }
 }
 
 /* A phone's proportions whatever the text: a long text scrolls in the conversation, as it would on a real screen. */
@@ -810,7 +823,7 @@ pre {
   border-color: var(--muted);
 }
 
-/* Narrow screens: the list above the message, the phone above its details, and the page scrolling as a whole. */
+/* Narrow screens: the list above the message, and the page scrolling as a whole. */
 
 @media (max-width: 760px) {
   .tt {
@@ -835,14 +848,6 @@ pre {
 
   .tt-search input {
     width: 100%;
-  }
-
-  .tt-message {
-    grid-template-columns: 1fr;
-  }
-
-  .tt-phone {
-    justify-self: center;
   }
 }
 
