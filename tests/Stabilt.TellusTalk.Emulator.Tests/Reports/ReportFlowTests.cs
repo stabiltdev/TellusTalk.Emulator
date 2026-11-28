@@ -75,6 +75,22 @@ public sealed class ReportFlowTests
     }
 
     [Fact]
+    public async Task A_receiver_that_never_answers_holds_up_no_report_that_falls_due_after_it()
+    {
+        await using var emulator = new EmulatorFactory();
+        emulator.Reports.SilentHosts.Add("silent.example.se");
+        await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","report_to":"https://silent.example.se/reports"}""");
+        await StepUntilReported(emulator, 1);
+
+        await Send(emulator, """{"to":"sms:+46701740606","text":"Hej","report_to":"https://example.se/second"}""");
+        var received = await StepUntilReported(emulator, 2);
+
+        received
+            .Select(report => report.Uri.Host)
+            .Should().Equal("silent.example.se", "example.se");
+    }
+
+    [Fact]
     public async Task A_message_carries_its_report_attempts_in_the_read_API()
     {
         await using var emulator = new EmulatorFactory();

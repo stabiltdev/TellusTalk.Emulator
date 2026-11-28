@@ -127,7 +127,8 @@ from PTS's range for fiction, and no account is named.
   Delivery Failed (21) with `failed_reason` `HTTPError: Error Code: 500` and `reason: Internal Server Error` on a second
   line, or `401` and `Unauthorized`. Nothing was sent again within two and a half hours.
 - **2026-11-24:** a receiver that does not answer → the report failed after 60 seconds, with `failed_reason`
-  `RequestError: Internal request timed out, url: ` and the URL. Nothing was sent again.
+  `RequestError: Internal request timed out, url: ` and the URL. Nothing was sent again. While it waited, the same
+  user's later reports to other receivers went out about two seconds after their sends.
 - **2026-11-24:** a receiver that answers `302` → K8 followed it with a `GET` without the report; one that answers
   `307` → the same `POST` with the report. Both were logged Delivery Success (22) on the target's `200`.
 - **2026-11-25:** a receiver that answers `204 No Content` → the report failed, and the admin's log showed Delivery
