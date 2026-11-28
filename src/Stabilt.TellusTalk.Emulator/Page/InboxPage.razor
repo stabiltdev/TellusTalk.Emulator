@@ -240,10 +240,18 @@
                 <dd><code>@field.Value</code></dd>
             }</text>;
 
+    /// <summary>Both views are rendered and CSS shows the one whose button is checked, so the switch works without the script.</summary>
     private static RenderFragment RequestAndDelete(Message message) =>
         @<text><details class="tt-request">
                 <summary>Show request</summary>
-                <pre>@message.RawRequest</pre>
+                <fieldset class="tt-views" aria-label="How the request is shown">
+                    <input type="radio" id="request-readable" name="request-view" value="readable" checked />
+                    <label for="request-readable">Readable</label>
+                    <input type="radio" id="request-sent" name="request-view" value="sent" />
+                    <label for="request-sent">As sent</label>
+                </fieldset>
+                <pre class="readable">@ReadableJson.Write(message.RawRequest)</pre>
+                <pre class="sent">@message.RawRequest</pre>
             </details>
             <div class="tt-actions">
                 <button type="button" class="tt-btn" data-delete="@message.Id">Delete</button>

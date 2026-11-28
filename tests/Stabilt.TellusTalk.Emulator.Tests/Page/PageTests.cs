@@ -465,6 +465,44 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task The_request_is_shown_readable_by_default_and_as_sent_on_request()
+    {
+        await using var emulator = new EmulatorFactory();
+        const string body = """{"to":"sms:\u002B46701740605","text":"H\u00E4lsningar"}""";
+        var id = await Send(emulator, body);
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        var request = page.QuerySelector("#detail .tt-request")!;
+        request.QuerySelector("pre.readable")!.TextContent.Should().Be(
+            """
+            {
+              "to": "sms:+46701740605",
+              "text": "Hälsningar"
+            }
+            """.ReplaceLineEndings("\n"));
+        request.QuerySelector("pre.sent")!.TextContent.Should().Be(body);
+        request.QuerySelector("#request-readable")!.HasAttribute("checked").Should().BeTrue();
+        request.QuerySelector("#request-sent")!.HasAttribute("checked").Should().BeFalse();
+        request.QuerySelector("label[for='request-readable']")!.TextContent.Should().Be("Readable");
+        request.QuerySelector("label[for='request-sent']")!.TextContent.Should().Be("As sent");
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej"}""")]
+    [InlineData("""{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""")]
+    public async Task Every_channel_shows_its_request_readable_and_as_sent(string body)
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, body);
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail .tt-request pre.readable").Should().NotBeNull();
+        page.QuerySelector("#detail .tt-request pre.sent")!.TextContent.Should().Be(body);
+    }
+
+    [Fact]
     public async Task The_counts_count_every_channel()
     {
         await using var emulator = new EmulatorFactory();
