@@ -581,6 +581,33 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task The_phone_s_conversation_is_a_region_of_its_own_that_the_keyboard_reaches()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        var chat = page.QuerySelector("#detail .tt-phone .chat")!;
+        chat.GetAttribute("role").Should().Be("region");
+        chat.GetAttribute("aria-label").Should().Be("Conversation");
+        chat.GetAttribute("tabindex").Should().Be("0");
+        chat.QuerySelector(".tt-bubble")!.TextContent.Should().Be("Hej");
+    }
+
+    [Fact]
+    public async Task The_phone_s_decorations_are_hidden_from_assistive_technology()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelectorAll("#detail .tt-phone :is(.status, .back, .reply, .home)")
+            .Should().HaveCount(4).And.AllSatisfy(part => part.GetAttribute("aria-hidden").Should().Be("true"));
+    }
+
+    [Fact]
     public async Task The_scheduled_tab_lists_only_scheduled_messages_with_their_due_time()
     {
         await using var emulator = new EmulatorFactory();

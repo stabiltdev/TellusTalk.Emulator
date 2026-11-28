@@ -354,7 +354,7 @@ pre {
 
 .tt-message {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   align-items: start;
   gap: 28px;
 }
@@ -368,30 +368,148 @@ pre {
   margin-top: 18px;
 }
 
+/* A phone's proportions whatever the text: a long text scrolls in the conversation, as it would on a real screen. */
 .tt-phone {
-  padding: 14px 12px 26px;
-  border: 7px solid var(--frame);
-  border-radius: 30px;
+  display: flex;
+  width: 300px;
+  max-width: 100%;
+  height: 620px;
+  overflow: hidden;
+  border: 8px solid var(--frame);
+  border-radius: 44px;
   background: var(--surface);
 }
 
-.tt-phone .notch {
-  width: 54px;
+.tt-phone .screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tt-phone .status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px 4px 28px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tt-phone .marks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tt-phone .signal {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.tt-phone .signal span {
+  width: 3px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.tt-phone .signal span:nth-child(1) {
+  height: 4px;
+}
+
+.tt-phone .signal span:nth-child(2) {
   height: 6px;
-  margin: 0 auto 14px;
+}
+
+.tt-phone .signal span:nth-child(3) {
+  height: 8px;
+}
+
+.tt-phone .signal span:nth-child(4) {
+  height: 10px;
+}
+
+.tt-phone .battery {
+  position: relative;
+  width: 21px;
+  height: 11px;
+  border: 1.5px solid currentColor;
   border-radius: 3px;
-  background: var(--frame);
-  opacity: 0.85;
+}
+
+.tt-phone .battery::before {
+  position: absolute;
+  inset: 1.5px 6px 1.5px 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.tt-phone .battery::after {
+  position: absolute;
+  top: 2.5px;
+  right: -4px;
+  width: 2px;
+  height: 3px;
+  border-radius: 0 1px 1px 0;
+  background: currentColor;
+  content: "";
 }
 
 .tt-phone .who {
+  position: relative;
+  padding: 8px 40px 12px;
+  border-bottom: 1px solid var(--line);
   text-align: center;
+}
+
+.tt-phone .back {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid var(--accent-text);
+  border-left: 2px solid var(--accent-text);
+  transform: rotate(45deg);
+}
+
+.tt-phone .chat {
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tt-phone .chat:focus-visible {
+  outline-offset: -2px;
+}
+
+.tt-phone .reply {
+  margin: 8px 12px 0;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tt-phone .home {
+  width: 110px;
+  height: 4px;
+  margin: 12px auto 8px;
+  border-radius: 2px;
+  background: var(--text);
+  opacity: 0.55;
 }
 
 .tt-phone .avatar {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto 4px;
   border-radius: 50%;
   background: var(--accent-soft);
@@ -417,6 +535,8 @@ pre {
 }
 
 .tt-bubble {
+  width: fit-content;
+  max-width: 85%;
   margin: 0;
   padding: 9px 11px;
   border-radius: 16px 16px 16px 5px;
@@ -722,7 +842,7 @@ pre {
   }
 
   .tt-phone {
-    max-width: 260px;
+    justify-self: center;
   }
 }
 
