@@ -6,22 +6,31 @@ using System.Text.Json;
 namespace Stabilt.TellusTalk.Emulator.Page;
 
 /// <summary>
-/// A request written to be read: indented, with every character as itself except those JSON requires escaped and the
-/// control characters a reader could not see. Strings and names are rewritten from their text as sent rather than read
-/// with <see cref="JsonElement.GetString"/>, which throws on half a surrogate pair.
+/// JSON written to be read, indented or on one line, with every character as itself except those JSON requires escaped
+/// and the control characters a reader could not see. Strings and names are rewritten from their text as sent rather
+/// than read with <see cref="JsonElement.GetString"/>, which throws on half a surrogate pair.
 /// </summary>
 internal static class ReadableJson
 {
     public static string Write(string json)
     {
         using var document = JsonDocument.Parse(json);
+
+        return Write(document.RootElement, 0);
+    }
+
+    public static string WriteOnOneLine(JsonElement element) => Write(element, null);
+
+    /// <summary>A <paramref name="depth"/> of <see langword="null"/> writes the value on one line.</summary>
+    private static string Write(JsonElement element, int? depth)
+    {
         var readable = new StringBuilder();
-        Value(readable, document.RootElement, 0);
+        Value(readable, element, depth);
 
         return readable.ToString();
     }
 
-    private static void Value(StringBuilder readable, JsonElement element, int depth)
+    private static void Value(StringBuilder readable, JsonElement element, int? depth)
     {
         switch (element.ValueKind)
         {
@@ -41,7 +50,7 @@ internal static class ReadableJson
         }
     }
 
-    private static void Members(StringBuilder readable, JsonElement element, int depth)
+    private static void Members(StringBuilder readable, JsonElement element, int? depth)
     {
         if (element.GetPropertyCount() == 0)
         {
@@ -50,22 +59,21 @@ internal static class ReadableJson
         }
 
         readable.Append('{');
-        var separator = "";
+        var first = true;
         foreach (var property in element.EnumerateObject())
         {
-            readable.Append(separator);
-            NewLine(readable, depth + 1);
+            Before(readable, first, depth + 1);
             Text(readable, Encoding.UTF8.GetString(JsonMarshal.GetRawUtf8PropertyName(property)));
             readable.Append(": ");
             Value(readable, property.Value, depth + 1);
-            separator = ",";
+            first = false;
         }
 
         NewLine(readable, depth);
         readable.Append('}');
     }
 
-    private static void Items(StringBuilder readable, JsonElement element, int depth)
+    private static void Items(StringBuilder readable, JsonElement element, int? depth)
     {
         if (element.GetArrayLength() == 0)
         {
@@ -74,23 +82,39 @@ internal static class ReadableJson
         }
 
         readable.Append('[');
-        var separator = "";
+        var first = true;
         foreach (var item in element.EnumerateArray())
         {
-            readable.Append(separator);
-            NewLine(readable, depth + 1);
+            Before(readable, first, depth + 1);
             Value(readable, item, depth + 1);
-            separator = ",";
+            first = false;
         }
 
         NewLine(readable, depth);
         readable.Append(']');
     }
 
-    private static void NewLine(StringBuilder readable, int depth) =>
-        readable
-            .Append('\n')
-            .Append(' ', depth * 2);
+    /// <summary>What goes before a member or an item: the comma after the one before it, then its line or a space.</summary>
+    private static void Before(StringBuilder readable, bool first, int? depth)
+    {
+        if (!first)
+        {
+            readable.Append(depth is null ? ", " : ",");
+        }
+
+        NewLine(readable, depth);
+    }
+
+    /// <summary>Nothing on one line.</summary>
+    private static void NewLine(StringBuilder readable, int? depth)
+    {
+        if (depth is { } indent)
+        {
+            readable
+                .Append('\n')
+                .Append(' ', indent * 2);
+        }
+    }
 
     /// <summary>A string or a name, quoted, from its text between the quotes as sent.</summary>
     private static void Text(StringBuilder readable, ReadOnlySpan<char> sent)

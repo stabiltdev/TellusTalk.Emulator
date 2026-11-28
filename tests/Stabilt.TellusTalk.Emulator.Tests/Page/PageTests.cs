@@ -405,7 +405,7 @@ public sealed class PageTests
     }
 
     [Fact]
-    public async Task The_detail_shows_flash_validity_billing_id_and_echo_as_sent()
+    public async Task The_detail_shows_flash_validity_billing_id_and_echo()
     {
         await using var emulator = new EmulatorFactory();
         var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","sms_flash":true,"sms_validity_time":3600,"billing_id":"team1","echo":{"probe":"1"}}""");
@@ -417,8 +417,32 @@ public sealed class PageTests
             KeyValuePair.Create("Flash", "true"),
             KeyValuePair.Create("Valid for", "3600 seconds"),
             KeyValuePair.Create("Billing id", "team1"),
-            KeyValuePair.Create("Echo", """{"probe":"1"}"""),
+            KeyValuePair.Create("Echo", """{"probe": "1"}"""),
         ]);
+    }
+
+    [Fact]
+    public async Task An_echo_object_is_shown_readable_on_one_line()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(
+            emulator,
+            """{"to":"sms:+46701740605","text":"Hej","echo":{"note":"H\u00E4lsningar \uD83D\uDE0A","ids":[1,2]}}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        Details(page)["Echo"].Should().Be("""{"note": "Hälsningar 😊", "ids": [1, 2]}""");
+    }
+
+    [Fact]
+    public async Task An_echo_string_is_shown_as_its_text()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej","echo":"order 1001"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        Details(page)["Echo"].Should().Be("order 1001");
     }
 
     [Fact]
