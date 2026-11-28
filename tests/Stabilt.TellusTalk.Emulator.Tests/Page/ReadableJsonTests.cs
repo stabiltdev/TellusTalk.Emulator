@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Stabilt.TellusTalk.Emulator.Page;
 
 namespace Stabilt.TellusTalk.Emulator.Tests.Page;
@@ -121,6 +122,16 @@ public sealed class ReadableJsonTests
               "sms_originator_text": "Probe"
             }
             """.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public void On_one_line_members_and_items_are_parted_by_a_comma_and_a_space()
+    {
+        using var document = JsonDocument.Parse("""{"note":"H\u00E4lsningar","ids":[1,2],"empty":{},"none":[]}""");
+
+        var readable = ReadableJson.WriteOnOneLine(document.RootElement);
+
+        readable.Should().Be("""{"note": "Hälsningar", "ids": [1, 2], "empty": {}, "none": []}""");
     }
 
     /// <summary>A request whose one member, <c>text</c>, holds the given JSON text between its quotes.</summary>

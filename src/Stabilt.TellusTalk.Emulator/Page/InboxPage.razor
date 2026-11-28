@@ -219,7 +219,7 @@
                 <dt>Billing id</dt>
                 <dd>@billingId</dd>
             }
-            @if (Shown(message.Request.Body.Echo) is { } echo)
+            @if (ShownEcho(message.Request.Body.Echo) is { } echo)
             {
                 <dt>Echo</dt>
                 <dd><code>@echo</code></dd>
@@ -397,6 +397,11 @@
         MessageChannel.Group => "Group",
         _ => throw new InvalidOperationException($"The channel '{channel}' has no label."),
     };
+
+    /// <summary>A string is left to <see cref="Shown"/>, which already writes its text without quotes or escapes.</summary>
+    private static string? ShownEcho(JsonElement echo) => echo.ValueKind is JsonValueKind.Object or JsonValueKind.Array
+        ? ReadableJson.WriteOnOneLine(echo)
+        : Shown(echo);
 
     private static string? Shown(JsonElement value) => value.ValueKind switch
     {
