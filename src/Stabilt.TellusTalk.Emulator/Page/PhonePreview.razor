@@ -1,27 +1,41 @@
-@* The SMS as the recipient's phone shows it, every other part marked where it begins. *@
+@* The SMS as the recipient's phone shows it, every other part marked where it begins. The phone keeps its size, so a
+   long text scrolls inside it as it would on a real screen. *@
 <div class="tt-phone" role="group" aria-label="The SMS as the phone shows it">
-    <div class="notch"></div>
-    <div class="who">
-        <div class="avatar" aria-hidden="true">@Initial</div>
-        <div class="name">@Sender</div>
-        <div class="kind">Text message</div>
+    <div class="screen">
+        <div class="status" aria-hidden="true">
+            <time datetime="@PageTime.Iso(Time)">@PageTime.Fallback(Time)</time>
+            <span class="marks">
+                <span class="signal"><span></span><span></span><span></span><span></span></span>
+                <span class="battery"></span>
+            </span>
+        </div>
+        <div class="who">
+            <span class="back" aria-hidden="true"></span>
+            <div class="avatar" aria-hidden="true">@Initial</div>
+            <div class="name">@Sender</div>
+            <div class="kind">Text message</div>
+        </div>
+        <div class="chat" role="region" aria-label="Conversation" tabindex="0">
+            <div class="stamp"><time datetime="@PageTime.Iso(Time)">@PageTime.Fallback(Time)</time></div>
+            <p class="tt-bubble">@for (var part = 0; part < Parts.Count; part++)
+                {
+                    if (part % 2 == 0)
+                    {
+                        @Parts[part]
+                    }
+                    else
+                    {
+                        <mark title="Part @(part + 1) begins here">@Parts[part]</mark>
+                    }
+                }</p>
+            @if (Note is not null)
+            {
+                <p class="note">@Note</p>
+            }
+        </div>
+        <div class="reply" aria-hidden="true">Text message</div>
+        <div class="home" aria-hidden="true"></div>
     </div>
-    <div class="stamp"><time datetime="@PageTime.Iso(Time)">@PageTime.Fallback(Time)</time></div>
-    <p class="tt-bubble">@for (var part = 0; part < Parts.Count; part++)
-        {
-            if (part % 2 == 0)
-            {
-                @Parts[part]
-            }
-            else
-            {
-                <mark title="Part @(part + 1) begins here">@Parts[part]</mark>
-            }
-        }</p>
-    @if (Note is not null)
-    {
-        <p class="note">@Note</p>
-    }
 </div>
 
 @code {

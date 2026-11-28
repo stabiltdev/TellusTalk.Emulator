@@ -13,7 +13,8 @@ Not affiliated with TellusTalk.
 - Answers with a job id in TellusTalk's form and the headers TellusTalk sends.
 - Catches a message for each recipient, on every channel: SMS, e-mail, fax, MMS, voice and groups.
 - Keeps every message in memory and shows it on a page at `/`: a list of the sent, the scheduled and the blocked, each
-  SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly.
+  SMS as the recipient's phone shows it, with the parts it splits into, and a message on another channel plainly, each
+  with its request as sent and in a readable form.
 - Serves what it caught to automated tests through a read API under `/api/`, which the package
   [`Stabilt.TellusTalk.Emulator.Client`](src/Stabilt.TellusTalk.Emulator.Client/README.md) reads as typed models.
 - Posts a delivery report, in the form TellusTalk posts one, to each URL in an SMS's `report_to`: delivered, or failed

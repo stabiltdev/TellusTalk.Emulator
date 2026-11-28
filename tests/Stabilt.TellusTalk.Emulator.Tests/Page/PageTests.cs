@@ -485,6 +485,44 @@ public sealed class PageTests
     }
 
     [Fact]
+    public async Task The_request_is_shown_readable_by_default_and_as_sent_on_request()
+    {
+        await using var emulator = new EmulatorFactory();
+        const string body = """{"to":"sms:\u002B46701740605","text":"H\u00E4lsningar"}""";
+        var id = await Send(emulator, body);
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        var request = page.QuerySelector("#detail .tt-request")!;
+        request.QuerySelector("pre.readable")!.TextContent.Should().Be(
+            """
+            {
+              "to": "sms:+46701740605",
+              "text": "Hälsningar"
+            }
+            """.ReplaceLineEndings("\n"));
+        request.QuerySelector("pre.sent")!.TextContent.Should().Be(body);
+        request.QuerySelector("#request-readable")!.HasAttribute("checked").Should().BeTrue();
+        request.QuerySelector("#request-sent")!.HasAttribute("checked").Should().BeFalse();
+        request.QuerySelector("label[for='request-readable']")!.TextContent.Should().Be("Readable");
+        request.QuerySelector("label[for='request-sent']")!.TextContent.Should().Be("As sent");
+    }
+
+    [Theory]
+    [InlineData("""{"to":"sms:+46701740605","text":"Hej"}""")]
+    [InlineData("""{"to":"email:test.user@example.se","subject":"Your order","text":"Shipped"}""")]
+    public async Task Every_channel_shows_its_request_readable_and_as_sent(string body)
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, body);
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelector("#detail .tt-request pre.readable").Should().NotBeNull();
+        page.QuerySelector("#detail .tt-request pre.sent")!.TextContent.Should().Be(body);
+    }
+
+    [Fact]
     public async Task The_counts_count_every_channel()
     {
         await using var emulator = new EmulatorFactory();
@@ -560,6 +598,33 @@ public sealed class PageTests
         using var page = await Page(emulator, $"?id={id}");
 
         page.QuerySelector("#detail .tt-phone")!.GetAttribute("role").Should().NotBe("img");
+    }
+
+    [Fact]
+    public async Task The_phone_s_conversation_is_a_region_of_its_own_that_the_keyboard_reaches()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        var chat = page.QuerySelector("#detail .tt-phone .chat")!;
+        chat.GetAttribute("role").Should().Be("region");
+        chat.GetAttribute("aria-label").Should().Be("Conversation");
+        chat.GetAttribute("tabindex").Should().Be("0");
+        chat.QuerySelector(".tt-bubble")!.TextContent.Should().Be("Hej");
+    }
+
+    [Fact]
+    public async Task The_phone_s_decorations_are_hidden_from_assistive_technology()
+    {
+        await using var emulator = new EmulatorFactory();
+        var id = await Send(emulator, """{"to":"sms:+46701740605","text":"Hej"}""");
+
+        using var page = await Page(emulator, $"?id={id}");
+
+        page.QuerySelectorAll("#detail .tt-phone :is(.status, .back, .reply, .home)")
+            .Should().HaveCount(4).And.AllSatisfy(part => part.GetAttribute("aria-hidden").Should().Be("true"));
     }
 
     [Fact]
