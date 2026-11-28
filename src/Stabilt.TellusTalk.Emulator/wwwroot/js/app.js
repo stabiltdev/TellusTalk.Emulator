@@ -1,10 +1,11 @@
 // The page works without this script as plain linked pages; it adds moving between them in place, live updates,
-// deleting, the theme switch, local times and new marks.
+// deleting, the theme switch, local times, new marks and remembering how a request is shown.
 (function () {
   "use strict";
 
   var themeKey = "tellustalk-emulator.theme";
   var seenKey = "tellustalk-emulator.seen";
+  var requestViewKey = "tellustalk-emulator.request-view";
 
   function read(key) {
     try {
@@ -36,6 +37,22 @@
       button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
     });
   }
+
+  // How a request is shown. The detail is swapped in with its default view checked, so the choice is checked again.
+
+  function applyRequestView() {
+    var choice = read(requestViewKey);
+    var button = choice === "readable" || choice === "sent" ? document.getElementById("request-" + choice) : null;
+    if (button) {
+      button.checked = true;
+    }
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target.matches('input[name="request-view"]')) {
+      write(requestViewKey, event.target.value);
+    }
+  });
 
   // Deleting.
 
@@ -214,6 +231,7 @@
 
   function enhance() {
     var list = document.getElementById("list");
+    applyRequestView();
     localTimes(document);
     if (list) {
       dayHeadings(list);
